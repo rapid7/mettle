@@ -1,0 +1,20 @@
+$(BUILD)/libev/configure:
+	@echo "Unpacking libev for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/libev; \
+		$(TAR) xf $(DEPS)/libev-4.19.tar.gz; \
+		mv libev-4.19 libev
+
+$(BUILD)/libev/Makefile: $(BUILD)/libev/configure
+	@echo "Configuring libev for $(TARGET)"
+	@cd $(BUILD)/libev; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libev.a: $(BUILD)/libev/Makefile
+	@echo "Building libev for $(TARGET)"
+	@cd $(BUILD)/libev; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libev: $(BUILD)/lib/libev.a

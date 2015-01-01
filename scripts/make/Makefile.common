@@ -1,0 +1,22 @@
+ROOT=$(shell pwd)
+MAKE_INSTALL:=$(MAKE) install
+MAKE:=$(MAKE) -j4
+BUILDS=$(ROOT)/builds
+BUILD=$(BUILDS)/$(TARGET)
+LOGFILE=$(BUILD)/build.log
+ERRFILE=$(BUILD)/build.err
+LOGBUILD=>>$(LOGFILE) 2>>$(ERRFILE)
+DEPS=$(ROOT)/deps
+SRC=$(ROOT)/src
+BUILDSRC=$(BUILD)/src
+OUTPUTDIR=$(BUILD)/data
+CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O2
+CC=$(ROOT)/tools/ellcc/bin/ecc
+TAR=tar
+
+ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) CFLAGS="$(CFLAGS)"
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
+
+export PATH:=$(PATH):$(TOOLS)/ellcc/bin
+
+all: tools $(BUILD)/$(PROJECT_NAME).bin

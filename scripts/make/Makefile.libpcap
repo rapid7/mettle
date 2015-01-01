@@ -1,0 +1,21 @@
+$(BUILD)/libpcap/configure:
+	@echo "Unpacking libpcap for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr libpcap; \
+		$(TAR) xf $(ROOT)/deps/libpcap-1.6.2.tar.gz; \
+		mv libpcap-1.6.2 libpcap
+
+$(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(BUILD)/include/linux/in.h
+	@echo "Configuring libpcap for $(TARGET)"
+	@mkdir -p $(BUILD)/libpcap
+	@cd $(BUILD)/libpcap; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
+	@echo "Building libpcap for $(TARGET)"
+	@cd $(BUILD)/libpcap; \
+		$(MAKE) $(LOGBUILD) ; \
+	       	$(MAKE_INSTALL) $(LOGBUILD)
+
+libpcap: $(BUILD)/lib/libpcap.a

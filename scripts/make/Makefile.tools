@@ -1,0 +1,6 @@
+tools: tools/ellcc/bin/ecc
+
+tools/ellcc/bin/ecc:
+	@echo "Unpacking ellcc"
+	@mkdir -p tools
+	@cd tools && tar xf $(DEPS)/ellcc-x86_64-linux-eng-0.1.6.tgz
