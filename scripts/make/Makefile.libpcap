@@ -10,7 +10,7 @@ $(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(BUILD)/include/linux/in.
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \
-		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+		$(ENV) ./$(CONFIGURE) --with-pcap=linux $(LOGBUILD)
 
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"

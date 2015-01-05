@@ -1,6 +1,20 @@
 tools: tools/ellcc/bin/ecc
 
+ELLCC_VER=0.1.6
+ELLCC_HOST=ellcc-x86_64-eng
+INSTALL=install
+ifeq "$(shell uname -s)" "Darwin"
+	ELLCC_HOST=Mac_OS_X_10.9.5
+	ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
+		@echo "Gnu install is not found, try 'brew install coreutils"
+	else
+		export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
+	endif
+endif
+
+export PATH:=$(PATH):$(TOOLS)/ellcc/bin
+
 tools/ellcc/bin/ecc:
 	@echo "Unpacking ellcc"
 	@mkdir -p tools
-	@cd tools && tar xf $(DEPS)/ellcc-x86_64-linux-eng-0.1.6.tgz
+	@cd tools && tar xf $(DEPS)/ellcc-$(ELLCC_HOST)-$(ELLCC_VER).tgz

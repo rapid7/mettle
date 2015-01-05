@@ -12,11 +12,12 @@ BUILDSRC=$(BUILD)/src
 OUTPUTDIR=$(BUILD)/data
 CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O2
 CC=$(ROOT)/tools/ellcc/bin/ecc
+AR=$(ROOT)/tools/ellcc/bin/ecc-ar
+RANLIB=$(ROOT)/tools/ellcc/bin/ecc-ranlib
 TAR=tar
 
-ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) CFLAGS="$(CFLAGS)"
-CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
-
-export PATH:=$(PATH):$(TOOLS)/ellcc/bin
+ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
+HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --host=$(HOST)
 
 all: tools $(BUILD)/$(PROJECT_NAME).bin
