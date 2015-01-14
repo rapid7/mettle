@@ -11,10 +11,6 @@ SRC=$(ROOT)/src
 BUILDSRC=$(BUILD)/src
 OUTPUTDIR=$(BUILD)/data
 CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O2
-CC=$(ROOT)/tools/ellcc/bin/ecc
-AR=$(ROOT)/tools/ellcc/bin/ecc-ar
-RANLIB=$(ROOT)/tools/ellcc/bin/ecc-ranlib
-TAR=tar
 
 ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
 HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu

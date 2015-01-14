@@ -1,10 +1,16 @@
-tools: tools/ellcc/bin/ecc
+deps:
+	@echo "downloading toolchains and upstream source (grab a cup of coffee)"
+	@git clone --depth 1 https://github.com/busterb/mettle-deps.git deps
 
-ELLCC_VER=0.1.6
-ELLCC_HOST=ellcc-x86_64-eng
+ELLCC_HOST=linux
+CC=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc
+AR=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ar
+RANLIB=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ranlib
+TAR=tar
+
 INSTALL=install
 ifeq "$(shell uname -s)" "Darwin"
-	ELLCC_HOST=Mac_OS_X_10.9.5
+	ELLCC_HOST=osx
 	ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
 		@echo "Gnu install is not found, try 'brew install coreutils"
 	else
@@ -14,7 +20,11 @@ endif
 
 export PATH:=$(PATH):$(TOOLS)/ellcc/bin
 
-tools/ellcc/bin/ecc:
+tools/$(ELLCC_HOST)/ellcc: deps
 	@echo "Unpacking ellcc"
-	@mkdir -p tools
-	@cd tools && tar xf $(DEPS)/ellcc-$(ELLCC_HOST)-$(ELLCC_VER).tgz
+	@mkdir -p tools/$(ELLCC_HOST)
+	@cd tools/$(ELLCC_HOST) && tar xf $(DEPS)/ellcc-$(ELLCC_HOST).xz
+	@cd tools/$(ELLCC_HOST)/ellcc && tar xf $(DEPS)/libecc.xz
+	@touch tools/$(ELLCC_HOST)/ellcc
+
+tools: tools/$(ELLCC_HOST)/ellcc
