@@ -8,7 +8,7 @@ $(BUILD)/kernel-headers/Makefile:
 
 $(BUILD)/include/linux: $(BUILD)/kernel-headers/Makefile
 	@echo "Building kernel-headers for $(TARGET)"
-	cd $(BUILD)/kernel-headers; \
+	@cd $(BUILD)/kernel-headers; \
 		$(MAKE) ARCH=$(ARCH) prefix=/ DESTDIR=$(BUILD) $(LOGBUILD)
 
 $(BUILD)/include/linux/in.h: $(BUILD)/include/linux
