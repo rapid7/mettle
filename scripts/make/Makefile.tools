@@ -25,6 +25,7 @@ tools/$(ELLCC_HOST)/ellcc: deps
 	@mkdir -p tools/$(ELLCC_HOST)
 	@cd tools/$(ELLCC_HOST) && tar xf $(DEPS)/ellcc-$(ELLCC_HOST).xz
 	@cd tools/$(ELLCC_HOST)/ellcc && tar xf $(DEPS)/libecc.xz
+	@cd tools/$(ELLCC_HOST)/ellcc/libecc && tar xf $(DEPS)/libecc-mingw.xz && mv libecc-mingw mingw
 	@touch tools/$(ELLCC_HOST)/ellcc
 
 tools: tools/$(ELLCC_HOST)/ellcc

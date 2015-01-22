@@ -5,7 +5,8 @@ for i in armeb-linux-engeabi armeb-linux-engeabihf \
 	mipsel-linux-eng mipsel-linux-engsf \
 	mips-linux-eng mips-linux-engsf \
 	ppc-linux-eng \
-	i386-linux-eng x86_64-linux-eng; do
+	i386-linux-eng x86_64-linux-eng \
+	i386-w64-mingw32 x86_64-w64-mingw32; do
 	echo Building target $i
 	make TARGET=$i;
 done
