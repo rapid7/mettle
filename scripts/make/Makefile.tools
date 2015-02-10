@@ -18,10 +18,11 @@ ifeq "$(shell uname -s)" "Darwin"
 	endif
 endif
 
-export PATH:=$(PATH):$(TOOLS)/ellcc/bin
+export PATH:=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin:$(PATH)
 
-tools/$(ELLCC_HOST)/ellcc: deps
+tools/$(ELLCC_HOST)/ellcc: deps/ellcc* deps/libecc*
 	@echo "Unpacking ellcc"
+	@rm -fr tools/$(ELLCC_HOST)
 	@mkdir -p tools/$(ELLCC_HOST)
 	@cd tools/$(ELLCC_HOST) && tar xf $(DEPS)/ellcc-$(ELLCC_HOST).xz
 	@cd tools/$(ELLCC_HOST)/ellcc && tar xf $(DEPS)/libecc.xz
