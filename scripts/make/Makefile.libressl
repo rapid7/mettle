@@ -1,0 +1,22 @@
+LIBRESSL_VERSION=2.1.4
+
+$(BUILD)/libressl/configure:
+	@echo "Unpacking libressl for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/libressl; \
+		$(TAR) xf $(DEPS)/libressl-$(LIBRESSL_VERSION).tar.gz; \
+		mv libressl-$(LIBRESSL_VERSION) libressl
+
+$(BUILD)/libressl/Makefile: $(BUILD)/libressl/configure $(BUILD)/include/linux/in.h
+	@echo "Configuring libressl for $(TARGET)"
+	@cd $(BUILD)/libressl; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libcrypto.a: $(BUILD)/libressl/Makefile
+	@echo "Building libressl for $(TARGET)"
+	@cd $(BUILD)/libressl; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libressl: $(BUILD)/lib/libcrypto.a

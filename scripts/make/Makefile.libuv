@@ -1,0 +1,22 @@
+LIBUV_VERSION=1.2.1
+
+$(BUILD)/libuv/configure:
+	@echo "Unpacking libuv for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/libuv; \
+		$(TAR) xf $(DEPS)/libuv-$(LIBUV_VERSION).tar.gz; \
+		mv libuv-$(LIBUV_VERSION) libuv
+
+$(BUILD)/libuv/Makefile: $(BUILD)/libuv/configure $(BUILD)/include/linux/in.h
+	@echo "Configuring libuv for $(TARGET)"
+	@cd $(BUILD)/libuv; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libuv.a: $(BUILD)/libuv/Makefile
+	@echo "Building libuv for $(TARGET)"
+	@cd $(BUILD)/libuv; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libuv: $(BUILD)/lib/libuv.a
