@@ -10,7 +10,7 @@ DEPS=$(ROOT)/deps
 SRC=$(ROOT)/src
 BUILDSRC=$(BUILD)/src
 OUTPUTDIR=$(BUILD)/data
-CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O2
+CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O0
 
 ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
 HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
