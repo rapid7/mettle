@@ -11,7 +11,7 @@ $(BUILD)/libressl/configure:
 $(BUILD)/libressl/Makefile: $(BUILD)/libressl/configure $(BUILD)/include/linux/in.h
 	@echo "Configuring libressl for $(TARGET)"
 	@cd $(BUILD)/libressl; \
-		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+		$(ENV) ./$(CONFIGURE) ac_cv_func_arc4random_buf=no ac_cv_func_funopen=no $(LOGBUILD)
 
 $(BUILD)/lib/libcrypto.a: $(BUILD)/libressl/Makefile
 	@echo "Building libressl for $(TARGET)"
