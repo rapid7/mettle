@@ -20,7 +20,7 @@ $(TOOLCHAIN)/libecc.xz:
 	git submodule init
 	git submodule update
 
-tools/$(ELLCC_HOST)/ellcc: $(TOOLCHAIN)/ellcc* $(TOOLCHAIN)/libecc.xz
+tools/$(ELLCC_HOST)/ellcc: $(TOOLCHAIN)/libecc.xz
 	@echo "Unpacking ellcc"
 	@rm -fr tools/$(ELLCC_HOST)
 	@mkdir -p tools/$(ELLCC_HOST)
