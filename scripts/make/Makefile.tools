@@ -1,7 +1,3 @@
-deps:
-	@echo "downloading toolchains and upstream source (grab a cup of coffee)"
-	@git clone --depth 1 https://github.com/busterb/mettle-deps.git deps
-
 ELLCC_HOST=linux
 CC=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc
 AR=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ar
@@ -20,13 +16,17 @@ endif
 
 export PATH:=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin:$(PATH)
 
-tools/$(ELLCC_HOST)/ellcc: deps/ellcc* deps/libecc*
+$(TOOLCHAIN)/libecc.xz:
+	git submodule init
+	git submodule update
+
+tools/$(ELLCC_HOST)/ellcc: $(TOOLCHAIN)/ellcc* $(TOOLCHAIN)/libecc.xz
 	@echo "Unpacking ellcc"
 	@rm -fr tools/$(ELLCC_HOST)
 	@mkdir -p tools/$(ELLCC_HOST)
-	@cd tools/$(ELLCC_HOST) && tar xf $(DEPS)/ellcc-$(ELLCC_HOST).xz
-	@cd tools/$(ELLCC_HOST)/ellcc && tar xf $(DEPS)/libecc.xz
-	@cd tools/$(ELLCC_HOST)/ellcc/libecc && tar xf $(DEPS)/libecc-mingw.xz && mv libecc-mingw mingw
+	@cd tools/$(ELLCC_HOST) && tar xf $(TOOLCHAIN)/ellcc-$(ELLCC_HOST).xz
+	@cd tools/$(ELLCC_HOST)/ellcc && tar xf $(TOOLCHAIN)/libecc.xz
+	@cd tools/$(ELLCC_HOST)/ellcc/libecc && tar xf $(TOOLCHAIN)/libecc-mingw.xz && mv libecc-mingw mingw
 	@touch tools/$(ELLCC_HOST)/ellcc
 
 tools: tools/$(ELLCC_HOST)/ellcc

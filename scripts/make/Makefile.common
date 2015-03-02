@@ -7,6 +7,7 @@ LOGFILE=$(BUILD)/build.log
 ERRFILE=$(BUILD)/build.err
 LOGBUILD=>>$(LOGFILE)
 DEPS=$(ROOT)/deps
+TOOLCHAIN=$(ROOT)/toolchain
 SRC=$(ROOT)/src
 BUILDSRC=$(BUILD)/src
 OUTPUTDIR=$(BUILD)/data

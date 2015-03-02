@@ -3,12 +3,11 @@ $(BUILD)/kernel-headers/Makefile:
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr kernel-headers; \
-		$(TAR) xf $(DEPS)/kernel-headers-3.12.6.tar.xz; \
-		mv kernel-headers-3.12.6 kernel-headers
+		$(TAR) xf $(TOOLCHAIN)/kernel-headers.xz; \
 
 $(BUILD)/include/linux: $(BUILD)/kernel-headers/Makefile
 	@echo "Building kernel-headers for $(TARGET)"
 	@cd $(BUILD)/kernel-headers; \
-		$(MAKE) ARCH=$(ARCH) prefix=/ DESTDIR=$(BUILD) $(LOGBUILD)
+		$(MAKE) ARCH=$(ARCH) prefix=/ DESTDIR=$(BUILD) install $(LOGBUILD)
 
 $(BUILD)/include/linux/in.h: $(BUILD)/include/linux

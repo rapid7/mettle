@@ -1,0 +1,6 @@
+[submodule "toolchain"]
+	path = toolchain
+	url = https://github.com/busterb/ellcc-toolchain.git
+[submodule "deps"]
+	path = deps
+	url = https://github.com/busterb/mettle-deps
