@@ -11,7 +11,7 @@ include scripts/make/Makefile.libuv
 include scripts/make/Makefile.kernel-headers
 include scripts/make/Makefile.tools
 
-$(BUILD)/$(PROJECT_NAME).bin: libressl libpcap
+$(BUILD)/$(PROJECT_NAME).bin: libressl libpcap libuv
 	@mkdir -p $(BUILD)
 	@touch $(BUILD)/$(PROJECT_NAME).bin
 
