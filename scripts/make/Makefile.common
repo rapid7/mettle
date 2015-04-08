@@ -15,6 +15,6 @@ CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O0
 
 ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
 HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
-CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --host=$(HOST)
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --host=$(HOST) --with-pic
 
 all: tools $(BUILD)/$(PROJECT_NAME).bin
