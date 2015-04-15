@@ -5,16 +5,15 @@ RANLIB=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ranlib
 TAR=tar
 
 INSTALL=install
-ifeq "$(shell uname -s)" "Darwin"
-	ELLCC_HOST=osx
-	ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
-		@echo "Gnu install is not found, try 'brew install coreutils"
-	else
-		export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
-	endif
-endif
-
 export PATH:=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin:$(PATH)
+ifeq "$(shell uname -s)" "Darwin"
+    ELLCC_HOST=osx
+    ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
+        $(info "Gnu install is not found, try 'brew install coreutils")
+    else
+        export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
+    endif
+endif
 
 $(TOOLCHAIN)/libecc.xz:
 	git submodule init
