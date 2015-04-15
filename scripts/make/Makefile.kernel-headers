@@ -10,4 +10,4 @@ $(BUILD)/include/linux: $(BUILD)/kernel-headers/Makefile
 	@cd $(BUILD)/kernel-headers; \
 		$(MAKE) ARCH=$(ARCH) prefix=/ DESTDIR=$(BUILD) install $(LOGBUILD)
 
-$(BUILD)/include/linux/in.h: $(BUILD)/include/linux
+kernel-headers: $(BUILD)/include/linux

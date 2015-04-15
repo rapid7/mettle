@@ -1,2 +1,14 @@
 builds
 tools
+*.in
+config.guess
+config.sub
+m4
+missing
+aclocal.m4
+autom4te.cache/
+compile
+configure
+depcomp
+install-sh
+ltmain.sh

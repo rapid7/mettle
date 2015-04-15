@@ -1,7 +1,14 @@
 ELLCC_HOST=linux
-CC=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc
-AR=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ar
-RANLIB=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ranlib
+ifneq "$(TARGET)" "native"
+    CC=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc
+    AR=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ar
+    RANLIB=$(ROOT)/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ranlib
+else
+    CC=cc
+    AR=ar
+    RANLIB=ranlib
+endif
+
 TAR=tar
 
 INSTALL=install

@@ -1,7 +1,8 @@
-PROJECT_NAME:=mettle
+#ARCH=i386
+#TARGET:=i386-linux-eng
+TARGET:=native
 
-ARCH=i386
-TARGET:=i386-linux-eng
+all: tools mettle
 
 include scripts/make/Makefile.common
 include scripts/make/Makefile.libpcap
@@ -9,15 +10,12 @@ include scripts/make/Makefile.libressl
 include scripts/make/Makefile.libtlv
 include scripts/make/Makefile.libuv
 include scripts/make/Makefile.kernel-headers
+include scripts/make/Makefile.mettle
 include scripts/make/Makefile.tools
 
-$(BUILD)/$(PROJECT_NAME).bin: libressl libpcap libuv
-	@mkdir -p $(BUILD)
-	@touch $(BUILD)/$(PROJECT_NAME).bin
-
 distclean:
-	@rm -fr $(BUILDS)
+	@rm -fr $(BUILD)
 	@rm -fr tools
 
 clean:
-	@rm -fr $(BUILD)
+	@rm -fr $(BUILD)/mettle

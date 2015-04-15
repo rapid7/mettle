@@ -8,7 +8,11 @@ $(BUILD)/libuv/configure:
 		$(TAR) xf $(DEPS)/libuv-$(LIBUV_VERSION).tar.gz; \
 		mv libuv-$(LIBUV_VERSION) libuv
 
-$(BUILD)/libuv/Makefile: $(BUILD)/libuv/configure $(BUILD)/include/linux/in.h
+ifneq "$(TARGET)" "native"
+    LIBUV_DEPS=kernel-headers
+endif
+
+$(BUILD)/libuv/Makefile: $(BUILD)/libuv/configure $(LIBUV_DEPS)
 	@echo "Configuring libuv for $(TARGET)"
 	@cd $(BUILD)/libuv; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

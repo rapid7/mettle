@@ -6,11 +6,16 @@ $(BUILD)/libpcap/configure:
 		$(TAR) xf $(ROOT)/deps/libpcap-1.6.2.tar.gz; \
 		mv libpcap-1.6.2 libpcap
 
-$(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(BUILD)/include/linux/in.h
+ifneq "$(TARGET)" "native"
+    LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
+    LIBPCAP_DEPS=kernel-headers
+endif
+
+$(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \
-		$(ENV) ./$(CONFIGURE) --with-pcap=linux $(LOGBUILD)
+		$(ENV) ./$(CONFIGURE) $(LIBPCAP_CONFIG_FLAGS) $(LOGBUILD)
 
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"

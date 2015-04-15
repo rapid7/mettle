@@ -1,0 +1,19 @@
+$(ROOT)/mettle/configure:
+	@cd $(ROOT)/mettle; \
+		autoreconf -i $(LOGBUILD)
+
+$(BUILD)/mettle/Makefile: $(ROOT)/mettle/configure \
+	$(BUILD)/lib/libcrypto.a \
+	$(BUILD)/lib/libpcap.a \
+	$(BUILD)/lib/libuv.a
+	@echo "Configuring mettle for $(TARGET)"
+	@mkdir -p $(BUILD)/mettle
+	@cd $(BUILD)/mettle; \
+		$(ENV) $(ROOT)/mettle/$(CONFIGURE)
+
+$(BUILD)/mettle.built: $(BUILD)/mettle/Makefile
+	@echo "Building mettle for $(TARGET)"
+	@cd $(BUILD)/mettle; \
+		$(MAKE_INSTALL)
+
+mettle: $(BUILD)/mettle.built

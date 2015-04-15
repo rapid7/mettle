@@ -8,13 +8,25 @@ ERRFILE=$(BUILD)/build.err
 LOGBUILD=>>$(LOGFILE)
 DEPS=$(ROOT)/deps
 TOOLCHAIN=$(ROOT)/toolchain
-SRC=$(ROOT)/src
-BUILDSRC=$(BUILD)/src
 OUTPUTDIR=$(BUILD)/data
-CFLAGS:=$(CFLAGS) -target $(TARGET) -I$(BUILD)/include -g -O0
 
-ENV=LDFLAGS="-L$(BUILD)/lib -L$(BUILD)/lib64 $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
-HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
-CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --host=$(HOST) --with-pic
+ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
 
-all: tools $(BUILD)/$(PROJECT_NAME).bin
+ifeq "$(shell uname -s)" "Darwin"
+    ELLCC_HOST=osx
+    ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
+        $(info "Gnu install is not found, try 'brew install coreutils")
+    else
+        export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
+    endif
+endif
+
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --with-pic
+
+CFLAGS:=$(CFLAGS) -I$(BUILD)/include -g
+ifneq "$(TARGET)" "native"
+    HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
+    CONFIGURE=$(CONFIGURE) --host=$(HOST)
+    CFLAGS=$(CFLAGS) -target $(TARGET)
+endif
+
