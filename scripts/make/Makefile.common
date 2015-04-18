@@ -1,16 +1,58 @@
+TARGET:=native
+ifneq "$(TARGET)" "native"
+    ifneq (,$(findstring aarch,$(TARGET)))
+        ARCH:=arm64
+    endif
+    ifneq (,$(findstring arm,$(TARGET)))
+        ARCH:=arm
+    endif
+    ifneq (,$(findstring mips,$(TARGET)))
+        ARCH:=mips
+    endif
+    ifneq (,$(findstring ppc,$(TARGET)))
+        ARCH:=ppc
+    endif
+    ifneq (,$(findstring i386,$(TARGET)))
+        ARCH:=x86
+    endif
+    ifneq (,$(findstring x86,$(TARGET)))
+        ARCH:=x86
+    endif
+endif
+
 ROOT=$(shell pwd)
 MAKE_INSTALL:=$(MAKE) install
 MAKE:=$(MAKE) -j4
-BUILDS=$(ROOT)/builds
+BUILDS=$(ROOT)/build
 BUILD=$(BUILDS)/$(TARGET)
 LOGFILE=$(BUILD)/build.log
 ERRFILE=$(BUILD)/build.err
-LOGBUILD=>>$(LOGFILE)
 DEPS=$(ROOT)/deps
 TOOLCHAIN=$(ROOT)/toolchain
 OUTPUTDIR=$(BUILD)/data
 
+CFLAGS:=$(CFLAGS) -I$(BUILD)/include -g
+ifneq "$(TARGET)" "native"
+    HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
+    CONFIGURE:=$(CONFIGURE) --host=$(HOST)
+    CFLAGS:=$(CFLAGS) -target $(TARGET)
+endif
+
+ifeq "$(ARCH)" "sparc"
+    CFLAGS:=$(CFLAGS) -fPIC
+else
+    CFLAGS:=$(CFLAGS) -fpic
+endif
+
 ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
+
+LOGBUILD:=>>$(LOGFILE)
+ifeq "$(V)" "1"
+    LOGBUILD:=
+endif
+ifeq "$(VERBOSE)" "1"
+    LOGBUILD:=
+endif
 
 ifeq "$(shell uname -s)" "Darwin"
     ELLCC_HOST=osx
@@ -21,12 +63,4 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config --with-pic
-
-CFLAGS:=$(CFLAGS) -I$(BUILD)/include -g
-ifneq "$(TARGET)" "native"
-    HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
-    CONFIGURE=$(CONFIGURE) --host=$(HOST)
-    CFLAGS=$(CFLAGS) -target $(TARGET)
-endif
-
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config

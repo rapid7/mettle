@@ -1,11 +1,12 @@
 #!/bin/sh
 
-for i in armeb-linux-engeabi armeb-linux-engeabihf \
+for i in i386-linux-eng x86_64-linux-eng \
+	armeb-linux-engeabi armeb-linux-engeabihf \
 	arm-linux-engeabi arm-linux-engeabihf \
+	aarch64-linux-eng\
 	mipsel-linux-eng mipsel-linux-engsf \
 	mips-linux-eng mips-linux-engsf \
 	ppc-linux-eng \
-	i386-linux-eng x86_64-linux-eng \
 	i386-w64-mingw32 x86_64-w64-mingw32; do
 	echo Building target $i
 	make TARGET=$i;
