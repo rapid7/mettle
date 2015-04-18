@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <uv.h>
 
+#include "log.h"
 #include "mettle.h"
 
 struct mettle_conn {
@@ -56,29 +58,26 @@ int uv_buf_strdup(uv_buf_t *buf, void *str)
 void on_write(uv_write_t *req, int status)
 {
 	if (status == -1) {
-		mettle_log("failed to write");
+		log_error("failed to write");
 		return;
 	}
 }
 
 void on_connect(uv_connect_t *req, int status)
 {
-	if (status == -1) {
-		mettle_log("failed to connect");
+	if (status != 0) {
+		log_error("failed to connect: %s", uv_strerror(status));
 		return;
 	}
 
 	uv_buf_t msg;
 	if (uv_buf_strdup(&msg, "hello world")) {
-		mettle_log("uv_buf_strdup failed");
+		log_error("uv_buf_strdup failed");
 		return;
 	}
 
-	mettle_log("connected!");
-
-	uv_stream_t *tcp = req->handle;
 	uv_write_t write_req;
-	uv_write(&write_req, tcp, &msg, 1, on_write);
+	uv_write(&write_req, req->handle, &msg, 1, on_write);
 }
 
 struct mettle_conn * mettle_conn_open(struct mettle *m, const char *addr, uint16_t port)
@@ -106,7 +105,7 @@ struct mettle_conn * mettle_conn_open(struct mettle *m, const char *addr, uint16
 
 void heartbeat_cb(uv_timer_t *handle)
 {
-	mettle_log("Heartbeat");
+	log_info("Heartbeat");
 	struct mettle *m = handle->data;
 	mettle_conn_open(m, "127.0.0.1", 4444);
 }
@@ -119,8 +118,8 @@ struct mettle *mettle_open(void)
 		return NULL;
 	}
 
-    mettle_log_init_file(stderr);
-    mettle_log_init_flush_thread();
+    log_init_file(stderr);
+    log_init_flush_thread();
 
 	m->loop = uv_default_loop();
 

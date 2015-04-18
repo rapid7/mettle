@@ -20,6 +20,11 @@ case $host_os in
 		;;
 esac
 
+AC_CHECK_FUNCS([reallocarray strtonum])
+
+AM_CONDITIONAL([HAVE_REALLOCARRAY], [test "x$ac_cv_func_reallocarray" = xyes])
+AM_CONDITIONAL([HAVE_STRTONUM], [test "x$ac_cv_func_strtonum" = xyes])
+
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile

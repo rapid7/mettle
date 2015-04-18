@@ -1,8 +1,14 @@
+#include <signal.h>
+
 #include "mettle.h"
-#include "zlog.h"
 
 int main()
 {
+	/*
+	 * Disable SIGPIPE process aborts.
+	 */
+	sigignore(SIGPIPE);
+
 	struct mettle *m = mettle_open();
 
 	mettle_start(m);

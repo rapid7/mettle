@@ -3,7 +3,16 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 lib_LTLIBRARIES = libmettle.la
 
 libmettle_la_SOURCES = mettle.c
-libmettle_la_SOURCES += zlog.c
+libmettle_la_SOURCES += log.c
+libmettle_la_SOURCES += network_client.c
+
+if !HAVE_REALLOCARRAY
+libmettle_la_SOURCES += compat/reallocarray.c
+endif
+
+if !HAVE_STRTONUM
+libmettle_la_SOURCES += compat/strtonum.c
+endif
 
 bin_PROGRAMS = mettle
 
