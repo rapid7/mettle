@@ -23,8 +23,8 @@ struct network_client_server {
 	char *uri;
 	enum network_client_proto proto;
 	char *host;
-	uint16_t *ports;
-	int num_ports;
+	char **services;
+	int num_services;
 };
 
 struct network_client {
@@ -33,13 +33,20 @@ struct network_client {
 	struct network_client_server *servers;
 	int num_servers;
 
-	int curr_server, curr_port;
+	int curr_server, curr_service;
 	uint64_t connect_time_s;
 
 	union {
 		uv_tcp_t tcp;
 		uv_udp_t udp;
 	} conn;
+
+	enum {
+		network_client_connected,
+		network_client_resolving,
+		network_client_connecting,
+		network_client_disconnected,
+	} state;
 };
 
 /*
@@ -155,25 +162,32 @@ void server_free(struct network_client_server *srv)
 {
 	free(srv->host);
 	free(srv->uri);
-	free(srv->ports);
+	for (int i = 0; i < srv->num_services; i++) {
+		free(srv->services[i]);
+	}
+	free(srv->services);
 	memset(srv, 0, sizeof(*srv));
 }
 
-static int add_server_port(struct network_client_server *srv, uint16_t port_num)
+static int add_server_service(struct network_client_server *srv, const char *service)
 {
-	srv->ports = reallocarray(srv->ports,
-			srv->num_ports + 1, sizeof(uint16_t));
-	if (srv->ports == NULL) {
+	char *service_cpy = strdup(service);
+	if (service_cpy == NULL) {
 		return -1;
 	}
-	srv->ports[srv->num_ports++] = port_num;
+	srv->services = reallocarray(srv->services,
+			srv->num_services + 1, sizeof(char *));
+	if (srv->services == NULL) {
+		return -1;
+	}
+	srv->services[srv->num_services++] = service_cpy;
 	return 0;
 }
 
 static int parse_server(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
-	char *ports = NULL;
+	char *services = NULL;
 	char *proto = NULL;
 	char *uri_tmp = strdup(uri);
 	char *host = strstr(uri_tmp, "://");
@@ -192,10 +206,10 @@ static int parse_server(struct network_client_server *srv, const char *uri)
 		host += 3;
 	}
 
-	ports = strstr(host, ":");
-	if (ports) {
-		ports[0] = '\0';
-		ports++;
+	services = strstr(host, ":");
+	if (services) {
+		services[0] = '\0';
+		services++;
 	}
 
 	if (proto == NULL || host == NULL) {
@@ -206,37 +220,30 @@ static int parse_server(struct network_client_server *srv, const char *uri)
 	srv->host = strdup(host);
 	srv->proto = str_to_proto(proto);
 
-	if (ports) {
-		char *ports_tmp = strdup(ports);
-		if (!ports_tmp) {
+	if (services) {
+		char *services_tmp = strdup(services);
+		if (!services_tmp) {
 			goto out;
 		}
 
-		char *port_tmp = ports_tmp;
-		const char *port;
-		while ((port = strsep(&port_tmp, ",")) != NULL) {
-			const char *err;
-			uint16_t port_num = strtonum(port, 1, UINT16_MAX, &err);
-			if (err) {
-				log_error("port out of range: %s", err);
-				free(ports_tmp);
-				goto out;
-			}
-			if (add_server_port(srv, port_num) != 0) {
-				free(ports_tmp);
+		char *service_tmp = services_tmp;
+		const char *service;
+		while ((service = strsep(&service_tmp, ",")) != NULL) {
+			if (add_server_service(srv, service) != 0) {
+				free(services_tmp);
 				goto out;
 			}
 		}
 	} else {
 		switch (srv->proto) {
 			case network_client_proto_http:
-				add_server_port(srv, 80);
+				add_server_service(srv, "80");
 				break;
 			case network_client_proto_https:
-				add_server_port(srv, 443);
+				add_server_service(srv, "443");
 				break;
 			default:
-				log_error("%s port unspecified", proto);
+				log_error("%s service unspecified", proto);
 				goto out;
 		}
 	}
@@ -289,10 +296,10 @@ static struct network_client_server *get_curr_server(struct network_client *nc)
 	}
 }
 
-static uint16_t get_curr_port(struct network_client *nc)
+static const char * get_curr_service(struct network_client *nc)
 {
 	if (nc->servers) {
-		return nc->servers[nc->curr_server].ports[nc->curr_port];
+		return nc->servers[nc->curr_server].services[nc->curr_service];
 	} else {
 		return 0;
 	}
@@ -301,10 +308,10 @@ static uint16_t get_curr_port(struct network_client *nc)
 static void choose_next_server(struct network_client *nc)
 {
 	struct network_client_server *srv = get_curr_server(nc);
-	if (srv && nc->curr_port < srv->num_ports - 1) {
-		nc->curr_port++;
+	if (srv && nc->curr_service < srv->num_services - 1) {
+		nc->curr_service++;
 	} else {
-		nc->curr_port = 0;
+		nc->curr_service = 0;
 		if (nc->num_servers > 1) {
 			nc->curr_server++;
 			if (nc->curr_server >= nc->num_servers) {
@@ -321,10 +328,10 @@ static void connect_cb(uv_timer_t *timer)
 	choose_next_server(nc);
 
 	struct network_client_server *srv = get_curr_server(nc);
-	uint16_t port = get_curr_port(nc);
+	const char *service = get_curr_service(nc);
 
-	log_info("Connecting to %s://%s:%u",
-			proto_to_str(srv->proto), srv->host, port);
+	log_info("Connecting to %s://%s:%s",
+			proto_to_str(srv->proto), srv->host, service);
 }
 
 int network_client_start(struct network_client *nc)
