@@ -1,6 +1,7 @@
 all: tools mettle
 
 include scripts/make/Makefile.common
+include scripts/make/Makefile.curl
 include scripts/make/Makefile.libpcap
 include scripts/make/Makefile.libressl
 include scripts/make/Makefile.libtlv

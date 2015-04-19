@@ -5,6 +5,7 @@ $(ROOT)/mettle/configure:
 
 $(BUILD)/mettle/Makefile: $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libcrypto.a \
+	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libpcap.a \
 	$(BUILD)/lib/libjson-c.a \
 	$(BUILD)/lib/libuv.a

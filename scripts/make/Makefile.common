@@ -31,7 +31,8 @@ DEPS=$(ROOT)/deps
 TOOLCHAIN=$(ROOT)/toolchain
 OUTPUTDIR=$(BUILD)/data
 
-CFLAGS:=$(CFLAGS) -I$(BUILD)/include -g
+CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include
+CPPFLAGS:=-I$(BUILD)/include
 ifneq "$(TARGET)" "native"
     HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
@@ -44,7 +45,7 @@ else
     CFLAGS:=$(CFLAGS) -fpic
 endif
 
-ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)"
+ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"
