@@ -25,7 +25,7 @@ int start_heartbeat(struct mettle *m)
 {
 	uv_timer_init(m->loop, &m->heartbeat);
 	m->heartbeat.data = m;
-	uv_timer_start(&m->heartbeat, heartbeat_cb, 0, 1000);
+	uv_timer_start(&m->heartbeat, heartbeat_cb, 0, 60000);
 	return 0;
 }
 
