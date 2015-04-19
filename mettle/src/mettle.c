@@ -3,9 +3,9 @@
 #include <string.h>
 #include <uv.h>
 
-#include "log.h"
+#include <util/log.h>
+#include <util/network_client.h>
 #include "mettle.h"
-#include "network_client.h"
 
 struct mettle {
 	int version;
@@ -29,6 +29,12 @@ int start_heartbeat(struct mettle *m)
 	return 0;
 }
 
+static void on_connect(struct network_client *nc, void *arg)
+{
+	log_info("connected!");
+	network_client_write(nc, "hello\r\n", 7);
+}
+
 struct mettle *mettle(void)
 {
 	struct mettle *m = calloc(1, sizeof(*m));
@@ -46,10 +52,8 @@ struct mettle *mettle(void)
 		return NULL;
 	}
 
-	network_client_add_server(m->nc, "udp://localhost:4444");
-	network_client_add_server(m->nc, "tcp://localhost:4444,4445");
-	network_client_add_server(m->nc, "http://127.0.0.1:8080");
-	network_client_add_server(m->nc, "https://127.0.0.1:4343");
+	network_client_add_server(m->nc, "tls://localhost:4444");
+	network_client_set_connect_cb(m->nc, on_connect, m);
 
 	return m;
 }

@@ -15,7 +15,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "log.h"
+#include <util/log.h>
 
 // --------------------------------------------------------------
 FILE* zlog_fout = NULL;

@@ -6,17 +6,16 @@
 #include <strings.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <tls.h>
 
-#include "log.h"
-#include "network_client.h"
-#include "util.h"
+#include <util.h>
+#include <util/log.h>
+#include <util/network_client.h>
 
 enum network_client_proto {
 	network_client_proto_udp,
 	network_client_proto_tcp,
 	network_client_proto_tls,
-	network_client_proto_http,
-	network_client_proto_https
 };
 
 struct network_client_server {
@@ -37,13 +36,24 @@ struct network_client {
 	uint64_t connect_time_s;
 
 	union uv_any_handle conn;
+	struct addrinfo *addrinfo;
+
+	struct tls *tls;
+	int tls_state;
 
 	enum {
 		network_client_connected,
 		network_client_resolving,
 		network_client_connecting,
-		network_client_disconnected,
+		network_client_closed,
 	} state;
+
+	network_client_cb_t read_cb;
+	void *read_cb_arg;
+	network_client_cb_t connect_cb;
+	void *connect_cb_arg;
+	network_client_cb_t close_cb;
+	void *close_cb_arg;
 };
 
 struct {
@@ -53,8 +63,6 @@ struct {
 	{network_client_proto_udp, "udp"},
 	{network_client_proto_tcp, "tcp"},
 	{network_client_proto_tls, "tls"},
-	{network_client_proto_http, "http"},
-	{network_client_proto_https, "https"},
 };
 
 static const char *proto_to_str(enum network_client_proto proto)
@@ -154,17 +162,8 @@ static int parse_server(struct network_client_server *srv, const char *uri)
 			}
 		}
 	} else {
-		switch (srv->proto) {
-			case network_client_proto_http:
-				add_server_service(srv, "80");
-				break;
-			case network_client_proto_https:
-				add_server_service(srv, "443");
-				break;
-			default:
-				log_error("%s service unspecified", proto);
-				goto out;
-		}
+		log_error("%s service unspecified", proto);
+		goto out;
 	}
 
 	rc = 0;
@@ -241,24 +240,95 @@ static struct network_client_server *choose_next_server(struct network_client *n
 	return get_curr_server(nc);
 }
 
-static void on_close(uv_handle_t *req)
+/*
+ * Callback management
+ */
+
+void network_client_set_read_cb(struct network_client *nc,
+		network_client_cb_t cb, void *arg)
 {
-	struct network_client *nc = req->data;
-	nc->state = network_client_disconnected;
+	nc->read_cb = cb;
+	nc->read_cb_arg = arg;
 }
 
-static void on_write(uv_write_t *req, int status)
+void network_client_set_connect_cb(struct network_client *nc,
+		network_client_cb_t cb, void *arg)
 {
-	struct network_client *nc = req->data;
-	if (status == -1) {
-		log_error("failed to write");
-		return;
+	nc->connect_cb = cb;
+	nc->connect_cb_arg = arg;
+}
+
+void network_client_set_close_cb(struct network_client *nc,
+		network_client_cb_t cb, void *arg)
+{
+	nc->close_cb = cb;
+	nc->close_cb_arg = arg;
+}
+
+/*
+ * Client-side IO
+ */
+int network_client_read(struct network_client *nc, void *buf, size_t buflen)
+{
+	return -1;
+}
+
+int network_client_write(struct network_client *nc, void *buf, size_t buflen)
+{
+	log_info("writing %zu bytes", buflen);
+	return -1;
+}
+
+static void set_closed(struct network_client *nc)
+{
+	nc->state = network_client_closed;
+	if (nc->addrinfo) {
+		uv_freeaddrinfo(nc->addrinfo);
+		nc->addrinfo = NULL;
 	}
 
-	uv_close((uv_handle_t *)&nc->conn, on_close);
+	if (nc->tls) {
+		tls_free(nc->tls);
+		nc->tls_state = 0;
+	}
+
+	if (nc->close_cb) {
+		nc->close_cb(nc, nc->close_cb_arg);
+	}
 }
 
-static void connect_cb(uv_connect_t *req, int status)
+static void on_close(uv_handle_t *handle)
+{
+	struct network_client *nc = handle->data;
+	set_closed(nc);
+}
+
+int network_client_close(struct network_client *nc)
+{
+	if (nc->state != network_client_connected) {
+		return -1;
+	}
+	uv_close((uv_handle_t *)&nc->conn.tcp, on_close);
+	return 0;
+}
+
+void on_poll(uv_poll_t *req, int status, int events)
+{
+	struct network_client *nc = req->data;
+	if (nc->state == network_client_connecting) {
+		if (nc->tls_state == TLS_READ_AGAIN || nc->tls_state == TLS_WRITE_AGAIN) {
+			nc->tls_state = tls_connect_socket(nc->tls, 0, NULL);
+			if (nc->tls_state == 0) {
+				nc->state = network_client_connected;
+			} else if (nc->tls_state == -1) {
+				log_info("%s", nc->tls_state, tls_error(nc->tls));
+				//network_client_close(nc);
+			}
+		}
+	}
+}
+
+static void connect_tcp_cb(uv_connect_t *req, int status)
 {
 	struct network_client *nc = req->data;
 	struct network_client_server *srv = get_curr_server(nc);
@@ -267,18 +337,35 @@ static void connect_cb(uv_connect_t *req, int status)
 		log_info("failed to connect to '%s://%s:%s': %s",
 				proto_to_str(srv->proto), srv->host, get_curr_service(nc),
 				uv_strerror(status));
-		nc->state = network_client_disconnected;
+		set_closed(nc);
 		return;
 	}
 
-	uv_buf_t msg;
-	if (uv_buf_strdup(&msg, "hello world")) {
-		log_error("uv_buf_strdup failed");
-		return;
-	}
+	if (srv->proto == network_client_proto_tcp) {
+		nc->state = network_client_connected;
+		if (nc->connect_cb) {
+			nc->connect_cb(nc, nc->connect_cb_arg);
+		}
+	} else {
+		nc->tls = tls_client();
+		if (nc->tls == NULL) {
+			log_error("could not allocate TLS client");
+			set_closed(nc);
+			return;
+		}
 
-	uv_write_t write_req = { .data = nc };
-	uv_write(&write_req, req->handle, &msg, 1, on_write);
+		int socket;
+		if (uv_fileno((uv_handle_t *)req->handle, &socket) == 0) {
+			nc->tls_state = tls_connect_socket(nc->tls, socket, srv->host);
+		} else {
+			log_error("could not find file descriptor");
+			return;
+		}
+
+		uv_poll_t poll_req = { .data = nc };
+		uv_poll_init(nc->loop, &poll_req, socket);
+		uv_poll_start(&poll_req, UV_READABLE, on_poll);
+	}
 }
 
 static int connect_tcp(struct network_client *nc, struct addrinfo *addrinfo)
@@ -287,29 +374,17 @@ static int connect_tcp(struct network_client *nc, struct addrinfo *addrinfo)
 	uv_tcp_init(nc->loop, &nc->conn.tcp);
 	nc->conn.tcp.data = nc;
 	return uv_tcp_connect(&req, &nc->conn.tcp,
-			(const struct sockaddr *)addrinfo->ai_addr, connect_cb);
-}
-
-static void on_send(uv_udp_send_t *req, int status)
-{
-	struct network_client *nc = req->data;
-	uv_close((uv_handle_t *)&nc->conn, on_close);
+			(const struct sockaddr *)addrinfo->ai_addr, connect_tcp_cb);
 }
 
 static int connect_udp(struct network_client *nc, struct addrinfo *addrinfo)
 {
 	uv_udp_init(nc->loop, &nc->conn.udp);
 
-	uv_buf_t msg;
-	if (uv_buf_strdup(&msg, "hello world")) {
-		log_error("uv_buf_strdup failed");
-		return -1;
+	if (nc->connect_cb) {
+		nc->connect_cb(nc, nc->connect_cb_arg);
 	}
-
-	uv_udp_send_t send_req = { .data = nc };
-	return uv_udp_send(&send_req, &nc->conn.udp, &msg, 1,
-			(const struct sockaddr *)addrinfo->ai_addr, on_send);
-
+	return 0;
 }
 
 void resolving_cb(uv_getaddrinfo_t *req, int status, struct addrinfo *addrinfo)
@@ -321,9 +396,11 @@ void resolving_cb(uv_getaddrinfo_t *req, int status, struct addrinfo *addrinfo)
 		log_info("could not resolve '%s://%s:%s': %s",
 				proto_to_str(srv->proto), srv->host, get_curr_service(nc),
 				uv_strerror(status));
-		nc->state = network_client_disconnected;
+		set_closed(nc);
 		return;
 	}
+
+	nc->addrinfo = addrinfo;
 
 	switch (srv->proto) {
 
@@ -331,25 +408,17 @@ void resolving_cb(uv_getaddrinfo_t *req, int status, struct addrinfo *addrinfo)
 			if (connect_udp(nc, addrinfo) == 0) {
 				nc->state = network_client_connected;
 			} else {
-				nc->state = network_client_disconnected;
-			}
-			break;
-
-		case network_client_proto_tcp:
-			if (connect_tcp(nc, addrinfo) == 0) {
-				nc->state = network_client_connecting;
-			} else {
-				nc->state = network_client_disconnected;
+				set_closed(nc);
 			}
 			break;
 
 		case network_client_proto_tls:
-		case network_client_proto_http:
-		case network_client_proto_https:
-			log_info("proto %s not supported for %s://%s:%s",
-				proto_to_str(srv->proto), proto_to_str(srv->proto), srv->host,
-				get_curr_service(nc), uv_strerror(status));
-			nc->state = network_client_disconnected;
+		case network_client_proto_tcp:
+			if (connect_tcp(nc, addrinfo) == 0) {
+				nc->state = network_client_connecting;
+			} else {
+				set_closed(nc);
+			}
 			break;
 	}
 }
@@ -358,7 +427,7 @@ static void reconnect_cb(uv_timer_t *timer)
 {
 	struct network_client *nc = timer->data;
 
-	if (nc->state != network_client_disconnected || nc->num_servers == 0) {
+	if (nc->state != network_client_closed || nc->num_servers == 0) {
 		return;
 	}
 
@@ -418,6 +487,11 @@ struct network_client * network_client(uv_loop_t *loop)
 		return NULL;
 	}
 
+	/*
+	 * Start libtls
+	 */
+	tls_init();
+
 	if (loop == NULL) {
 		loop = uv_default_loop();
 		if (!loop) {
@@ -430,7 +504,7 @@ struct network_client * network_client(uv_loop_t *loop)
 	uv_timer_init(nc->loop, &nc->connect_timer);
 	nc->connect_timer.data = nc;
 
-	nc->state = network_client_disconnected;
+	nc->state = network_client_closed;
 
 	return nc;
 

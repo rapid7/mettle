@@ -1,7 +1,7 @@
 #include <signal.h>
 #include <stdio.h>
 
-#include "log.h"
+#include <util/log.h>
 #include "mettle.h"
 
 int main()

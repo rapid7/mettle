@@ -13,7 +13,7 @@
 /*
  * Log immediately rather than buffering
  */
-// #define LOG_FORCE_FLUSH_BUFFER
+#define LOG_FORCE_FLUSH_BUFFER
 
 #define LOG_BUFFER_STR_MAX_LEN 128
 #define LOG_BUFFER_SIZE (0x1 << 22)
