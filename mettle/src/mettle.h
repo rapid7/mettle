@@ -3,10 +3,10 @@
 
 struct mettle;
 
-struct mettle *mettle_open(void);
+struct mettle *mettle(void);
 
 int mettle_start(struct mettle *m);
 
-void mettle_close(struct mettle *);
+void mettle_free(struct mettle *);
 
 #endif

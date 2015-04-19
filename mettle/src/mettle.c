@@ -1,116 +1,35 @@
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
 
 #include "log.h"
 #include "mettle.h"
-
-struct mettle_conn {
-	struct mettle *m;
-	uv_tcp_t socket;
-	uv_connect_t req;
-
-	union {
-		struct sockaddr_in6 addr6;
-		struct sockaddr_in addr4;
-		struct sockaddr addr;
-	} dest;
-};
+#include "network_client.h"
 
 struct mettle {
 	int version;
 	uv_loop_t *loop;
 
+	struct network_client *nc;
+
 	uv_timer_t heartbeat;
-	struct mettle_conn *conn;
 };
-
-uv_buf_t uv_buf_alloc(uv_handle_t *handle, size_t size)
-{
-	return uv_buf_init(malloc(size), size);
-}
-
-int uv_buf_dup(uv_buf_t *buf, void *base, size_t len)
-{
-	void *copy = malloc(len);
-	if (copy) {
-		*buf = uv_buf_alloc(NULL, len);
-		memcpy(buf->base, base, len);
-		return 0;
-	}
-	return -1;
-}
-
-void uv_buf_free(uv_buf_t *buf)
-{
-	free(buf->base);
-	buf->base = NULL;
-	buf->len = 0;
-}
-
-int uv_buf_strdup(uv_buf_t *buf, void *str)
-{
-	return uv_buf_dup(buf, str, strlen(str) + 1);
-}
-
-void on_write(uv_write_t *req, int status)
-{
-	if (status == -1) {
-		log_error("failed to write");
-		return;
-	}
-}
-
-void on_connect(uv_connect_t *req, int status)
-{
-	if (status != 0) {
-		log_error("failed to connect: %s", uv_strerror(status));
-		return;
-	}
-
-	uv_buf_t msg;
-	if (uv_buf_strdup(&msg, "hello world")) {
-		log_error("uv_buf_strdup failed");
-		return;
-	}
-
-	uv_write_t write_req;
-	uv_write(&write_req, req->handle, &msg, 1, on_write);
-}
-
-struct mettle_conn * mettle_conn_open(struct mettle *m, const char *addr, uint16_t port)
-{
-	struct mettle_conn *conn = calloc(1, sizeof(*conn));
-
-	if (conn) {
-		/*
-		 * Initialize
-		 */
-		uv_tcp_init(m->loop, &conn->socket);
-		uv_tcp_keepalive(&conn->socket, 1, 60);
-		uv_ip4_addr(addr, port, &conn->dest.addr4);
-		conn->m = m;
-		conn->req.data = conn;
-
-		/*
-		 * Setup initial connection event
-		 */
-		uv_tcp_connect(&conn->req, &conn->socket, &conn->dest.addr, on_connect);
-	}
-
-	return conn;
-}
 
 void heartbeat_cb(uv_timer_t *handle)
 {
 	log_info("Heartbeat");
-	struct mettle *m = handle->data;
-	mettle_conn_open(m, "127.0.0.1", 4444);
 }
 
-struct mettle *mettle_open(void)
+int start_heartbeat(struct mettle *m)
+{
+	uv_timer_init(m->loop, &m->heartbeat);
+	m->heartbeat.data = m;
+	uv_timer_start(&m->heartbeat, heartbeat_cb, 0, 1000);
+	return 0;
+}
+
+struct mettle *mettle(void)
 {
 	struct mettle *m = calloc(1, sizeof(*m));
 
@@ -118,24 +37,32 @@ struct mettle *mettle_open(void)
 		return NULL;
 	}
 
-    log_init_file(stderr);
-    log_init_flush_thread();
-
 	m->loop = uv_default_loop();
 
-	uv_timer_init(m->loop, &m->heartbeat);
-	m->heartbeat.data = m;
-	uv_timer_start(&m->heartbeat, heartbeat_cb, 0, 1000);
+	start_heartbeat(m);
+
+	m->nc = network_client(m->loop);
+	if (m->nc == NULL) {
+		return NULL;
+	}
+
+	network_client_add_server(m->nc, "udp://localhost:4444");
+	network_client_add_server(m->nc, "tcp://localhost:4444,4445");
+	network_client_add_server(m->nc, "http://127.0.0.1:8080");
+	network_client_add_server(m->nc, "https://127.0.0.1:4343");
 
 	return m;
 }
 
 int mettle_start(struct mettle *m)
 {
+	network_client_start(m->nc);
+
 	return uv_run(m->loop, UV_RUN_DEFAULT);
 }
 
-void mettle_close(struct mettle *m)
+void mettle_free(struct mettle *m)
 {
+	free(m->nc);
 	free(m);
 }

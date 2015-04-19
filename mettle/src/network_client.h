@@ -13,6 +13,8 @@ struct network_client * network_client(uv_loop_t *loop);
 
 int network_client_add_server(struct network_client *nc, const char *uri);
 
+int network_client_start(struct network_client *nc);
+
 void network_client_free(struct network_client *nc);
 
 #endif

@@ -1,5 +1,7 @@
 #include <signal.h>
+#include <stdio.h>
 
+#include "log.h"
 #include "mettle.h"
 
 int main()
@@ -9,11 +11,27 @@ int main()
 	 */
 	sigignore(SIGPIPE);
 
-	struct mettle *m = mettle_open();
+	/*
+	 * Start system logger
+	 */
+    log_init_file(stderr);
+    log_init_flush_thread();
 
+	/*
+	 * Allocate the main dispatcher
+	 */
+	struct mettle *m = mettle();
+	if (m == NULL) {
+		log_error("could not initialize");
+		return 1;
+	}
+
+	/*
+	 * Start mettle and event loop
+	 */
 	mettle_start(m);
 
-	mettle_close(m);
+	mettle_free(m);
 
 	return 0;
 }
