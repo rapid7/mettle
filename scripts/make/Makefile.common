@@ -33,6 +33,7 @@ OUTPUTDIR=$(BUILD)/data
 
 CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include
 CPPFLAGS:=-I$(BUILD)/include
+CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
     HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
@@ -64,4 +65,3 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
