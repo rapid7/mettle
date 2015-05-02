@@ -16,7 +16,7 @@ CFLAGS="$CFLAGS -Wall -std=gnu99 -Werror"
 
 case $host_os in
 	*linux*)
-		CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE -D_BSD_SOURCE=1 -D_XOPEN_SOURCE=600"
+		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600"
 		;;
 esac
 
