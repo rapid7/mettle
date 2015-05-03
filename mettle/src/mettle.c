@@ -34,6 +34,16 @@ static void on_connect(struct network_client *nc, void *arg)
 	log_info("connected!");
 }
 
+static void on_read(struct network_client *nc, void *arg)
+{
+	log_info("read");
+}
+
+static void on_close(struct network_client *nc, void *arg)
+{
+	log_info("close");
+}
+
 int mettle_add_server_uri(struct mettle *m, const char *uri)
 {
 	return network_client_add_server(m->nc, uri);
@@ -57,6 +67,8 @@ struct mettle *mettle(void)
 	}
 
 	network_client_set_connect_cb(m->nc, on_connect, m);
+	network_client_set_read_cb(m->nc, on_read, m);
+	network_client_set_close_cb(m->nc, on_close, m);
 
 	return m;
 }

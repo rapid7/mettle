@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <strings.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <tls.h>
@@ -278,19 +279,56 @@ void network_client_set_close_cb(struct network_client *nc,
 /*
  * Client-side IO
  */
+
+static int client_tls_read(struct network_client *nc, void *buf, size_t buflen)
+{
+	if (nc->tls == NULL) {
+		return -1;
+	}
+	size_t bytes_read;
+	return tls_read(nc->tls, buf, buflen, &bytes_read);
+}
+
 int network_client_read(struct network_client *nc, void *buf, size_t buflen)
 {
+	struct network_client_server *srv = get_curr_server(nc);
+	switch (srv->proto) {
+		case network_client_proto_udp:
+			break;
+		case network_client_proto_tcp:
+			break;
+		case network_client_proto_tls:
+			return client_tls_read(nc, buf, buflen);
+	}
 	return -1;
+}
+
+static int client_tls_write(struct network_client *nc, void *buf, size_t buflen)
+{
+	if (nc->tls == NULL) {
+		return -1;
+	}
+	size_t bytes_written;
+	return tls_write(nc->tls, buf, buflen, &bytes_written);
 }
 
 int network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
-	log_info("writing %zu bytes", buflen);
+	struct network_client_server *srv = get_curr_server(nc);
+	switch (srv->proto) {
+		case network_client_proto_udp:
+			break;
+		case network_client_proto_tcp:
+			break;
+		case network_client_proto_tls:
+			return client_tls_write(nc, buf, buflen);
+	}
 	return -1;
 }
 
 static void set_closed(struct network_client *nc)
 {
+	bool was_connected = nc->state == network_client_connected;
 	nc->state = network_client_closed;
 	if (nc->addrinfo) {
 		uv_freeaddrinfo(nc->addrinfo);
@@ -300,9 +338,10 @@ static void set_closed(struct network_client *nc)
 	if (nc->tls) {
 		tls_free(nc->tls);
 		nc->tls_state = 0;
+		nc->tls = NULL;
 	}
 
-	if (nc->close_cb) {
+	if (was_connected && nc->close_cb) {
 		nc->close_cb(nc, nc->close_cb_arg);
 	}
 }
@@ -330,9 +369,10 @@ static void client_connected(struct network_client *nc)
 	}
 }
 
-void on_poll(uv_poll_t *req, int status, int events)
+void poll_tls(uv_poll_t *req, int status, int events)
 {
 	struct network_client *nc = req->data;
+
 	if (nc->state == network_client_connecting) {
 		if (nc->tls_state == TLS_READ_AGAIN || nc->tls_state == TLS_WRITE_AGAIN) {
 			nc->tls_state = tls_connect_socket(nc->tls, 0, NULL);
@@ -341,9 +381,41 @@ void on_poll(uv_poll_t *req, int status, int events)
 				client_connected(nc);
 			} else if (nc->tls_state == -1) {
 				log_info("%d %s", nc->tls_state, tls_error(nc->tls));
+				uv_poll_stop(&nc->tls_poll_req);
 				network_client_close(nc);
 			}
 		}
+		return;
+	}
+
+	if (nc->state == network_client_connected) {
+		size_t bytes_read = 0, total_read = 0;
+		char buf[1024];
+		int rc;
+		do {
+			rc = tls_read(nc->tls, buf, sizeof(buf), &bytes_read);
+			if (bytes_read > 0) {
+				log_info("read %zu bytes", bytes_read);
+			}
+			total_read += bytes_read;
+		} while (rc == TLS_READ_AGAIN || (rc == 0 && bytes_read > 0));
+
+		if (rc == -1) {
+			uv_poll_stop(&nc->tls_poll_req);
+			network_client_close(nc);
+		}
+
+		log_info("hmm %zu %d", total_read, rc);
+	}
+}
+
+static void read_tcp(uv_stream_t *tcp, ssize_t bytes_read, const uv_buf_t *buf)
+{
+	if (bytes_read >= 0) {
+		log_info("read %zu bytes", bytes_read);
+		log_hex(buf->base, bytes_read);
+	} else {
+		uv_close((uv_handle_t *)tcp, on_close);
 	}
 }
 
@@ -362,6 +434,8 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 
 	if (srv->proto == network_client_proto_tcp) {
 		client_connected(nc);
+		uv_read_start(req->handle, uv_buf_alloc, read_tcp);
+
 	} else {
 		nc->tls = tls_client();
 		if (nc->tls == NULL) {
@@ -387,7 +461,7 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 		memset(&nc->tls_poll_req, 0, sizeof(nc->tls_poll_req));
 		nc->tls_poll_req.data = nc;
 		uv_poll_init(nc->loop, &nc->tls_poll_req, socket);
-		uv_poll_start(&nc->tls_poll_req, UV_READABLE, on_poll);
+		uv_poll_start(&nc->tls_poll_req, UV_READABLE, poll_tls);
 	}
 }
 
