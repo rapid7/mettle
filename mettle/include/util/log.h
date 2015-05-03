@@ -78,17 +78,21 @@ void zlog_finish();
 void zlog_flush_buffer();
 
 // log an entry; using the printf format
-void zlogf(char const * fmt, ...);
+void zlogf(char const * fmt, ...) \
+	__attribute__((format(printf, 1, 2)));
 
 // log an entry with a timestamp
-void zlogf_time(char const * fmt, ...);
+void zlogf_time(char const * fmt, ...)
+	__attribute__((format(printf, 1, 2)));
 
 // log an entry with the filename and location;
 //   the first 2 arguments can be replaced by ZLOG_LOC which
 //   will be filled by the compiler
-void zlog(char* filename, int line, char const * fmt, ...);
+void zlog(char* filename, int line, char const * fmt, ...)
+	__attribute__((format(printf, 3, 4)));
 
 // log an entry with the filename and location with a timestamp
-void zlog_time(char* filename, int line, char const * fmt, ...);
+void zlog_time(char* filename, int line, char const * fmt, ...)
+	__attribute__((format(printf, 3, 4)));
 
 #endif
