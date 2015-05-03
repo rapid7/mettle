@@ -38,8 +38,14 @@ struct network_client {
 	union uv_any_handle conn;
 	struct addrinfo *addrinfo;
 
+	uv_getaddrinfo_t getaddrinfo_req;
+
 	struct tls *tls;
+	struct tls_config *tls_config;
 	int tls_state;
+	uv_poll_t tls_poll_req;
+
+	uv_connect_t connect_req;
 
 	enum {
 		network_client_connected,
@@ -111,16 +117,19 @@ static int add_server_service(struct network_client_server *srv, const char *ser
 	return 0;
 }
 
-static int parse_server(struct network_client_server *srv, const char *uri)
+static int init_server(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
 	char *services = NULL;
 	char *proto = NULL;
 	char *uri_tmp = strdup(uri);
 	char *host = strstr(uri_tmp, "://");
+
+	memset(srv, 0, sizeof(*srv));
 	srv->uri = strdup(uri);
 
 	if (uri_tmp == NULL || srv->uri == NULL) {
+		log_error("fail");
 		goto out;
 	}
 
@@ -158,6 +167,7 @@ static int parse_server(struct network_client_server *srv, const char *uri)
 		while ((service = strsep(&service_tmp, ",")) != NULL) {
 			if (add_server_service(srv, service) != 0) {
 				free(services_tmp);
+				log_error("fail");
 				goto out;
 			}
 		}
@@ -197,7 +207,7 @@ int network_client_add_server(struct network_client *nc, const char *uri)
 		return -1;
 	}
 
-	if (parse_server(&nc->servers[nc->num_servers], uri) != 0) {
+	if (init_server(&nc->servers[nc->num_servers], uri) != 0) {
 		return -1;
 	}
 
@@ -312,17 +322,26 @@ int network_client_close(struct network_client *nc)
 	return 0;
 }
 
+static void client_connected(struct network_client *nc)
+{
+	nc->state = network_client_connected;
+	if (nc->connect_cb) {
+		nc->connect_cb(nc, nc->connect_cb_arg);
+	}
+}
+
 void on_poll(uv_poll_t *req, int status, int events)
 {
 	struct network_client *nc = req->data;
 	if (nc->state == network_client_connecting) {
 		if (nc->tls_state == TLS_READ_AGAIN || nc->tls_state == TLS_WRITE_AGAIN) {
 			nc->tls_state = tls_connect_socket(nc->tls, 0, NULL);
+
 			if (nc->tls_state == 0) {
-				nc->state = network_client_connected;
+				client_connected(nc);
 			} else if (nc->tls_state == -1) {
-				log_info("%s", nc->tls_state, tls_error(nc->tls));
-				//network_client_close(nc);
+				log_info("%d %s", nc->tls_state, tls_error(nc->tls));
+				network_client_close(nc);
 			}
 		}
 	}
@@ -342,10 +361,7 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 	}
 
 	if (srv->proto == network_client_proto_tcp) {
-		nc->state = network_client_connected;
-		if (nc->connect_cb) {
-			nc->connect_cb(nc, nc->connect_cb_arg);
-		}
+		client_connected(nc);
 	} else {
 		nc->tls = tls_client();
 		if (nc->tls == NULL) {
@@ -353,27 +369,35 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 			set_closed(nc);
 			return;
 		}
+		tls_configure(nc->tls, nc->tls_config);
 
 		int socket;
 		if (uv_fileno((uv_handle_t *)req->handle, &socket) == 0) {
-			nc->tls_state = tls_connect_socket(nc->tls, socket, srv->host);
+			int rc = tls_connect_socket(nc->tls, socket, srv->host);
+			if (rc == -1) {
+				log_info("could not setup TLS connection: %s", tls_error(nc->tls));
+				return;
+			}
+			nc->tls_state = rc;
 		} else {
 			log_error("could not find file descriptor");
 			return;
 		}
 
-		uv_poll_t poll_req = { .data = nc };
-		uv_poll_init(nc->loop, &poll_req, socket);
-		uv_poll_start(&poll_req, UV_READABLE, on_poll);
+		memset(&nc->tls_poll_req, 0, sizeof(nc->tls_poll_req));
+		nc->tls_poll_req.data = nc;
+		uv_poll_init(nc->loop, &nc->tls_poll_req, socket);
+		uv_poll_start(&nc->tls_poll_req, UV_READABLE, on_poll);
 	}
 }
 
 static int connect_tcp(struct network_client *nc, struct addrinfo *addrinfo)
 {
-	uv_connect_t req  = { .data = nc };
+	memset(&nc->connect_req, 0, sizeof(nc->connect_req));
+	nc->connect_req.data = nc;
 	uv_tcp_init(nc->loop, &nc->conn.tcp);
 	nc->conn.tcp.data = nc;
-	return uv_tcp_connect(&req, &nc->conn.tcp,
+	return uv_tcp_connect(&nc->connect_req, &nc->conn.tcp,
 			(const struct sockaddr *)addrinfo->ai_addr, connect_tcp_cb);
 }
 
@@ -437,7 +461,8 @@ static void reconnect_cb(uv_timer_t *timer)
 	log_info("connecting to %s://%s:%s",
 			proto_to_str(srv->proto), srv->host, service);
 
-	uv_getaddrinfo_t req = { .data = nc };
+	memset(&nc->getaddrinfo_req, 0, sizeof(nc->getaddrinfo_req));
+	nc->getaddrinfo_req.data = nc;
 
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
@@ -453,7 +478,7 @@ static void reconnect_cb(uv_timer_t *timer)
 	}
 
 	nc->state = network_client_resolving;
-	uv_getaddrinfo(nc->loop, &req, resolving_cb, srv->host, service, &hints);
+	uv_getaddrinfo(nc->loop, &nc->getaddrinfo_req, resolving_cb, srv->host, service, &hints);
 }
 
 int network_client_start(struct network_client *nc)
@@ -476,6 +501,7 @@ void network_client_free(struct network_client *nc)
 	if (nc) {
 		network_client_stop(nc);
 		network_client_remove_servers(nc);
+		tls_config_free(nc->tls_config);
 		free(nc);
 	}
 }
@@ -488,19 +514,31 @@ struct network_client * network_client(uv_loop_t *loop)
 	}
 
 	/*
-	 * Start libtls
+	 * initialize libtls
 	 */
 	tls_init();
+	nc->tls_config = tls_config_new();
+	if (nc->tls_config == NULL) {
+		goto err;
+	}
 
+	tls_config_insecure_noverifycert(nc->tls_config);
+	tls_config_insecure_noverifyname(nc->tls_config);
+
+	/*
+	 * grab the default event loop if non is specified
+	 */
 	if (loop == NULL) {
 		loop = uv_default_loop();
-		if (!loop) {
+		if (loop == NULL) {
 			goto err;
 		}
 	}
-
 	nc->loop = loop;
 
+	/*
+	 * initialize the connection timer
+	 */
 	uv_timer_init(nc->loop, &nc->connect_timer);
 	nc->connect_timer.data = nc;
 

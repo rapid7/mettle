@@ -52,7 +52,7 @@ struct mettle *mettle(void)
 		return NULL;
 	}
 
-	network_client_add_server(m->nc, "tls://localhost:4444");
+	network_client_add_server(m->nc, "tls://127.0.0.1:4444");
 	network_client_set_connect_cb(m->nc, on_connect, m);
 
 	return m;
