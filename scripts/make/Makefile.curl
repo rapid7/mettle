@@ -13,6 +13,7 @@ $(BUILD)/curl/Makefile: $(BUILD)/curl/configure $(LIBCURL_DEPS)
 	@cd $(BUILD)/curl; \
 		$(ENV) ./$(CONFIGURE) \
 		--with-ssl=$(BUILD) --disable-ldap --without-libidn --without-libssh2 \
+		--without-ca-bundle --without-ca-path \
 		--enable-threaded-resolver \
 		ac_cv_header_sys_poll_h=no \
 		$(LOGBUILD)

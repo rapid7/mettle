@@ -35,7 +35,11 @@ CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include
 CPPFLAGS:=-I$(BUILD)/include
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
-    HOST=$(firstword $(subst -, ,$(TARGET)))-unknown-linux-gnu
+    ifneq (,$(findstring mingw,$(TARGET)))
+        HOST=$(firstword $(subst -, ,$(TARGET)))-w64-mingw32
+    else
+        HOST=$(firstword $(subst -, ,$(TARGET)))-linux-gnu
+    endif
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
     CFLAGS:=$(CFLAGS) -target $(TARGET)
 endif
