@@ -16,16 +16,16 @@
 #include <stdlib.h>
 #include <uv.h>
 
-static inline uv_buf_t uv_buf_alloc(uv_handle_t *handle, size_t size)
+static inline void uv_buf_alloc(uv_handle_t *handle, size_t size, uv_buf_t* buf)
 {
-	return uv_buf_init(malloc(size), size);
+	*buf = uv_buf_init(malloc(size), size);
 }
 
 static inline int uv_buf_dup(uv_buf_t *buf, void *base, size_t len)
 {
 	void *copy = malloc(len);
 	if (copy) {
-		*buf = uv_buf_alloc(NULL, len);
+		uv_buf_alloc(NULL, len, buf);
 		memcpy(buf->base, base, len);
 		return 0;
 	}
