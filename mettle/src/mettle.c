@@ -32,7 +32,11 @@ int start_heartbeat(struct mettle *m)
 static void on_connect(struct network_client *nc, void *arg)
 {
 	log_info("connected!");
-	network_client_write(nc, "hello\r\n", 7);
+}
+
+int mettle_add_server_uri(struct mettle *m, const char *uri)
+{
+	return network_client_add_server(m->nc, uri);
 }
 
 struct mettle *mettle(void)
@@ -52,7 +56,6 @@ struct mettle *mettle(void)
 		return NULL;
 	}
 
-	network_client_add_server(m->nc, "tls://127.0.0.1:4444");
 	network_client_set_connect_cb(m->nc, on_connect, m);
 
 	return m;

@@ -9,4 +9,6 @@ int mettle_start(struct mettle *m);
 
 void mettle_free(struct mettle *);
 
+int mettle_add_server_uri(struct mettle *m, const char *uri);
+
 #endif
