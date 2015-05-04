@@ -36,6 +36,7 @@
 #define log_error(format, ...)
 #define log_info(format, ...)
 
+#define log_hex(buf, len)
 #define log_init(log_file)
 #define log_init_file(file_hdl)
 #define log_init_flush_thread
@@ -50,6 +51,8 @@
 	zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
 #define log_info(format, ...) \
 	zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+#define log_hex(buf, len) \
+	zlog_hex(ZLOG_LOC, buf, len)
 
 #define log_init(log_file) zlog_init(log_file)
 #define log_init_file(file_hdl) zlog_init_file(file_hdl)
@@ -84,6 +87,8 @@ void zlogf(char const * fmt, ...) \
 // log an entry with a timestamp
 void zlogf_time(char const * fmt, ...)
 	__attribute__((format(printf, 1, 2)));
+
+void zlog_hex(char *filename, int line, const void *buf, size_t len);
 
 // log an entry with the filename and location;
 //   the first 2 arguments can be replaced by ZLOG_LOC which

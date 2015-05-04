@@ -5,6 +5,7 @@
  * https://github.com/zma/zlog
  */
 
+#include <ctype.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -167,4 +168,53 @@ void zlog(char* filename, int line, char const * fmt, ...)
     vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     zlog_finish_buffer();
     va_end(va);
+}
+
+/* hex dump from http://sws.dett.de/mini/hexdump-c/ */
+void zlog_hex(char *filename, int line, const void *buf, size_t len)
+{
+	const unsigned char *p = buf;
+	unsigned char c;
+	char bytestr[4] = { 0 };
+	char addrstr[10] = { 0 };
+	char hexstr[16 * 3 + 5] = { 0 };
+	char charstr[16 * 1 + 5] = { 0 };
+
+	for (size_t n = 1; n <= len; n++) {
+
+		if (n % 16 == 1) {
+			/* store address for this line */
+			snprintf(addrstr, sizeof(addrstr), "0x%02x", (int)((size_t)p - (size_t)buf));
+		}
+
+		c = *p;
+		if (!isprint(c)) {
+			c = '.';
+		}
+
+		/* store hex str (for left side) */
+		snprintf(bytestr, sizeof(bytestr), "%02X ", *p);
+		strncat(hexstr, bytestr, sizeof(hexstr) - strlen(hexstr) - 1);
+
+		/* store char str (for right side) */
+		snprintf(bytestr, sizeof(bytestr), "%c", c);
+		strncat(charstr, bytestr, sizeof(charstr) - strlen(charstr) - 1);
+
+		if (n % 16 == 0) {
+			/* line completed */
+			zlog_time(filename, line, "[%4.4s]   %-50.50s  %s\n", addrstr, hexstr, charstr);
+			hexstr[0] = 0;
+			charstr[0] = 0;
+		} else if (n % 8 == 0) {
+			/* half line: add whitespaces */
+			strncat(hexstr, "  ", sizeof(hexstr) - strlen(hexstr) - 1);
+			strncat(charstr, " ", sizeof(charstr) - strlen(charstr) - 1);
+		}
+		p++;
+	}
+
+	if (strlen(hexstr) > 0) {
+		/* print rest of buffer if not empty */
+		zlog_time(filename, line, "[%4.4s]   %-50.50s  %s\n", addrstr, hexstr, charstr);
+	}
 }
