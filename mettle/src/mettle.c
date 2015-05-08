@@ -3,8 +3,8 @@
 #include <string.h>
 #include <uv.h>
 
-#include <util/log.h>
-#include <util/network_client.h>
+#include "log.h"
+#include "network_client.h"
 #include "mettle.h"
 
 struct mettle {

@@ -1,14 +1,29 @@
 /**
- * @brief Misc. utility functions
+ * Copyright 2015 Rapid7
+ * @brief Miscelaneous system functions
+ * @file util.h
  */
 
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
-/**
- * Returns static number of elements array/characters in a string
+/*
+ * COUNT_OF from Google Chromium, deals with C++ objects
  */
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
+/*
+ * Determines min/max in a typesafe and side effect-free way
+ */
+#define TYPESAFE_MAX(a, b) \
+   ({ __typeof__(a) _a = (a); \
+		  __typeof__(b) _b = (b); \
+		  _a > _b ? _a : _b; })
+
+#define TYPESAFE_MIN(a, b) \
+   ({ __typeof__(a) _a = (a); \
+		  __typeof__(b) _b = (b); \
+		  _a < _b ? _a : _b; })
 
 /*
  * libuv uv_buf_t helpers

@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <tls.h>
 
-#include <util.h>
-#include <util/log.h>
-#include <util/network_client.h>
+#include "util.h"
+#include "log.h"
+#include "network_client.h"
 
 enum network_client_proto {
 	network_client_proto_udp,

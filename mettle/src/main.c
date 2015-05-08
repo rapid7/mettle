@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <util/log.h>
+#include "log.h"
 #include "mettle.h"
 
 void usage(const char *name)

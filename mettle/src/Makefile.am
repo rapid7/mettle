@@ -7,9 +7,8 @@ libmettle_la_LIBADD += -lcurl
 libmettle_la_LIBADD += -ltls
 
 libmettle_la_SOURCES = mettle.c
-libmettle_la_SOURCES += util/buffer.c
-libmettle_la_SOURCES += util/log.c
-libmettle_la_SOURCES += util/network_client.c
+libmettle_la_SOURCES += log.c
+libmettle_la_SOURCES += network_client.c
 
 if !HAVE_REALLOCARRAY
 libmettle_la_SOURCES += compat/reallocarray.c
