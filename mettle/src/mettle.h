@@ -1,9 +1,15 @@
+/**
+ * Copyright 2015 Rapid7
+ * @brief mettle main object
+ * @file mettle.h
+ */
+
 #ifndef _METTLE_H_
 #define _METTLE_H_
 
 struct mettle;
 
-struct mettle *mettle(void);
+struct mettle * mettle(void);
 
 int mettle_start(struct mettle *m);
 

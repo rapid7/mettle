@@ -1,5 +1,7 @@
 /**
- * @brief Durable multi-transport client connection abtraction
+ * Copyright 2015 Rapid7
+ * @brief Durable multi-transport client network connection
+ * @file network-client.h
  */
 
 #include <string.h>
@@ -9,9 +11,10 @@
 #include <stdlib.h>
 #include <tls.h>
 
-#include "util.h"
+#include "buffer_queue.h"
 #include "log.h"
 #include "network_client.h"
+#include "util.h"
 
 enum network_client_proto {
 	network_client_proto_udp,
@@ -47,6 +50,8 @@ struct network_client {
 	uv_poll_t tls_poll_req;
 
 	uv_connect_t connect_req;
+
+	struct buffer_queue *rx_queue;
 
 	enum {
 		network_client_connected,
@@ -276,34 +281,27 @@ void network_client_set_close_cb(struct network_client *nc,
 	nc->close_cb_arg = arg;
 }
 
-/*
- * Client-side IO
- */
-
-static int client_tls_read(struct network_client *nc, void *buf, size_t buflen)
+struct buffer_queue * network_client_rx_queue(struct network_client *nc)
 {
-	if (nc->tls == NULL) {
-		return -1;
-	}
-	size_t bytes_read;
-	return tls_read(nc->tls, buf, buflen, &bytes_read);
+	return nc->rx_queue;
 }
 
-int network_client_read(struct network_client *nc, void *buf, size_t buflen)
+size_t network_client_bytes_available(struct network_client *nc)
 {
-	struct network_client_server *srv = get_curr_server(nc);
-	switch (srv->proto) {
-		case network_client_proto_udp:
-			break;
-		case network_client_proto_tcp:
-			break;
-		case network_client_proto_tls:
-			return client_tls_read(nc, buf, buflen);
-	}
-	return -1;
+	return buffer_queue_len(nc->rx_queue);
 }
 
-static int client_tls_write(struct network_client *nc, void *buf, size_t buflen)
+size_t network_client_peek(struct network_client *nc, void *buf, size_t buflen)
+{
+	return buffer_queue_copy(nc->rx_queue, buf, buflen);
+}
+
+size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
+{
+	return buffer_queue_remove(nc->rx_queue, buf, buflen);
+}
+
+static int write_tls(struct network_client *nc, void *buf, size_t buflen)
 {
 	if (nc->tls == NULL) {
 		return -1;
@@ -312,16 +310,51 @@ static int client_tls_write(struct network_client *nc, void *buf, size_t buflen)
 	return tls_write(nc->tls, buf, buflen, &bytes_written);
 }
 
+struct write_request {
+	uv_write_t req;
+	uv_buf_t buf;
+};
+
+static void on_tcp_write(uv_write_t *req, int status)
+{
+	struct write_request *wr = (struct write_request *)req;
+	free(wr->buf.base);
+	free(wr);
+}
+
+static int write_tcp(struct network_client *nc, void *buf, size_t buflen)
+{
+	struct write_request *wr = calloc(1, sizeof(*wr));
+	if (wr == NULL) {
+		return -1;
+	}
+
+	wr->req.data = nc;
+	wr->buf.base = malloc(buflen);
+	if (wr->buf.base == NULL) {
+		free(wr);
+		return -1;
+	}
+
+	memcpy(wr->buf.base, buf, buflen);
+	wr->buf.len = buflen;
+	uv_write((uv_write_t *)wr, (uv_stream_t *)&nc->conn.tcp,
+			&wr->buf, 1, on_tcp_write);
+
+	return 0;
+}
+
 int network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
-	struct network_client_server *srv = get_curr_server(nc);
-	switch (srv->proto) {
+	if (nc->state == network_client_connected) {
+		switch (get_curr_server(nc)->proto) {
 		case network_client_proto_udp:
 			break;
 		case network_client_proto_tcp:
-			break;
+			return write_tcp(nc, buf, buflen);
 		case network_client_proto_tls:
-			return client_tls_write(nc, buf, buflen);
+			return write_tls(nc, buf, buflen);
+		}
 	}
 	return -1;
 }
@@ -340,6 +373,8 @@ static void set_closed(struct network_client *nc)
 		nc->tls_state = 0;
 		nc->tls = NULL;
 	}
+
+	buffer_queue_drain_all(nc->rx_queue);
 
 	if (was_connected && nc->close_cb) {
 		nc->close_cb(nc, nc->close_cb_arg);
@@ -369,6 +404,16 @@ static void client_connected(struct network_client *nc)
 	}
 }
 
+static void enqueue_data(struct network_client *nc, void *data, size_t len)
+{
+	if (len) {
+		buffer_queue_add(nc->rx_queue, data, len);
+		if (nc->read_cb) {
+			nc->read_cb(nc, nc->read_cb_arg);
+		}
+	}
+}
+
 void poll_tls(uv_poll_t *req, int status, int events)
 {
 	struct network_client *nc = req->data;
@@ -389,31 +434,27 @@ void poll_tls(uv_poll_t *req, int status, int events)
 	}
 
 	if (nc->state == network_client_connected) {
-		size_t bytes_read = 0, total_read = 0;
-		char buf[1024];
 		int rc;
+		char buf[4096];
+		size_t bytes_read = 0;
 		do {
 			rc = tls_read(nc->tls, buf, sizeof(buf), &bytes_read);
-			if (bytes_read > 0) {
-				log_info("read %zu bytes", bytes_read);
-			}
-			total_read += bytes_read;
-		} while (rc == TLS_READ_AGAIN || (rc == 0 && bytes_read > 0));
+			enqueue_data(nc, buf, bytes_read);
+		} while (rc == 0 && bytes_read > 0);
 
 		if (rc == -1) {
 			uv_poll_stop(&nc->tls_poll_req);
 			network_client_close(nc);
 		}
-
-		log_info("hmm %zu %d", total_read, rc);
 	}
 }
 
-static void read_tcp(uv_stream_t *tcp, ssize_t bytes_read, const uv_buf_t *buf)
+static void read_tcp(uv_stream_t *tcp, ssize_t bytes_read, const struct uv_buf_t *buf)
 {
+	struct network_client *nc = tcp->data;
 	if (bytes_read >= 0) {
-		log_info("read %zu bytes", bytes_read);
-		log_hex(buf->base, bytes_read);
+		enqueue_data(nc, buf->base, bytes_read);
+		free(buf->base);
 	} else {
 		uv_close((uv_handle_t *)tcp, on_close);
 	}
@@ -504,7 +545,7 @@ void resolving_cb(uv_getaddrinfo_t *req, int status, struct addrinfo *addrinfo)
 
 		case network_client_proto_udp:
 			if (connect_udp(nc, addrinfo) == 0) {
-				nc->state = network_client_connected;
+				client_connected(nc);
 			} else {
 				set_closed(nc);
 			}
@@ -561,7 +602,7 @@ int network_client_start(struct network_client *nc)
 		return -1;
 	}
 
-	return uv_timer_start(&nc->connect_timer, reconnect_cb, 0, 1000);
+	return uv_timer_start(&nc->connect_timer, reconnect_cb, 0, 5000);
 }
 
 int network_client_stop(struct network_client *nc)
@@ -576,15 +617,21 @@ void network_client_free(struct network_client *nc)
 		network_client_stop(nc);
 		network_client_remove_servers(nc);
 		tls_config_free(nc->tls_config);
+		buffer_queue_free(nc->rx_queue);
 		free(nc);
 	}
 }
 
-struct network_client * network_client(uv_loop_t *loop)
+struct network_client * network_client_new(uv_loop_t *loop)
 {
 	struct network_client *nc = calloc(1, sizeof(*nc));
 	if (!nc) {
 		return NULL;
+	}
+
+	nc->rx_queue = buffer_queue_new();
+	if (nc->rx_queue == NULL) {
+		goto err;
 	}
 
 	/*
@@ -600,7 +647,7 @@ struct network_client * network_client(uv_loop_t *loop)
 	tls_config_insecure_noverifyname(nc->tls_config);
 
 	/*
-	 * grab the default event loop if non is specified
+	 * grab the default event loop if none is specified
 	 */
 	if (loop == NULL) {
 		loop = uv_default_loop();

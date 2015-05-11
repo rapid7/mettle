@@ -1,3 +1,9 @@
+/**
+ * Copyright 2015 Rapid7
+ * @brief Test harness
+ * @file main.c
+ */
+
 #include <getopt.h>
 #include <libgen.h>
 #include <signal.h>
