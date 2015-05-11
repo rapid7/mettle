@@ -1,0 +1,21 @@
+$(BUILD)/libsigar/configure:
+	@echo "Unpacking libsigar for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr libsigar; \
+		$(TAR) xf $(ROOT)/deps/libsigar-1.6.2.tar.gz; \
+		mv libsigar-1.6.2 libsigar
+
+$(BUILD)/libsigar/Makefile: $(BUILD)/libsigar/configure
+	@echo "Configuring libsigar for $(TARGET)"
+	@mkdir -p $(BUILD)/libsigar
+	@cd $(BUILD)/libsigar; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libsigar.a: $(BUILD)/libsigar/Makefile
+	@echo "Building libsigar for $(TARGET)"
+	@cd $(BUILD)/libsigar; \
+		$(MAKE) $(LOGBUILD) ; \
+	       	$(MAKE_INSTALL) $(LOGBUILD)
+
+libsigar: $(BUILD)/lib/libsigar.a
