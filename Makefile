@@ -1,15 +1,15 @@
 all: tools mettle
 
-include scripts/make/Makefile.common
-include scripts/make/Makefile.curl
-include scripts/make/Makefile.libpcap
-include scripts/make/Makefile.libressl
-include scripts/make/Makefile.libsigar
-include scripts/make/Makefile.json-c
-include scripts/make/Makefile.libuv
-include scripts/make/Makefile.kernel-headers
-include scripts/make/Makefile.mettle
-include scripts/make/Makefile.tools
+include make/Makefile.common
+include make/Makefile.curl
+include make/Makefile.libpcap
+include make/Makefile.libressl
+include make/Makefile.libsigar
+include make/Makefile.json-c
+include make/Makefile.libuv
+include make/Makefile.kernel-headers
+include make/Makefile.mettle
+include make/Makefile.tools
 
 distclean:
 	@rm -fr $(BUILD)
