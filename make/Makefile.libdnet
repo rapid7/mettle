@@ -1,0 +1,21 @@
+$(BUILD)/libdnet/configure:
+	@echo "Unpacking libdnet for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr libdnet; \
+		$(TAR) xf $(ROOT)/deps/libdnet-1.12.tar.gz; \
+		mv libdnet-1.12 libdnet
+
+$(BUILD)/libdnet/Makefile: $(BUILD)/libdnet/configure
+	@echo "Configuring libdnet for $(TARGET)"
+	@mkdir -p $(BUILD)/libdnet
+	@cd $(BUILD)/libdnet; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libdnet.a: $(BUILD)/libdnet/Makefile
+	@echo "Building libdnet for $(TARGET)"
+	@cd $(BUILD)/libdnet; \
+		$(MAKE) $(LOGBUILD) ; \
+	       	$(MAKE_INSTALL) $(LOGBUILD)
+
+libdnet: $(BUILD)/lib/libdnet.a

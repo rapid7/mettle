@@ -7,11 +7,17 @@
 #ifndef _METTLE_H_
 #define _METTLE_H_
 
-struct mettle;
+#include <sigar.h>
 
 struct mettle * mettle(void);
 
 int mettle_start(struct mettle *m);
+
+const char *mettle_get_fqdn(struct mettle *m);
+
+sigar_t *mettle_get_sigar(struct mettle *m);
+
+struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m);
 
 void mettle_free(struct mettle *);
 

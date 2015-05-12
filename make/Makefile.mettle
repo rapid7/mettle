@@ -6,8 +6,10 @@ $(ROOT)/mettle/configure:
 $(BUILD)/mettle/Makefile: $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libcrypto.a \
 	$(BUILD)/lib/libcurl.a \
-	$(BUILD)/lib/libpcap.a \
+	$(BUILD)/lib/libdnet.a \
 	$(BUILD)/lib/libjson-c.a \
+	$(BUILD)/lib/libpcap.a \
+	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libuv.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle

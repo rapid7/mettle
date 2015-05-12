@@ -20,9 +20,11 @@ case $host_os in
 		;;
 esac
 
-AC_CHECK_FUNCS([reallocarray strtonum])
+AC_CHECK_FUNCS([reallocarray strlcat strlcpy strtonum])
 
 AM_CONDITIONAL([HAVE_REALLOCARRAY], [test "x$ac_cv_func_reallocarray" = xyes])
+AM_CONDITIONAL([HAVE_STRLCAT], [test "x$ac_cv_func_strlcat" = xyes])
+AM_CONDITIONAL([HAVE_STRLCPY], [test "x$ac_cv_func_strlcpy" = xyes])
 AM_CONDITIONAL([HAVE_STRTONUM], [test "x$ac_cv_func_strtonum" = xyes])
 
 AC_CONFIG_FILES([

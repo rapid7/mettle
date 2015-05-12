@@ -6,6 +6,8 @@
 
 #include <arpa/inet.h>
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -97,6 +99,19 @@ char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type)
 	return str;
 }
 
+struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+		const void *val, int len)
+{
+	int packet_len = tlv_packet_len(p);
+	int new_len = packet_len +  len;
+	p = realloc(p, new_len);
+	if (p) {
+		memcpy((void *)p + packet_len, val, len);
+		p->h.len = htonl(new_len);
+	}
+	return p;
+}
+
 struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p, uint32_t type,
 		const void *val, int len)
 {
@@ -113,26 +128,45 @@ struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p, uint32_t type,
 	return p;
 }
 
-struct tlv_packet * tlv_packet_add_str(struct tlv_packet *p, uint32_t type, const char *str)
+struct tlv_packet * tlv_packet_add_str(struct tlv_packet *p,
+		uint32_t type, const char *str)
 {
 	return tlv_packet_add_raw(p, type, str, strlen(str) + 1);
 }
 
-struct tlv_packet * tlv_packet_add_u32(struct tlv_packet *p, uint32_t type, uint32_t val)
+struct tlv_packet * tlv_packet_add_u32(struct tlv_packet *p,
+		uint32_t type, uint32_t val)
 {
 	val = htonl(val);
 	return tlv_packet_add_raw(p, type, &val, sizeof(val));
 }
 
-struct tlv_packet * tlv_packet_add_u64(struct tlv_packet *p, uint32_t type, uint64_t val)
+struct tlv_packet * tlv_packet_add_u64(struct tlv_packet *p,
+		uint32_t type, uint64_t val)
 {
 	return tlv_packet_add_raw(p, type, &val, sizeof(val));
 }
 
-struct tlv_packet * tlv_packet_add_bool(struct tlv_packet *p, uint32_t type, bool val)
+struct tlv_packet * tlv_packet_add_bool(struct tlv_packet *p,
+		uint32_t type, bool val)
 {
 	char val_c = val;
 	return tlv_packet_add_raw(p, type, &val_c, sizeof(val_c));
+}
+
+struct tlv_packet * tlv_packet_add_printf(struct tlv_packet *p,
+		uint32_t type, char const *fmt, ...)
+{
+	va_list va;
+	char *buffer = NULL;
+	va_start(va, fmt);
+	int printed = vasprintf(&buffer, fmt, va);
+	if (printed != -1) {
+		p = tlv_packet_add_raw(p, type, buffer, printed + 1);
+		free(buffer);
+	}
+	va_end(va);
+	return p;
 }
 
 struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx, int initial_len)
@@ -154,8 +188,8 @@ struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int 
 	return p;
 }
 
-int tlv_dispatcher_add_handler(struct tlv_dispatcher *td, const char *method,
-		tlv_handler_cb cb, void *arg)
+int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
+		const char *method, tlv_handler_cb cb, void *arg)
 {
 	struct tlv_handler *handler =
 		calloc(1, sizeof(*handler) + strlen(method) + 1);
@@ -168,8 +202,20 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td, const char *method,
 	handler->arg = arg;
 
 	HASH_ADD_STR(td->handlers, method, handler);
-
 	return 0;
+}
+
+void tlv_iter_extension_methods(struct tlv_dispatcher *td,
+		const char *extension,
+		void (*cb)(const char *method, void *arg), void *arg)
+{
+	struct tlv_handler *handler, *tmp;
+	size_t extension_len = strlen(extension);
+	HASH_ITER(hh, td->handlers, handler, tmp) {
+		if (strncmp(handler->method, extension, extension_len) == 0) {
+			cb(handler->method, arg);
+		}
+	}
 }
 
 static struct tlv_handler * find_handler(struct tlv_dispatcher *td,
@@ -196,13 +242,13 @@ struct tlv_packet * tlv_process_request(struct tlv_dispatcher *td,
 	struct tlv_handler *handler = find_handler(td, ctx.method);
 	if (handler == NULL) {
 		log_info("no handler found for method: '%s'", ctx.method);
-		return tlv_packet_response_result(&ctx, TLV_RESULT_SUCCESS);
+		return tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
 	}
 
-	log_info("processing method: '%s' id: '%s'", ctx.method, ctx.id);
+	log_debug("processing method: '%s' id: '%s'", ctx.method, ctx.id);
 	struct tlv_packet *response = handler->cb(&ctx, handler->arg);
 	if (response == NULL) {
-		return tlv_packet_response_result(&ctx, TLV_RESULT_SUCCESS);
+		return tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
 	}
 	return response;
 }

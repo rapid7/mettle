@@ -2,6 +2,7 @@ all: tools mettle
 
 include make/Makefile.common
 include make/Makefile.curl
+include make/Makefile.libdnet
 include make/Makefile.libpcap
 include make/Makefile.libressl
 include make/Makefile.libsigar
