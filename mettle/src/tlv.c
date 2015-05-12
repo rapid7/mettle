@@ -154,6 +154,49 @@ struct tlv_packet * tlv_packet_add_bool(struct tlv_packet *p,
 	return tlv_packet_add_raw(p, type, &val_c, sizeof(val_c));
 }
 
+static uint32_t bitmask32(uint32_t bits)
+{
+	return bits % 32 == 0 ? 0 : htonl(0xffffffff << (32 - bits));
+}
+
+static void bitmask128(uint32_t bits, uint32_t mask[4])
+{
+	memset(mask, 0xff, 16);
+	if (bits >= 96) {
+		mask[3] = bitmask32(bits % 32);
+	} else if (bits >= 64) {
+		mask[2] = bitmask32(bits % 32);
+		memset(mask + 3, 0, 4);
+	} else if (bits >= 32) {
+		mask[1] = bitmask32(bits % 32);
+		memset(mask + 2, 0, 8);
+	} else {
+		mask[0] = bitmask32(bits % 32);
+		memset(mask + 1, 0, 12);
+	}
+}
+
+struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
+	uint32_t addr_tlv, uint32_t mask_tlv, const struct addr *a)
+{
+	if (a->addr_type == ADDR_TYPE_IP) {
+		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, IP_ADDR_LEN);
+		if (mask_tlv) {
+			uint32_t mask = bitmask32(a->addr_bits);
+			p = tlv_packet_add_raw(p, mask_tlv, &mask, IP_ADDR_LEN);
+		}
+
+	} else if (a->addr_type == ADDR_TYPE_IP6) {
+		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, IP6_ADDR_LEN);
+		if (mask_tlv) {
+			uint32_t mask[4];
+			bitmask128(a->addr_bits, mask);
+			p = tlv_packet_add_raw(p, mask_tlv, mask, IP6_ADDR_LEN);
+		}
+	}
+	return p;
+}
+
 struct tlv_packet * tlv_packet_add_printf(struct tlv_packet *p,
 		uint32_t type, char const *fmt, ...)
 {

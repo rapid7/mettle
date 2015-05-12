@@ -17,8 +17,8 @@ static struct tlv_packet *machine_id(struct tlv_handler_ctx *ctx, void *arg)
 
 static void add_method(const char *method, void *arg)
 {
-	struct tlv_packet *p = arg;
-	tlv_packet_add_str(p, TLV_TYPE_STRING, method);
+	struct tlv_packet **p = arg;
+	*p = tlv_packet_add_str(*p, TLV_TYPE_STRING, method);
 }
 
 static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx, void *arg)
@@ -31,7 +31,7 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx, void *arg)
 	struct mettle *m = arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	tlv_iter_extension_methods(td, extension, add_method, p);
+	tlv_iter_extension_methods(td, extension, add_method, &p);
 	return p;
 }
 
