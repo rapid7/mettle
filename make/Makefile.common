@@ -1,3 +1,8 @@
+ROOT=$(shell pwd)
+MAKE_INSTALL:=$(MAKE) install
+MAKE:=$(MAKE) -j4
+BUILDS=$(ROOT)/build
+
 TARGET:=native
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring aarch,$(TARGET)))
@@ -18,13 +23,11 @@ ifneq "$(TARGET)" "native"
     ifneq (,$(findstring x86,$(TARGET)))
         ARCH:=x86
     endif
+    BUILD:=$(BUILDS)/cross-$(TARGET)
+else
+    BUILD:=$(BUILDS)/native-$(shell uname -s|tr '[:upper:]' '[:lower:]').$(shell uname -m)
 endif
 
-ROOT=$(shell pwd)
-MAKE_INSTALL:=$(MAKE) install
-MAKE:=$(MAKE) -j4
-BUILDS=$(ROOT)/build
-BUILD=$(BUILDS)/$(TARGET)
 LOGFILE=$(BUILD)/build.log
 ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
