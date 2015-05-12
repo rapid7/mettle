@@ -28,6 +28,10 @@ if !HAVE_STRLCAT
 libmettle_la_SOURCES += compat/strlcat.c
 endif
 
+if !HAVE_STRLCPY
+libmettle_la_SOURCES += compat/strlcpy.c
+endif
+
 bin_PROGRAMS = mettle
 
 mettle_SOURCES = main.c

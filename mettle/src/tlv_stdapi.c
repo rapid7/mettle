@@ -15,18 +15,10 @@
 
 struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx, void *arg)
 {
-
-	uid_t ru, eu, su;
-	gid_t rg, eg, sg;
-
-	if (getresuid(&ru, &eu, &su) == -1 || getresgid(&rg, &eg, &sg) == -1) {
-		return NULL;
-	}
-
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	return tlv_packet_add_printf(p, TLV_TYPE_USER_NAME,
-			"uid=%d, gid=%d, euid=%d, egid=%d, suid=%d, sgid=%d",
-			ru, rg, eu, eg, su, sg);
+			"uid=%d, gid=%d, euid=%d, egid=%d",
+			getuid(), geteuid(), getgid(), getegid());
 }
 
 struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx, void *arg)

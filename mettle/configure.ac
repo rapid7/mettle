@@ -12,7 +12,7 @@ AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
 LT_INIT
 
-CFLAGS="$CFLAGS -Wall -std=gnu99 -Werror"
+CFLAGS="$CFLAGS -Wall -std=gnu99"
 
 case $host_os in
 	*linux*)
