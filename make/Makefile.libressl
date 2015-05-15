@@ -9,7 +9,7 @@ $(BUILD)/libressl/configure:
 		mv libressl-$(LIBRESSL_VERSION) libressl
 
 ifneq "$(TARGET)" "native"
-    LIBRESSL_DEPS=kernel-headers
+    LIBRESSL_DEPS=$(BUILD)/include/linux
 endif
 
 $(BUILD)/libressl/Makefile: $(BUILD)/libressl/configure $(LIBRESSL_DEPS)

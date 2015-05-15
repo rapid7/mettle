@@ -8,7 +8,7 @@ $(BUILD)/libpcap/configure:
 
 ifneq "$(TARGET)" "native"
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
-    LIBPCAP_DEPS=kernel-headers
+    LIBPCAP_DEPS=$(BUILD)/include/linux
 endif
 
 $(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)

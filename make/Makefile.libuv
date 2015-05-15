@@ -9,7 +9,7 @@ $(BUILD)/libuv/configure:
 		mv libuv-$(LIBUV_VERSION) libuv
 
 ifneq "$(TARGET)" "native"
-    LIBUV_DEPS=kernel-headers
+    LIBUV_DEPS=$(BUILD)/include/linux
 endif
 
 $(BUILD)/libuv/Makefile: $(BUILD)/libuv/configure $(LIBUV_DEPS)
