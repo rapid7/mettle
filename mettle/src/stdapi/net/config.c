@@ -13,32 +13,6 @@
 #include "log.h"
 #include "tlv.h"
 
-struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx, void *arg)
-{
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	return tlv_packet_add_printf(p, TLV_TYPE_USER_NAME,
-			"uid=%d, gid=%d, euid=%d, egid=%d",
-			getuid(), geteuid(), getgid(), getegid());
-}
-
-struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx, void *arg)
-{
-	struct mettle *m = arg;
-	sigar_sys_info_t sys_info;
-	if (sigar_sys_info_get(mettle_get_sigar(m), &sys_info) == -1) {
-		return NULL;
-	}
-
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-
-	p = tlv_packet_add_str(p, TLV_TYPE_COMPUTER_NAME, mettle_get_fqdn(m));
-	p = tlv_packet_add_printf(p, TLV_TYPE_OS_NAME, "%s (%s %s)",
-			sys_info.description, sys_info.name, sys_info.version);
-	p = tlv_packet_add_str(p, TLV_TYPE_ARCHITECTURE, sys_info.arch);
-
-	return p;
-}
-
 static char * flags2string(u_short flags)
 {
     static char buf[256];
@@ -82,13 +56,12 @@ static int add_intf_info(const struct intf_entry *entry, void *arg)
 				&entry->intf_alias_addrs[i]);
 	}
 
-	*parent = tlv_packet_add_child(*parent, p, tlv_packet_len(p));
-	tlv_packet_free(p);
+	*parent = tlv_packet_add_child(*parent, p);
 
 	return 0;
 }
 
-struct tlv_packet *sys_config_get_interfaces(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *net_config_get_interfaces(struct tlv_handler_ctx *ctx, void *arg)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	intf_t *i = intf_open();
@@ -105,12 +78,11 @@ static int add_route_info(const struct route_entry *entry, void *arg)
 	p = tlv_packet_add_addr(p, TLV_TYPE_GATEWAY, 0, &entry->route_gw);
 	p = tlv_packet_add_u32(p, TLV_TYPE_ROUTE_METRIC, entry->metric);
 	p = tlv_packet_add_str(p, TLV_TYPE_STRING, entry->intf_name);
-	*parent = tlv_packet_add_child(*parent, p, tlv_packet_len(p));
-	tlv_packet_free(p);
+	*parent = tlv_packet_add_child(*parent, p);
 	return 0;
 }
 
-struct tlv_packet *sys_config_get_routes(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *net_config_get_routes(struct tlv_handler_ctx *ctx, void *arg)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	route_t *r = route_open();
@@ -119,11 +91,3 @@ struct tlv_packet *sys_config_get_routes(struct tlv_handler_ctx *ctx, void *arg)
 	return p;
 }
 
-
-void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td)
-{
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid", sys_config_getuid, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo", sys_config_sysinfo, m);
-	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_interfaces", sys_config_get_interfaces, m);
-	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_routes", sys_config_get_routes, m);
-}

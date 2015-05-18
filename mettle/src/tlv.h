@@ -23,12 +23,27 @@ void *tlv_packet_data(struct tlv_packet *p);
 
 int tlv_packet_len(struct tlv_packet *p);
 
+char *tlv_packet_get_buf_str(void * buf, int len);
+
 void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t raw_type, int *len);
 
 char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type);
 
-struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+struct tlv_iterator {
+	struct tlv_packet *packet;
+	size_t offset;
+	uint32_t value_type;
+};
+
+void *tlv_packet_iterate(struct tlv_iterator *i, int *len);
+
+char *tlv_packet_iterate_str(struct tlv_iterator *i);
+
+struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
 		const void *val, int len);
+
+struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+		struct tlv_packet *child);
 
 struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p,
 		uint32_t type, const void *val, int len);

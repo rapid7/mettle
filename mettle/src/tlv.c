@@ -69,6 +69,41 @@ int tlv_packet_len(struct tlv_packet *p)
 	return ntohl(p->h.len);
 }
 
+char *tlv_packet_get_buf_str(void * buf, int len)
+{
+	char *str = buf;
+	if (str != NULL) {
+		if (len > 0) {
+			str[len - 1] = '\0';
+		} else {
+			str = NULL;
+		}
+	}
+	return str;
+}
+
+void *tlv_packet_iterate(struct tlv_iterator *i, int *len)
+{
+	*len = 0;
+	while (i->offset < i->packet->h.len) {
+		struct tlv_header *h = (struct tlv_header *)(i->packet->buf + i->offset);
+		uint32_t type = h->type & ~TLV_META_TYPE_COMPRESSED;
+		i->offset += h->len;
+		if (type == i->value_type) {
+			*len = h->len - sizeof(struct tlv_header);
+			return h + 1;
+		}
+	}
+	return NULL;
+}
+
+char *tlv_packet_iterate_str(struct tlv_iterator *i)
+{
+	int len;
+	void *val = tlv_packet_iterate(i, &len);
+	return tlv_packet_get_buf_str(val, len);
+}
+
 void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, int *len)
 {
 	*len = 0;
@@ -88,18 +123,11 @@ void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, int *len)
 char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type)
 {
 	int len;
-	char *str = tlv_packet_get_raw(p, value_type, &len);
-	if (str != NULL) {
-		if (len > 0) {
-			str[len - 1] = '\0';
-		} else {
-			str = NULL;
-		}
-	}
-	return str;
+	void *val = tlv_packet_get_raw(p, value_type, &len);
+	return tlv_packet_get_buf_str(val, len);
 }
 
-struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
 		const void *val, int len)
 {
 	int packet_len = tlv_packet_len(p);
@@ -109,6 +137,14 @@ struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
 		memcpy((void *)p + packet_len, val, len);
 		p->h.len = htonl(new_len);
 	}
+	return p;
+}
+
+struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+		struct tlv_packet *child)
+{
+	p = tlv_packet_add_child_raw(p, child, tlv_packet_len(child));
+	tlv_packet_free(child);
 	return p;
 }
 
