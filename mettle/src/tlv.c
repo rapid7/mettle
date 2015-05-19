@@ -298,7 +298,6 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 	if (td->response_cb) {
 		td->response_cb(td, td->response_cb_arg);
 	}
-	log_info("Hello");
 
 	return 0;
 }
@@ -342,7 +341,7 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 	return 0;
 }
 
-void tlv_iter_extension_methods(struct tlv_dispatcher *td,
+void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		const char *extension,
 		void (*cb)(const char *method, void *arg), void *arg)
 {
@@ -363,28 +362,45 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td,
 	return handler;
 }
 
+void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx)
+{
+	if (ctx) {
+		tlv_packet_free(ctx->p);
+		free(ctx);
+	}
+}
+
 int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet *p)
 {
-	struct tlv_handler_ctx ctx = {
-		.method = tlv_packet_get_str(p, TLV_TYPE_METHOD),
-		.id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID),
-		.p = p,
-		.td = td,
-	};
+	struct tlv_handler_ctx *ctx = calloc(1, sizeof(*ctx));
 
-	if (ctx.method == NULL || ctx.id == NULL) {
-		return NULL;
+	if (ctx == NULL) {
+		return -1;
+	}
+
+	ctx->p = p;
+	ctx->td = td;
+	ctx->method = tlv_packet_get_str(p, TLV_TYPE_METHOD);
+	ctx->id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID);
+
+	if (ctx->method == NULL || ctx->id == NULL) {
+		tlv_handler_ctx_free(ctx);
+		return -1;
 	}
 
 	struct tlv_packet *response = NULL;
-	struct tlv_handler *handler = find_handler(td, ctx.method);
+	struct tlv_handler *handler = find_handler(td, ctx->method);
 	if (handler == NULL) {
-		log_info("no handler found for method: '%s'", ctx.method);
-		response = tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
+		log_info("no handler found for method: '%s'", ctx->method);
+		response = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	} else {
-		log_debug("processing method: '%s' id: '%s'", ctx.method, ctx.id);
-		response = handler->cb(&ctx, handler->arg);
+		log_debug("processing method: '%s' id: '%s'", ctx->method, ctx->id);
+		response = handler->cb(ctx, handler->arg);
+	}
+
+	if (response) {
+		tlv_handler_ctx_free(ctx);
 	}
 
 	return tlv_dispatcher_enqueue_response(td, response);

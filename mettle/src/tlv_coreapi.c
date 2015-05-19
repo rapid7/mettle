@@ -31,7 +31,7 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx, void *arg)
 	struct mettle *m = arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	tlv_iter_extension_methods(td, extension, add_method, &p);
+	tlv_dispatcher_iter_extension_methods(td, extension, add_method, &p);
 	return p;
 }
 

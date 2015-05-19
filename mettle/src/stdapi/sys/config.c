@@ -1,7 +1,7 @@
 /**
  * Copyright 2015 Rapid7
- * @brief Core API calls
- * @file tlv_stdapi.c
+ * @brief System Config API
+ * @file config.c
  */
 
 #include <stdlib.h>

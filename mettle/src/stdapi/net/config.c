@@ -1,7 +1,7 @@
 /**
  * Copyright 2015 Rapid7
- * @brief Core API calls
- * @file tlv_stdapi.c
+ * @brief Network Config API
+ * @file config.c
  */
 
 #include <unistd.h>

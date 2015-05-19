@@ -85,6 +85,8 @@ struct tlv_handler_ctx {
 
 typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *, void *arg);
 
+void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx);
+
 struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc);
 
 /*

@@ -44,6 +44,11 @@ int mettle_add_server_uri(struct mettle *m, const char *uri)
 	return network_client_add_server(m->nc, uri);
 }
 
+uv_loop_t * mettle_get_loop(struct mettle *m)
+{
+	return m->loop;
+}
+
 const char *mettle_get_fqdn(struct mettle *m)
 {
 	return m->fqdn;
