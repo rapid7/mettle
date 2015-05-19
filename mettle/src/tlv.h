@@ -15,9 +15,14 @@
 #include "buffer_queue.h"
 #include "tlv_types.h"
 
+/*
+ * TLV Packets
+ */
 struct tlv_packet;
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len);
+
+struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q);
 
 void *tlv_packet_data(struct tlv_packet *p);
 
@@ -68,31 +73,41 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 
 void tlv_packet_free(struct tlv_packet *p);
 
+/*
+ * TLV Handler
+ */
 struct tlv_handler_ctx {
 	const char *method;
 	const char *id;
 	struct tlv_packet *p;
+	struct tlv_dispatcher *td;
 };
 
 typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *, void *arg);
 
+struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc);
+
+/*
+ * TLV Dispatcher
+ */
+typedef void (*tlv_response_cb)(struct tlv_dispatcher *td, void *arg);
+
 struct tlv_dispatcher;
 
-struct tlv_dispatcher * tlv_dispatcher_new(void);
+struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg);
 
-struct tlv_packet * tlv_process_request(struct tlv_dispatcher *td,
-		struct tlv_packet *p);
-
-struct tlv_packet * tlv_get_packet_buffer_queue(struct buffer_queue *q);
+int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet *p);
 
 int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 		const char *method, tlv_handler_cb cb, void *arg);
 
-void tlv_iter_extension_methods(struct tlv_dispatcher *td,
+int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p);
+
+struct tlv_packet *tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td);
+
+void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		const char *extension,
 		void (*cb)(const char *method, void *arg), void *arg);
-
-struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc);
 
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 

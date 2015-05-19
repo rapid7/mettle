@@ -14,6 +14,7 @@
 #include "log.h"
 #include "tlv.h"
 #include "uthash.h"
+#include "utlist.h"
 
 struct tlv_header {
 	int len;
@@ -24,24 +25,6 @@ struct tlv_packet {
 	struct tlv_header h;
 	char buf[];
 };
-
-struct tlv_handler {
-	tlv_handler_cb cb;
-	void *arg;
-	UT_hash_handle hh;
-	char method[];
-};
-
-struct tlv_dispatcher {
-	struct tlv_handler *handlers;
-};
-
-struct tlv_dispatcher * tlv_dispatcher_new(void)
-{
-	struct tlv_dispatcher *td = calloc(1, sizeof(*td));
-
-	return td;
-}
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len)
 {
@@ -276,6 +259,72 @@ struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int 
 	return p;
 }
 
+/*
+ * TLV Dispatcher
+ */
+struct tlv_handler {
+	tlv_handler_cb cb;
+	void *arg;
+	UT_hash_handle hh;
+	char method[];
+};
+
+struct tlv_response {
+	struct tlv_packet *p;
+	struct tlv_response *next;
+};
+
+struct tlv_dispatcher {
+	struct tlv_handler *handlers;
+	struct tlv_response *responses;
+	tlv_response_cb response_cb;
+	void *response_cb_arg;
+};
+
+int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p)
+{
+	if (p == NULL) {
+		return -1;
+	}
+
+	struct tlv_response *r = malloc(sizeof(*r));
+	if (r == NULL) {
+		return -1;
+	}
+
+	r->p = p;
+	LL_APPEND(td->responses, r);
+
+	if (td->response_cb) {
+		td->response_cb(td, td->response_cb_arg);
+	}
+	log_info("Hello");
+
+	return 0;
+}
+
+struct tlv_packet *tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td)
+{
+	struct tlv_packet *p = NULL;
+	struct tlv_response *r = td->responses;
+	if (r) {
+		LL_DELETE(td->responses, r);
+		p = r->p;
+		free(r);
+	}
+	return p;
+}
+
+struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
+{
+	struct tlv_dispatcher *td = calloc(1, sizeof(*td));
+	if (td) {
+		td->response_cb = cb;
+		td->response_cb_arg = cb_arg;
+	}
+	return td;
+}
+
 int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 		const char *method, tlv_handler_cb cb, void *arg)
 {
@@ -314,34 +363,34 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td,
 	return handler;
 }
 
-struct tlv_packet * tlv_process_request(struct tlv_dispatcher *td,
-		struct tlv_packet *p)
+int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet *p)
 {
 	struct tlv_handler_ctx ctx = {
 		.method = tlv_packet_get_str(p, TLV_TYPE_METHOD),
 		.id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID),
-		.p = p
+		.p = p,
+		.td = td,
 	};
 
 	if (ctx.method == NULL || ctx.id == NULL) {
 		return NULL;
 	}
 
+	struct tlv_packet *response = NULL;
 	struct tlv_handler *handler = find_handler(td, ctx.method);
 	if (handler == NULL) {
 		log_info("no handler found for method: '%s'", ctx.method);
-		return tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
+		response = tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
+
+	} else {
+		log_debug("processing method: '%s' id: '%s'", ctx.method, ctx.id);
+		response = handler->cb(&ctx, handler->arg);
 	}
 
-	log_debug("processing method: '%s' id: '%s'", ctx.method, ctx.id);
-	struct tlv_packet *response = handler->cb(&ctx, handler->arg);
-	if (response == NULL) {
-		response = tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
-	}
-	return response;
+	return tlv_dispatcher_enqueue_response(td, response);
 }
 
-struct tlv_packet * tlv_get_packet_buffer_queue(struct buffer_queue *q)
+struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 {
 	/*
 	 * Sanity check packet header and length
@@ -370,7 +419,7 @@ struct tlv_packet * tlv_get_packet_buffer_queue(struct buffer_queue *q)
 	}
 
 	/*
-	 * Sanity check sub-TLVs and byteswap
+	 * Sanity check sub-TLVs
 	 */
 	int offset = 0;
 	while (offset < len) {

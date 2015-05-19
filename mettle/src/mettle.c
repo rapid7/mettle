@@ -39,21 +39,6 @@ int start_heartbeat(struct mettle *m)
 	return 0;
 }
 
-static void on_read(struct network_client *nc, void *arg)
-{
-	struct mettle *m = arg;
-	struct buffer_queue *q = network_client_rx_queue(nc);
-	struct tlv_packet *request;
-
-   	while ((request = tlv_get_packet_buffer_queue(q))) {
-		struct tlv_packet *p = tlv_process_request(m->td, request);
-		if (p) {
-			network_client_write(nc, tlv_packet_data(p), tlv_packet_len(p));
-			tlv_packet_free(p);
-		}
-	}
-}
-
 int mettle_add_server_uri(struct mettle *m, const char *uri)
 {
 	return network_client_add_server(m->nc, uri);
@@ -83,6 +68,29 @@ void mettle_free(struct mettle *m)
 	}
 }
 
+static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
+{
+	struct mettle *m = arg;
+	struct tlv_packet *response;
+
+	while ((response = tlv_dispatcher_dequeue_response(td))) {
+		network_client_write(m->nc,
+				tlv_packet_data(response), tlv_packet_len(response));
+		tlv_packet_free(response);
+	}
+}
+
+static void on_network_read(struct network_client *nc, void *arg)
+{
+	struct mettle *m = arg;
+	struct buffer_queue *q = network_client_rx_queue(nc);
+	struct tlv_packet *request;
+
+	while ((request = tlv_packet_read_buffer_queue(q))) {
+		tlv_dispatcher_process_request(m->td, request);
+	}
+}
+
 struct mettle *mettle(void)
 {
 	struct mettle *m = calloc(1, sizeof(*m));
@@ -106,9 +114,9 @@ struct mettle *mettle(void)
 
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
-	network_client_set_read_cb(m->nc, on_read, m);
+	network_client_set_read_cb(m->nc, on_network_read, m);
 
-	m->td = tlv_dispatcher_new();
+	m->td = tlv_dispatcher_new(on_tlv_response, m);
 	if (m->td == NULL) {
 		goto err;
 	}
