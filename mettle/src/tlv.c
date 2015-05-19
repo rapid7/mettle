@@ -153,6 +153,13 @@ struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
 struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p, uint32_t type,
 		const void *val, int len)
 {
+	/*
+	 * This adds memory allocation resiliency all the way down the stack
+	 */
+	if (p == NULL) {
+		return NULL;
+	}
+
 	int packet_len = tlv_packet_len(p);
 	int new_len = packet_len + sizeof(struct tlv_header) + len;
 	p = realloc(p, new_len);
@@ -329,7 +336,7 @@ struct tlv_packet * tlv_process_request(struct tlv_dispatcher *td,
 	log_debug("processing method: '%s' id: '%s'", ctx.method, ctx.id);
 	struct tlv_packet *response = handler->cb(&ctx, handler->arg);
 	if (response == NULL) {
-		return tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
+		response = tlv_packet_response_result(&ctx, TLV_RESULT_FAILURE);
 	}
 	return response;
 }
