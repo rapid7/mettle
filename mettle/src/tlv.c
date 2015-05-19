@@ -85,12 +85,13 @@ char *tlv_packet_get_buf_str(void * buf, int len)
 void *tlv_packet_iterate(struct tlv_iterator *i, int *len)
 {
 	*len = 0;
-	while (i->offset < i->packet->h.len) {
+	int packet_len = tlv_packet_len(i->packet) - sizeof(struct tlv_header);
+	while (i->offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(i->packet->buf + i->offset);
-		uint32_t type = h->type & ~TLV_META_TYPE_COMPRESSED;
-		i->offset += h->len;
+		uint32_t type = ntohl(h->type) & ~TLV_META_TYPE_COMPRESSED;
+		i->offset += ntohl(h->len);
 		if (type == i->value_type) {
-			*len = h->len - sizeof(struct tlv_header);
+			*len = ntohl(h->len) - sizeof(struct tlv_header);
 			return h + 1;
 		}
 	}
@@ -108,14 +109,15 @@ void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, int *len)
 {
 	*len = 0;
 	size_t offset = 0;
-	while (offset < p->h.len) {
+	int packet_len = tlv_packet_len(p) - sizeof(struct tlv_header);
+	while (offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(p->buf + offset);
-		uint32_t type = h->type & ~TLV_META_TYPE_COMPRESSED;
+		uint32_t type = ntohl(h->type) & ~TLV_META_TYPE_COMPRESSED;
 		if (type == value_type) {
-			*len = h->len - sizeof(struct tlv_header);
+			*len = ntohl(h->len) - sizeof(struct tlv_header);
 			return h + 1;
 		}
-		offset += h->len;
+		offset += ntohl(h->len);
 	}
 	return NULL;
 }
@@ -131,7 +133,7 @@ struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
 		const void *val, int len)
 {
 	int packet_len = tlv_packet_len(p);
-	int new_len = packet_len +  len;
+	int new_len = packet_len + len;
 	p = realloc(p, new_len);
 	if (p) {
 		memcpy((void *)p + packet_len, val, len);
@@ -343,42 +345,39 @@ struct tlv_packet * tlv_get_packet_buffer_queue(struct buffer_queue *q)
 	}
 
 	buffer_queue_copy(q, &h, sizeof(struct tlv_header));
-	h.type = ntohl(h.type);
-	h.len = ntohl(h.len);
-	if (h.len < 0 || h.len < sizeof(struct tlv_header)
-			|| buffer_queue_len(q) < h.len) {
+	int len = ntohl(h.len);
+	if (len < 0 || len < sizeof(struct tlv_header)
+			|| buffer_queue_len(q) < len) {
 		return NULL;
 	}
 
 	/*
 	 * Header is OK, read the rest of the packet
 	 */
-	struct tlv_packet *p = malloc(h.len);
+	struct tlv_packet *p = malloc(len);
 	if (p) {
 		p->h = h;
 		buffer_queue_drain(q, sizeof(struct tlv_header));
-		buffer_queue_remove(q, p->buf, h.len);
-		p->h.len -= sizeof(struct tlv_header);
+		buffer_queue_remove(q, p->buf, len);
+		len -= sizeof(struct tlv_header);
 	}
 
 	/*
 	 * Sanity check sub-TLVs and byteswap
 	 */
 	int offset = 0;
-	while (offset < p->h.len) {
+	while (offset < len) {
 		struct tlv_header *tlv = (struct tlv_header *)(p->buf + offset);
-		tlv->type = htonl(tlv->type);
-		tlv->len = htonl(tlv->len);
+		int tlv_len = htonl(tlv->len);
 		/*
 		 * Ensure the sub-TLV's fit within the packet
 		 */
-		if (tlv->len > (h.len - offset)
-				|| tlv->len < sizeof(struct tlv_header)) {
+		if (tlv_len > (len - offset) || tlv_len < sizeof(struct tlv_header)) {
 			free(p);
 			return NULL;
 		}
-		offset += tlv->len;
-		if (tlv->len == 0) {
+		offset += tlv_len;
+		if (tlv_len == 0) {
 			break;
 		}
 	}
