@@ -43,8 +43,10 @@ ifneq "$(TARGET)" "native"
     else
         HOST=$(firstword $(subst -, ,$(TARGET)))-linux-gnu
     endif
-    CONFIGURE:=$(CONFIGURE) --host=$(HOST)
     CFLAGS:=$(CFLAGS) -target $(TARGET)
+endif
+ifneq "$(HOST)" ""
+    CONFIGURE:=$(CONFIGURE) --host=$(HOST)
 endif
 
 ifeq "$(ARCH)" "sparc"
