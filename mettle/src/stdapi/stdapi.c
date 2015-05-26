@@ -8,21 +8,24 @@
 #include "net/config.c"
 #include "sys/config.c"
 
+#define add_handler(name, cb) \
+	tlv_dispatcher_add_handler(td, "stdapi_" name, cb, m)
+
 void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td)
 {
-	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_ls", fs_ls, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
+	add_handler("fs_chdir", fs_chdir);
+	add_handler("fs_delete_file", fs_delete_file);
+	add_handler("fs_expand_path", fs_expand_path);
+	add_handler("fs_file_move", fs_file_move);
+	add_handler("fs_getwd", fs_getwd);
+	add_handler("fs_ls", fs_ls);
+	add_handler("fs_separator", fs_separator);
+	add_handler("fs_stat", fs_stat);
 
-	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_interfaces",
-			net_config_get_interfaces, m);
-	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_routes",
-			net_config_get_routes, m);
+	add_handler("net_config_get_interfaces", net_config_get_interfaces);
+	add_handler("net_config_get_routes", net_config_get_routes);
 
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getenv",
-			sys_config_getenv, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid",
-			sys_config_getuid, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo",
-			sys_config_sysinfo, m);
+	add_handler("sys_config_getenv", sys_config_getenv);
+	add_handler("sys_config_getuid", sys_config_getuid);
+	add_handler("sys_config_sysinfo", sys_config_sysinfo);
 }

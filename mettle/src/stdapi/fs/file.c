@@ -77,41 +77,40 @@ static void fs_ls_cb(uv_fs_t *req)
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 
+	tlv_handler_ctx_free(ctx);
 	free(req);
 }
 
 struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
-	int rc = TLV_RESULT_FAILURE;
-
-	uv_fs_t *req = get_fs_req(ctx, m);
-	if (req == NULL)
-		goto err;
 
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
-	if (path == NULL)
-		goto err;
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
 
-	if (uv_fs_scandir(mettle_get_loop(m), req, path, 0, fs_ls_cb) == -1)
-		goto err;
+	uv_fs_t *req = get_fs_req(ctx, m);
+	if (req == NULL) {
+		return tlv_packet_response_result(ctx, ENOMEM);
+	}
+
+	if (uv_fs_scandir(mettle_get_loop(m), req, path, 0, fs_ls_cb) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
 
 	return NULL;
-
-err:
-	free(req);
-	return tlv_packet_response_result(ctx, rc);
 }
 
 static void fs_stat_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
-	struct tlv_packet *p;
 
-	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	p = add_stat(p, &req->statbuf);
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 
+	tlv_handler_ctx_free(ctx);
 	free(req);
 }
 
@@ -119,24 +118,17 @@ struct tlv_packet *fs_stat(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	uv_fs_t *req = get_fs_req(ctx, m);
-	int rc;
 
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
 	if (path == NULL) {
-		rc = TLV_RESULT_EINVAL;
-		goto err;
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
 
 	if (uv_fs_stat(mettle_get_loop(m), req, path, fs_stat_cb) == -1) {
-		rc = TLV_RESULT_ENOMEM;
-		goto err;
+		return tlv_packet_response_result(ctx, errno);
 	}
 
 	return NULL;
-
-err:
-	free(req);
-	return tlv_packet_response_result(ctx, rc);
 }
 
 struct tlv_packet *fs_getwd(struct tlv_handler_ctx *ctx)
@@ -148,4 +140,99 @@ struct tlv_packet *fs_getwd(struct tlv_handler_ctx *ctx)
 
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	return tlv_packet_add_str(p, TLV_TYPE_DIRECTORY_PATH, dir);
+}
+
+struct tlv_packet *fs_separator(struct tlv_handler_ctx *ctx)
+{
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	return tlv_packet_add_str(p, TLV_TYPE_STRING, "/");
+}
+
+struct tlv_packet *fs_expand_path(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	return tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, path);
+}
+
+static void fs_file_move_cb(uv_fs_t *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+
+	tlv_handler_ctx_free(ctx);
+	free(req);
+}
+
+struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
+{
+	const char *src = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_NAME);
+	const char *dst = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+
+	if (src == NULL || dst == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+
+	struct mettle *m = ctx->arg;
+	uv_fs_t *req = get_fs_req(ctx, m);
+	if (req == NULL) {
+		return tlv_packet_response_result(ctx, ENOMEM);
+	}
+
+	if (uv_fs_rename(mettle_get_loop(m), req, src, dst, fs_file_move_cb) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
+
+	return NULL;
+}
+
+static void fs_delete_file_cb(uv_fs_t *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+
+	tlv_handler_ctx_free(ctx);
+	free(req);
+}
+
+struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+
+	struct mettle *m = ctx->arg;
+	uv_fs_t *req = get_fs_req(ctx, m);
+	if (req == NULL) {
+		return tlv_packet_response_result(ctx, ENOMEM);
+	}
+
+	if (uv_fs_unlink(mettle_get_loop(m), req, path, fs_delete_file_cb) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
+
+	return NULL;
+}
+
+struct tlv_packet *fs_chdir(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+
+	int rc = TLV_RESULT_SUCCESS;
+	if (chdir(path) == -1) {
+		rc = errno;
+	}
+	return tlv_packet_response_result(ctx, rc);
 }
