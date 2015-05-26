@@ -16,23 +16,26 @@
 
 static char *normalize_env_var(char *var)
 {
-	while (*var == '%' || *var == '$')
+	while (*var == '%' || *var == '$') {
 		var++;
+	}
 
 	char *end = var + strlen(var) - 1;
-	while (end > var && *end == '%')
+	while (end > var && *end == '%') {
 		end--;
+	}
+
 	*(end + 1) = '\0';
 
 	return var;
 }
 
-struct tlv_packet *sys_config_getenv(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *sys_config_getenv(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
 	struct tlv_iterator i = {
-		.packet = ctx->p,
+		.packet = ctx->req,
 		.value_type = TLV_TYPE_ENV_VARIABLE,
 	};
 
@@ -50,27 +53,28 @@ struct tlv_packet *sys_config_getenv(struct tlv_handler_ctx *ctx, void *arg)
 	return p;
 }
 
-struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
-	return tlv_packet_add_printf(p, TLV_TYPE_USER_NAME,
+	return tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
 			"uid=%d, gid=%d, euid=%d, egid=%d",
 			getuid(), geteuid(), getgid(), getegid());
 }
 
-struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = arg;
+	struct mettle *m = ctx->arg;
 
 	sigar_sys_info_t sys_info;
-	if (sigar_sys_info_get(mettle_get_sigar(m), &sys_info) == -1)
-		return NULL;
+	if (sigar_sys_info_get(mettle_get_sigar(m), &sys_info) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
 
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
 	p = tlv_packet_add_str(p, TLV_TYPE_COMPUTER_NAME, mettle_get_fqdn(m));
-	p = tlv_packet_add_printf(p, TLV_TYPE_OS_NAME, "%s (%s %s)",
+	p = tlv_packet_add_fmt(p, TLV_TYPE_OS_NAME, "%s (%s %s)",
 			sys_info.description, sys_info.name, sys_info.version);
 	p = tlv_packet_add_str(p, TLV_TYPE_ARCHITECTURE, sys_info.arch);
 

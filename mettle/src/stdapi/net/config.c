@@ -46,10 +46,13 @@ static int add_intf_info(const struct intf_entry *entry, void *arg)
 	p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, entry->intf_name);
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_MTU, entry->intf_mtu);
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_MTU, entry->intf_mtu);
-	p = tlv_packet_add_str(p, TLV_TYPE_INTERFACE_FLAGS, flags2string(entry->intf_flags));
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_INDEX, entry->intf_index);
-	p = tlv_packet_add_raw(p, TLV_TYPE_MAC_ADDRESS, entry->intf_addr.addr_data8, ETH_ADDR_LEN);
-	p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK, &entry->intf_addr);
+	p = tlv_packet_add_str(p, TLV_TYPE_INTERFACE_FLAGS,
+			flags2string(entry->intf_flags));
+	p = tlv_packet_add_raw(p, TLV_TYPE_MAC_ADDRESS,
+			entry->intf_addr.addr_data8, ETH_ADDR_LEN);
+	p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
+			&entry->intf_addr);
 
 	for (int i = 0; i < entry->intf_alias_num; i++) {
 		p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
@@ -61,7 +64,7 @@ static int add_intf_info(const struct intf_entry *entry, void *arg)
 	return 0;
 }
 
-struct tlv_packet *net_config_get_interfaces(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *net_config_get_interfaces(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	intf_t *i = intf_open();
@@ -82,7 +85,7 @@ static int add_route_info(const struct route_entry *entry, void *arg)
 	return 0;
 }
 
-struct tlv_packet *net_config_get_routes(struct tlv_handler_ctx *ctx, void *arg)
+struct tlv_packet *net_config_get_routes(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	route_t *r = route_open();

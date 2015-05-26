@@ -56,8 +56,9 @@ struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p,
 struct tlv_packet * tlv_packet_add_str(struct tlv_packet *p,
 		uint32_t type, const char *str);
 
-struct tlv_packet * tlv_packet_add_printf(struct tlv_packet *p,
-		uint32_t type, char const *fmt, ...);
+struct tlv_packet * tlv_packet_add_fmt(struct tlv_packet *p,
+		uint32_t type, char const *fmt, ...)
+		__attribute__ ((format(printf, 3, 4)));
 
 struct tlv_packet * tlv_packet_add_u32(struct tlv_packet *p,
 		uint32_t type, uint32_t val);
@@ -79,13 +80,18 @@ void tlv_packet_free(struct tlv_packet *p);
 struct tlv_handler_ctx {
 	const char *method;
 	const char *id;
-	struct tlv_packet *p;
+	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
+	void *arg;
 };
 
-typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *, void *arg);
+typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *);
 
 void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx);
+
+struct tlv_packet * tlv_packet_add_result(struct tlv_packet *p, int rc);
+
+struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx);
 
 struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc);
 

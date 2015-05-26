@@ -169,6 +169,11 @@ struct tlv_packet * tlv_packet_add_u32(struct tlv_packet *p,
 	return tlv_packet_add_raw(p, type, &val, sizeof(val));
 }
 
+struct tlv_packet * tlv_packet_add_result(struct tlv_packet *p, int rc)
+{
+	return tlv_packet_add_u32(p, TLV_TYPE_RESULT, rc);
+}
+
 struct tlv_packet * tlv_packet_add_u64(struct tlv_packet *p,
 		uint32_t type, uint64_t val)
 {
@@ -225,7 +230,7 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 	return p;
 }
 
-struct tlv_packet * tlv_packet_add_printf(struct tlv_packet *p,
+struct tlv_packet * tlv_packet_add_fmt(struct tlv_packet *p,
 		uint32_t type, char const *fmt, ...)
 {
 	va_list va;
@@ -240,23 +245,18 @@ struct tlv_packet * tlv_packet_add_printf(struct tlv_packet *p,
 	return p;
 }
 
-struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx, int initial_len)
+struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 {
-	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE, initial_len);
-	if (p) {
-		p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
-		p = tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, ctx->id);
-	}
-	return p;
+	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
+			tlv_packet_len(ctx->req) + 32);
+	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
+	return tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, ctx->id);
 };
 
 struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc)
 {
-	struct tlv_packet *p = tlv_packet_response(ctx, tlv_packet_len(ctx->p) + 32);
-	if (p) {
-		p = tlv_packet_add_u32(p, TLV_TYPE_RESULT, rc);
-	}
-	return p;
+	struct tlv_packet *p = tlv_packet_response(ctx);
+	return tlv_packet_add_u32(p, TLV_TYPE_RESULT, rc);
 }
 
 /*
@@ -365,7 +365,7 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td,
 void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx)
 {
 	if (ctx) {
-		tlv_packet_free(ctx->p);
+		tlv_packet_free(ctx->req);
 		free(ctx);
 	}
 }
@@ -378,7 +378,7 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 		return -1;
 	}
 
-	ctx->p = p;
+	ctx->req = p;
 	ctx->td = td;
 	ctx->method = tlv_packet_get_str(p, TLV_TYPE_METHOD);
 	ctx->id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID);
@@ -396,7 +396,8 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 
 	} else {
 		log_debug("processing method: '%s' id: '%s'", ctx->method, ctx->id);
-		response = handler->cb(ctx, handler->arg);
+		ctx->arg = handler->arg;
+		response = handler->cb(ctx);
 	}
 
 	if (response) {
