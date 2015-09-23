@@ -1,4 +1,4 @@
-LIBRESSL_VERSION=2.2.0
+LIBRESSL_VERSION=2.3.0
 
 $(BUILD)/libressl/configure:
 	@echo "Unpacking libressl for $(TARGET)"
@@ -15,7 +15,7 @@ endif
 $(BUILD)/libressl/Makefile: $(BUILD)/libressl/configure $(LIBRESSL_DEPS)
 	@echo "Configuring libressl for $(TARGET)"
 	@cd $(BUILD)/libressl; \
-		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+		$(ENV) ./$(CONFIGURE) --disable-asm $(LOGBUILD)
 
 $(BUILD)/lib/libcrypto.a: $(BUILD)/libressl/Makefile
 	@echo "Building libressl for $(TARGET)"

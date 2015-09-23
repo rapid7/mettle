@@ -306,8 +306,7 @@ static int write_tls(struct network_client *nc, void *buf, size_t buflen)
 	if (nc->tls == NULL) {
 		return -1;
 	}
-	size_t bytes_written;
-	return tls_write(nc->tls, buf, buflen, &bytes_written);
+	return tls_write(nc->tls, buf, buflen) == -1 ? -1 : 0;
 }
 
 struct write_request {
@@ -419,7 +418,8 @@ void poll_tls(uv_poll_t *req, int status, int events)
 	struct network_client *nc = req->data;
 
 	if (nc->state == network_client_connecting) {
-		if (nc->tls_state == TLS_READ_AGAIN || nc->tls_state == TLS_WRITE_AGAIN) {
+		if (nc->tls_state == TLS_WANT_POLLIN ||
+		    nc->tls_state == TLS_WANT_POLLOUT) {
 			nc->tls_state = tls_connect_socket(nc->tls, 0, NULL);
 
 			if (nc->tls_state == 0) {
@@ -434,15 +434,16 @@ void poll_tls(uv_poll_t *req, int status, int events)
 	}
 
 	if (nc->state == network_client_connected) {
-		int rc;
 		char buf[4096];
-		size_t bytes_read = 0;
+		ssize_t bytes_read = 0;
 		do {
-			rc = tls_read(nc->tls, buf, sizeof(buf), &bytes_read);
-			enqueue_data(nc, buf, bytes_read);
-		} while (rc == 0 && bytes_read > 0);
+			bytes_read = tls_read(nc->tls, buf, sizeof(buf));
+			if (bytes_read > 0) {
+				enqueue_data(nc, buf, bytes_read);
+			}
+		} while (bytes_read > 0);
 
-		if (rc == -1) {
+		if (bytes_read == -1) {
 			uv_poll_stop(&nc->tls_poll_req);
 			network_client_close(nc);
 		}

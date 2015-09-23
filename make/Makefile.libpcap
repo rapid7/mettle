@@ -1,10 +1,12 @@
+LIBPCAP_VERSION=1.6.2
+
 $(BUILD)/libpcap/configure:
 	@echo "Unpacking libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr libpcap; \
-		$(TAR) xf $(ROOT)/deps/libpcap-1.6.2.tar.gz; \
-		mv libpcap-1.6.2 libpcap
+		$(TAR) xf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
+		mv libpcap-$(LIBPCAP_VERSION) libpcap
 
 ifneq "$(TARGET)" "native"
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
