@@ -15,7 +15,7 @@ ifneq "$(TARGET)" "native"
         ARCH:=mips
     endif
     ifneq (,$(findstring ppc,$(TARGET)))
-        ARCH:=ppc
+        ARCH:=powerpc
     endif
     ifneq (,$(findstring i386,$(TARGET)))
         ARCH:=x86
