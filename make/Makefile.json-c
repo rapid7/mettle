@@ -5,7 +5,7 @@ $(BUILD)/json-c/configure:
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/json-c; \
-		$(TAR) xf $(DEPS)/json-c-$(JSON_C_VERSION).tar.gz; \
+		$(TAR) zxf $(DEPS)/json-c-$(JSON_C_VERSION).tar.gz; \
 		mv json-c-$(JSON_C_VERSION) json-c
 
 $(BUILD)/json-c/Makefile: $(BUILD)/json-c/configure

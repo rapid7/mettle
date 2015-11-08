@@ -1,4 +1,4 @@
-all: tools mettle
+all: mettle
 
 include make/Makefile.common
 include make/Makefile.curl
