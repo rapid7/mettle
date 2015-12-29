@@ -1,4 +1,4 @@
-LIBPCAP_VERSION=1.6.2
+LIBPCAP_VERSION=1.7.4
 
 $(BUILD)/libpcap/configure:
 	@echo "Unpacking libpcap for $(TARGET)"

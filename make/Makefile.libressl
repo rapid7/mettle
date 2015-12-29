@@ -1,4 +1,4 @@
-LIBRESSL_VERSION=2.3.0
+LIBRESSL_VERSION=2.3.2
 
 $(BUILD)/libressl/configure:
 	@echo "Unpacking libressl for $(TARGET)"
