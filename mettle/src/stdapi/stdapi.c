@@ -7,6 +7,7 @@
 #include "fs/file.c"
 #include "net/config.c"
 #include "sys/config.c"
+#include "sys/process.c"
 
 #define add_handler(name, cb) \
 	tlv_dispatcher_add_handler(td, "stdapi_" name, cb, m)
@@ -28,4 +29,6 @@ void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td)
 	add_handler("sys_config_getenv", sys_config_getenv);
 	add_handler("sys_config_getuid", sys_config_getuid);
 	add_handler("sys_config_sysinfo", sys_config_sysinfo);
+
+	add_handler("sys_process_get_processes", sys_process_get_processes);
 }
