@@ -1,4 +1,4 @@
-LIBCURL_VERSION=7.44.0
+LIBCURL_VERSION=7.46.0
 
 $(BUILD)/curl/configure:
 	@echo "Unpacking curl for $(TARGET)"

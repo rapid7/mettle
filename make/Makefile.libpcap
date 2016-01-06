@@ -1,4 +1,4 @@
-LIBPCAP_VERSION=1.7.4
+LIBPCAP_VERSION=1.8.0-PRE-GIT
 
 $(BUILD)/libpcap/configure:
 	@echo "Unpacking libpcap for $(TARGET)"

@@ -1,4 +1,4 @@
-LIBUV_VERSION=1.7.6
+LIBUV_VERSION=1.8.0
 
 $(BUILD)/libuv/configure:
 	@echo "Unpacking libuv for $(TARGET)"
