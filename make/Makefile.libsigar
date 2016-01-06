@@ -6,7 +6,7 @@ $(BUILD)/libsigar/configure:
 		$(TAR) zxf $(ROOT)/deps/libsigar-1.6.2.tar.gz; \
 		mv libsigar-1.6.2 libsigar
 
-$(BUILD)/libsigar/Makefile: $(BUILD)/libsigar/configure
+$(BUILD)/libsigar/Makefile: tools $(BUILD)/libsigar/configure
 	@echo "Configuring libsigar for $(TARGET)"
 	@mkdir -p $(BUILD)/libsigar
 	@cd $(BUILD)/libsigar; \

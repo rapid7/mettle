@@ -8,7 +8,7 @@ $(BUILD)/curl/configure:
 		$(TAR) zxf $(DEPS)/curl-$(LIBCURL_VERSION).tar.gz; \
 		mv curl-$(LIBCURL_VERSION) curl
 
-$(BUILD)/curl/Makefile: $(BUILD)/curl/configure $(LIBCURL_DEPS)
+$(BUILD)/curl/Makefile: tools $(BUILD)/curl/configure $(LIBCURL_DEPS)
 	@echo "Configuring curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
 		$(ENV) ./$(CONFIGURE) \

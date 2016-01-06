@@ -13,7 +13,7 @@ ifneq "$(TARGET)" "native"
     LIBPCAP_DEPS=$(BUILD)/include/linux
 endif
 
-$(BUILD)/libpcap/Makefile: $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
+$(BUILD)/libpcap/Makefile: tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \
