@@ -5,23 +5,29 @@ BUILDS=$(ROOT)/build
 
 TARGET:=native
 ifneq "$(TARGET)" "native"
-    ifneq (,$(findstring aarch,$(TARGET)))
+    ifneq (,$(findstring arm64,$(TARGET)))
         ARCH:=arm64
+        HOSTARCH:=aarch64
     endif
-    ifneq (,$(findstring arm,$(TARGET)))
+    ifneq (,$(findstring arm32,$(TARGET)))
         ARCH:=arm
+        HOSTARCH:=arm
     endif
     ifneq (,$(findstring mips,$(TARGET)))
         ARCH:=mips
+        HOSTARCH:=mips
     endif
     ifneq (,$(findstring ppc,$(TARGET)))
         ARCH:=powerpc
+        HOSTARCH:=ppc
     endif
     ifneq (,$(findstring i386,$(TARGET)))
         ARCH:=x86
+        HOSTARCH:=i386
     endif
-    ifneq (,$(findstring x86,$(TARGET)))
+    ifneq (,$(findstring x86_64,$(TARGET)))
         ARCH:=x86
+        HOSTARCH:=x86_64
     endif
     BUILD:=$(BUILDS)/cross-$(TARGET)
 else
@@ -39,9 +45,9 @@ CPPFLAGS:=-I$(BUILD)/include
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring mingw,$(TARGET)))
-        HOST=$(firstword $(subst -, ,$(TARGET)))-w64-mingw32
+        HOST=$(firstword $(subst -, ,$(HOSTARCH)))-w64-mingw32
     else
-        HOST=$(firstword $(subst -, ,$(TARGET)))-linux-gnu
+        HOST=$(firstword $(subst -, ,$(HOSTARCH)))-linux-gnu
     endif
     CFLAGS:=$(CFLAGS) -target $(TARGET)
 endif
