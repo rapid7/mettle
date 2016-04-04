@@ -12,7 +12,7 @@ ifneq "$(TARGET)" "native"
     LIBUV_DEPS=$(BUILD)/include/linux
 endif
 
-$(BUILD)/libuv/Makefile: tools $(BUILD)/libuv/configure $(LIBUV_DEPS)
+$(BUILD)/libuv/Makefile: build/tools $(BUILD)/libuv/configure $(LIBUV_DEPS)
 	@echo "Configuring libuv for $(TARGET)"
 	@cd $(BUILD)/libuv; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

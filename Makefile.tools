@@ -35,4 +35,8 @@ build/tools/$(ELLCC_HOST)/ellcc: $(TOOLCHAIN)/libecc.xz
 	@cd build/tools/$(ELLCC_HOST)/ellcc/libecc && tar xf $(TOOLCHAIN)/libecc-mingw.xz && mv libecc-mingw mingw
 	@touch build/tools/$(ELLCC_HOST)/ellcc
 
-tools: build/tools/$(ELLCC_HOST)/ellcc
+ifneq "$(TARGET)" "native"
+    TOOLS_DEPS=$(BUILD)/include/linux
+endif
+
+build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc/bin/ecc

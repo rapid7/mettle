@@ -62,8 +62,8 @@ int main(int argc, char * argv[])
 	/*
 	 * Start system logger
 	 */
-    log_init_file(stderr);
-    log_init_flush_thread();
+	log_init_file(stderr);
+	log_init_flush_thread();
 
 	/*
 	 * Allocate the main dispatcher

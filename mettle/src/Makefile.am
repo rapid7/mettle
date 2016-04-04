@@ -6,7 +6,7 @@ libmettle_la_LIBADD = -luv
 libmettle_la_LIBADD += -lcurl
 libmettle_la_LIBADD += -ldnet
 libmettle_la_LIBADD += -lsigar
-libmettle_la_LIBADD += -ltls
+#libmettle_la_LIBADD += -ltls
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += buffer_queue.c

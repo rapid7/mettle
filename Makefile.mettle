@@ -3,11 +3,11 @@ $(ROOT)/mettle/configure:
 	@cd $(ROOT)/mettle; \
 		autoreconf -i $(LOGBUILD)
 
-$(BUILD)/mettle/Makefile: tools $(ROOT)/mettle/configure \
-	$(BUILD)/lib/libcrypto.a \
+$(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libdnet.a \
 	$(BUILD)/lib/libjson-c.a \
+	$(BUILD)/lib/libmbedtls.a \
 	$(BUILD)/lib/libpcap.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libuv.a

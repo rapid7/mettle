@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <tls.h>
 
 #include "buffer_queue.h"
 #include "log.h"
@@ -44,10 +43,12 @@ struct network_client {
 
 	uv_getaddrinfo_t getaddrinfo_req;
 
+	/*
 	struct tls *tls;
 	struct tls_config *tls_config;
 	int tls_state;
 	uv_poll_t tls_poll_req;
+	*/
 
 	uv_connect_t connect_req;
 
@@ -303,10 +304,13 @@ size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 
 static int write_tls(struct network_client *nc, void *buf, size_t buflen)
 {
+	return -1;
+	/*
 	if (nc->tls == NULL) {
 		return -1;
 	}
 	return tls_write(nc->tls, buf, buflen) == -1 ? -1 : 0;
+	*/
 }
 
 struct write_request {
@@ -367,11 +371,13 @@ static void set_closed(struct network_client *nc)
 		nc->addrinfo = NULL;
 	}
 
+	/*
 	if (nc->tls) {
 		tls_free(nc->tls);
 		nc->tls_state = 0;
 		nc->tls = NULL;
 	}
+	*/
 
 	buffer_queue_drain_all(nc->rx_queue);
 
@@ -413,6 +419,7 @@ static void enqueue_data(struct network_client *nc, void *data, size_t len)
 	}
 }
 
+/*
 void poll_tls(uv_poll_t *req, int status, int events)
 {
 	struct network_client *nc = req->data;
@@ -449,6 +456,7 @@ void poll_tls(uv_poll_t *req, int status, int events)
 		}
 	}
 }
+*/
 
 static void read_tcp(uv_stream_t *tcp, ssize_t bytes_read, const struct uv_buf_t *buf)
 {
@@ -479,6 +487,7 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 		uv_read_start(req->handle, uv_buf_alloc, read_tcp);
 
 	} else {
+		/*
 		nc->tls = tls_client();
 		if (nc->tls == NULL) {
 			log_error("could not allocate TLS client");
@@ -504,6 +513,7 @@ static void connect_tcp_cb(uv_connect_t *req, int status)
 		nc->tls_poll_req.data = nc;
 		uv_poll_init(nc->loop, &nc->tls_poll_req, socket);
 		uv_poll_start(&nc->tls_poll_req, UV_READABLE, poll_tls);
+		*/
 	}
 }
 
@@ -617,7 +627,7 @@ void network_client_free(struct network_client *nc)
 	if (nc) {
 		network_client_stop(nc);
 		network_client_remove_servers(nc);
-		tls_config_free(nc->tls_config);
+		//tls_config_free(nc->tls_config);
 		buffer_queue_free(nc->rx_queue);
 		free(nc);
 	}
@@ -638,6 +648,7 @@ struct network_client * network_client_new(uv_loop_t *loop)
 	/*
 	 * initialize libtls
 	 */
+	/*
 	tls_init();
 	nc->tls_config = tls_config_new();
 	if (nc->tls_config == NULL) {
@@ -646,6 +657,7 @@ struct network_client * network_client_new(uv_loop_t *loop)
 
 	tls_config_insecure_noverifycert(nc->tls_config);
 	tls_config_insecure_noverifyname(nc->tls_config);
+	*/
 
 	/*
 	 * grab the default event loop if none is specified

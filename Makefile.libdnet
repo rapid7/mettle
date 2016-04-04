@@ -6,7 +6,7 @@ $(BUILD)/libdnet/configure:
 		$(TAR) zxf $(ROOT)/deps/libdnet-1.12.tar.gz; \
 		mv libdnet-1.12 libdnet
 
-$(BUILD)/libdnet/Makefile: tools $(BUILD)/libdnet/configure
+$(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure
 	@echo "Configuring libdnet for $(TARGET)"
 	@mkdir -p $(BUILD)/libdnet
 	@cd $(BUILD)/libdnet; \

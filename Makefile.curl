@@ -1,24 +1,23 @@
 LIBCURL_VERSION=7.46.0
 
-$(BUILD)/curl/configure:
+$(BUILD)/lib/libcurl.a: build/tools \
+	$(BUILD)/lib/libmbedtls.a
 	@echo "Unpacking curl for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/curl; \
 		$(TAR) zxf $(DEPS)/curl-$(LIBCURL_VERSION).tar.gz; \
 		mv curl-$(LIBCURL_VERSION) curl
-
-$(BUILD)/curl/Makefile: tools $(BUILD)/curl/configure $(LIBCURL_DEPS)
 	@echo "Configuring curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
 		$(ENV) ./$(CONFIGURE) \
-		--with-ssl=$(BUILD) --disable-ldap --without-libidn --without-libssh2 \
+		--without-ssl --with-mbedtls=$(BUILD) \
+		--without-libpsl \
+		--disable-ldap --without-libidn --without-libssh2 \
 		--without-ca-bundle --without-ca-path \
 		--enable-threaded-resolver \
 		ac_cv_header_sys_poll_h=no \
 		$(LOGBUILD)
-
-$(BUILD)/lib/libcurl.a: $(BUILD)/curl/Makefile
 	@echo "Building curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
 		$(MAKE) $(LOGBUILD) ; \
