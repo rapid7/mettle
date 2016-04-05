@@ -1,16 +1,16 @@
 all: mettle
 
-include Makefile.common
-include Makefile.curl
-include Makefile.libdnet
-include Makefile.libpcap
-include Makefile.libsigar
-include Makefile.json-c
-include Makefile.libuv
-include Makefile.kernel-headers
-include Makefile.mbedtls
-include Makefile.mettle
-include Makefile.tools
+include make/Makefile.common
+include make/Makefile.curl
+include make/Makefile.libdnet
+include make/Makefile.libpcap
+include make/Makefile.libsigar
+include make/Makefile.json-c
+include make/Makefile.libuv
+include make/Makefile.kernel-headers
+include make/Makefile.mbedtls
+include make/Makefile.mettle
+include make/Makefile.tools
 
 distclean:
 	@rm -fr $(BUILD)
