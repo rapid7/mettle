@@ -47,10 +47,11 @@ static struct tlv_packet * add_stat(struct tlv_packet *p, uv_stat_t *us)
 		.gid = us->st_gid,
 		.rdev = us->st_rdev,
 		.size = us->st_size,
-		.mtime = us->st_mtime,
-		.atime = us->st_atime,
-		.ctime = us->st_ctime
+		.mtime = us->st_mtim.tv_sec,
+		.atime = us->st_atim.tv_sec,
+		.ctime = us->st_ctim.tv_sec,
 	};
+
 
 	return tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, &s, sizeof(s));
 }
