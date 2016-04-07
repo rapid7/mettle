@@ -53,9 +53,12 @@ ifneq "$(TARGET)" "native"
 endif
 ifneq "$(HOST)" ""
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
-    CFLAGS:=$(CFLAGS) -Os -fPIE
-    LDFLAGS:=$(LDFLAGS) -Wl,-Bstatic -Wl,-Bsymbolic
+else
+    CONFIGURE:=$(CONFIGURE) --host=x86_64-linux-gnu
 endif
+
+CFLAGS:=$(CFLAGS) -Os -fPIE
+LDFLAGS:=$(LDFLAGS) -Wl,-Bstatic -Wl,-Bsymbolic
 
 ifeq "$(ARCH)" "sparc"
     CFLAGS:=$(CFLAGS) -fPIC
