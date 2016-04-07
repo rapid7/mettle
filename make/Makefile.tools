@@ -1,7 +1,9 @@
 ELLCC_HOST=linux
 ifneq "$(TARGET)" "native"
     CC=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin/ecc
+    CPP=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin/ecc
     AR=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ar
+    LD=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ld
     RANLIB=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin/ecc-ranlib
 else
     CC=cc
@@ -39,4 +41,4 @@ ifneq "$(TARGET)" "native"
     TOOLS_DEPS=$(BUILD)/include/linux
 endif
 
-build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc/bin/ecc
+build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc
