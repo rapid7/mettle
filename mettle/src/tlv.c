@@ -427,12 +427,12 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	/*
 	 * Header is OK, read the rest of the packet
 	 */
-	struct tlv_packet *p = malloc(len);
+	struct tlv_packet *p = malloc(sizeof(struct tlv_header) + len);
 	if (p) {
 		p->h = h;
 		buffer_queue_drain(q, sizeof(struct tlv_header));
-		buffer_queue_remove(q, p->buf, len);
 		len -= sizeof(struct tlv_header);
+		buffer_queue_remove(q, p->buf, len);
 	}
 
 	/*
