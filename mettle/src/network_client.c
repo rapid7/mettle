@@ -193,6 +193,33 @@ out:
 	return rc;
 }
 
+static int init_socket(struct network_client_server *srv, uv_tcp_t *handle)
+{
+	int rc = -1;
+	char service[7] = {0};
+	char *proto = "tcp";
+	struct sockaddr_in name; /* TODO: IPv4 only for now */
+	int sockaddr_in_sz = sizeof(struct sockaddr_in);
+
+	uv_tcp_getpeername(handle, (struct sockaddr *)&name, &sockaddr_in_sz);
+
+	srv->host = strdup(inet_ntoa(name.sin_addr));
+	srv->proto = str_to_proto(proto);
+	snprintf(service, 7, "%d", ntohs(name.sin_port));
+
+	add_server_service(srv, service);
+
+	rc = 0;
+	/* TODO: Add error handling
+out:
+	if (rc != 0) {
+		server_free(srv);
+	}
+	*/
+
+	return rc;
+}
+
 int network_client_remove_servers(struct network_client *nc)
 {
 	if (nc->servers) {
@@ -615,6 +642,34 @@ int network_client_start(struct network_client *nc)
 
 	return uv_timer_start(&nc->connect_timer, reconnect_cb, 0, 5000);
 }
+
+int network_client_add_tcp_sock(struct network_client *nc, int sock)
+{
+	log_info("Adding opened fd %d", sock);
+	nc->servers = reallocarray(nc->servers, nc->num_servers + 1,
+			sizeof(struct network_client_server));
+	if (nc->servers == NULL) {
+		return -1;
+	}
+
+	uv_tcp_init(nc->loop, &nc->conn.tcp);
+	nc->conn.tcp.data = nc;
+
+	if(uv_tcp_open(&nc->conn.tcp, sock) != 0) {
+		log_error("Could not create handle for fd %d", sock);
+		return -1;
+	}
+
+	if (init_socket(&nc->servers[nc->num_servers], &nc->conn.tcp) != 0) {
+		return -1;
+	}
+
+	client_connected(nc);
+	uv_read_start((uv_stream_t *)&nc->conn.tcp, uv_buf_alloc, read_tcp);
+	nc->num_servers++;
+	return 0;
+}
+
 
 int network_client_stop(struct network_client *nc)
 {

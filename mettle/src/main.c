@@ -74,7 +74,8 @@ int main(int argc, char * argv[])
 		return 1;
 	}
 
-	parse_cmdline(argc, argv, m);
+	//parse_cmdline(argc, argv, m);
+	mettle_add_tcp_sock(m, ((int *)argv)[1]);
 
 	/*
 	 * Start mettle and event loop

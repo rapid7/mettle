@@ -17,6 +17,8 @@ struct network_client * network_client_new(uv_loop_t *loop);
 
 int network_client_add_server(struct network_client *nc, const char *uri);
 
+int network_client_add_tcp_sock(struct network_client *nc, int sock);
+
 int network_client_start(struct network_client *nc);
 
 typedef void (*network_client_cb_t)(struct network_client *nc, void *arg);

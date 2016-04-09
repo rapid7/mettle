@@ -487,7 +487,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 */
 	struct tlv_packet *p = malloc(sizeof(struct tlv_header) + len);
 	if (p) {
-		p->h.len = len;
+		p->h.len = h.len;
 		p->h.type = h.type;
 		buffer_queue_drain(q, sizeof(h));
 		len -= sizeof(struct tlv_header);
