@@ -79,8 +79,13 @@ static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 	struct tlv_packet *response;
 
 	while ((response = tlv_dispatcher_dequeue_response(td))) {
-		network_client_write(m->nc,
-				tlv_packet_data(response), tlv_packet_len(response));
+		void *buf = tlv_packet_data(response);
+		size_t len = tlv_packet_len(response);
+		uint32_t xor_key = tlv_xor_key();
+		tlv_xor_bytes(xor_key, buf, len);
+		xor_key = htonl(xor_key);
+		network_client_write(m->nc, &xor_key, sizeof(xor_key));
+		network_client_write(m->nc, buf, len);
 		tlv_packet_free(response);
 	}
 }

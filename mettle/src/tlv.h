@@ -113,6 +113,10 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 
 struct tlv_packet *tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td);
 
+uint32_t tlv_xor_key(void);
+
+void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len);
+
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		const char *extension,
 		void (*cb)(const char *method, void *arg), void *arg);

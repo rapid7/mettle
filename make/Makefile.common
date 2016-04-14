@@ -57,8 +57,8 @@ else
     CONFIGURE:=$(CONFIGURE) --host=x86_64-linux-gnu
 endif
 
-CFLAGS:=$(CFLAGS) -Os -fPIE
-LDFLAGS:=$(LDFLAGS) -Wl,-Bstatic -Wl,-Bsymbolic
+#CFLAGS:=$(CFLAGS) -Os -fPIE
+#LDFLAGS:=$(LDFLAGS) -Wl,-Bstatic -Wl,-Bsymbolic
 
 ifeq "$(ARCH)" "sparc"
     CFLAGS:=$(CFLAGS) -fPIC

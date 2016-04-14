@@ -10,11 +10,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "log.h"
 #include "tlv.h"
 #include "uthash.h"
 #include "utlist.h"
+
+struct tlv_xor_header {
+	uint32_t xor_key;
+	int len;
+	uint32_t type;
+};
 
 struct tlv_header {
 	int len;
@@ -25,6 +32,28 @@ struct tlv_packet {
 	struct tlv_header h;
 	char buf[];
 };
+
+uint32_t tlv_xor_key(void)
+{
+	static int initialized = 0;
+	if (!initialized) {
+		srand(time(NULL));
+		initialized = 1;
+	}
+
+	return (((rand() % 254) + 1) << 0) |
+	(((rand() % 254) + 1) << 8) |
+	(((rand() % 254) + 1) << 16) |
+	(((rand() % 254) + 1) << 24);
+}
+
+void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len)
+{
+	char *xor = (char *)&xor_key;
+	for (size_t i = 0; i < len; i++)
+		((char *)buf)[i] ^= xor[i % sizeof(xor_key)];
+	return buf;
+}
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len)
 {
@@ -50,6 +79,11 @@ void *tlv_packet_data(struct tlv_packet *p)
 int tlv_packet_len(struct tlv_packet *p)
 {
 	return ntohl(p->h.len);
+}
+
+int tlv_total_len(struct tlv_packet *p)
+{
+	return tlv_packet_len(p) + sizeof(uint32_t);
 }
 
 char *tlv_packet_get_buf_str(void * buf, int len)
@@ -410,17 +444,22 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 {
 	/*
-	 * Sanity check packet header and length
+	 * Ensure we have enough bytes for an xor key, packet header and length
 	 */
-	struct tlv_header h;
-	if (buffer_queue_len(q) < sizeof(struct tlv_header)) {
+	struct tlv_xor_header h;
+	if (buffer_queue_len(q) < sizeof(h)) {
 		return NULL;
 	}
 
-	buffer_queue_copy(q, &h, sizeof(struct tlv_header));
+	/*
+	 * Ensure there are enough bytes for the rest of the packet
+	 */
+	buffer_queue_copy(q, &h, sizeof(h));
+	uint32_t xor_key = htonl(h.xor_key);
+	tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
 	int len = ntohl(h.len);
 	if (len < 0 || len < sizeof(struct tlv_header)
-			|| buffer_queue_len(q) < len) {
+			|| buffer_queue_len(q) < (len + sizeof(xor_key))) {
 		return NULL;
 	}
 
@@ -429,10 +468,12 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 */
 	struct tlv_packet *p = malloc(sizeof(struct tlv_header) + len);
 	if (p) {
-		p->h = h;
-		buffer_queue_drain(q, sizeof(struct tlv_header));
+		p->h.len = len;
+		p->h.type = h.type;
+		buffer_queue_drain(q, sizeof(h));
 		len -= sizeof(struct tlv_header);
 		buffer_queue_remove(q, p->buf, len);
+		tlv_xor_bytes(xor_key, p->buf, len);
 	}
 
 	/*
