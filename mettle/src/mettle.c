@@ -76,17 +76,12 @@ void mettle_free(struct mettle *m)
 static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 {
 	struct mettle *m = arg;
-	struct tlv_packet *response;
+	void *buf;
+	size_t len;
 
-	while ((response = tlv_dispatcher_dequeue_response(td))) {
-		void *buf = tlv_packet_data(response);
-		size_t len = tlv_packet_len(response);
-		uint32_t xor_key = tlv_xor_key();
-		tlv_xor_bytes(xor_key, buf, len);
-		xor_key = htonl(xor_key);
-		network_client_write(m->nc, &xor_key, sizeof(xor_key));
+	while ((buf = tlv_dispatcher_dequeue_response(td, &len))) {
 		network_client_write(m->nc, buf, len);
-		tlv_packet_free(response);
+		free(buf);
 	}
 }
 

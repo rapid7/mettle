@@ -33,7 +33,7 @@ struct tlv_packet {
 	char buf[];
 };
 
-uint32_t tlv_xor_key(void)
+static uint32_t tlv_xor_key(void)
 {
 	static int initialized = 0;
 	if (!initialized) {
@@ -47,7 +47,7 @@ uint32_t tlv_xor_key(void)
 	(((rand() % 254) + 1) << 24);
 }
 
-void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len)
+static void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len)
 {
 	char *xor = (char *)&xor_key;
 	for (size_t i = 0; i < len; i++)
@@ -336,16 +336,35 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 	return 0;
 }
 
-struct tlv_packet *tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td)
+void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 {
 	struct tlv_packet *p = NULL;
 	struct tlv_response *r = td->responses;
+	char *out_buf = NULL;
+	*len = 0;
+
 	if (r) {
 		LL_DELETE(td->responses, r);
 		p = r->p;
 		free(r);
+
+		void *tlv_buf = tlv_packet_data(p);
+		size_t tlv_len = tlv_packet_len(p);
+		uint32_t xor_key = tlv_xor_key();
+		tlv_xor_bytes(xor_key, tlv_buf, tlv_len);
+		xor_key = htonl(xor_key);
+
+		out_buf = malloc(tlv_len + sizeof(xor_key));
+		if (out_buf) {
+			memcpy(out_buf, &xor_key, sizeof(xor_key));
+			memcpy(out_buf + sizeof(xor_key), tlv_buf, tlv_len);
+			*len = tlv_len + sizeof(xor_key);
+		}
+
+		tlv_packet_free(p);
 	}
-	return p;
+
+	return out_buf;
 }
 
 struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
