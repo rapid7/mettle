@@ -60,9 +60,7 @@ static void fs_ls_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
 	struct mettle *m = ctx->arg;
-
 	struct tlv_packet *p;
-
 
 	if (req->result < 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
@@ -114,9 +112,15 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 static void fs_stat_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
 
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	p = add_stat(p, &req->statbuf);
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		p = add_stat(p, &req->statbuf);
+	}
+
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 
 	tlv_handler_ctx_free(ctx);
@@ -151,19 +155,23 @@ struct tlv_packet *fs_getwd(struct tlv_handler_ctx *ctx)
 	return tlv_packet_add_str(p, TLV_TYPE_DIRECTORY_PATH, dir);
 }
 
-#define ASYNC_MKDIR 1
 
-#ifdef ASYNC_MKDIR
 static void fs_mkdir_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
-	struct tlv_packet *p = tlv_packet_response_result(ctx,
-		req->result == 0 ? TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
+	struct tlv_packet *p;
+
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	}
+
 	tlv_dispatcher_enqueue_response(ctx->td, p);
+
 	tlv_handler_ctx_free(ctx);
 	free(req);
 }
-#endif
 
 struct tlv_packet *fs_mkdir(struct tlv_handler_ctx *ctx)
 {
@@ -172,7 +180,6 @@ struct tlv_packet *fs_mkdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
 
-#ifdef ASYNC_MKDIR
 	struct mettle *m = ctx->arg;
 	uv_fs_t *req = get_fs_req(ctx, m);
 
@@ -181,13 +188,6 @@ struct tlv_packet *fs_mkdir(struct tlv_handler_ctx *ctx)
 	}
 
 	return NULL;
-#else
-	int err = mkdir(path, 0777);
-	if (err != 0) {
-		tlv_packet_response_result(ctx, err);
-	}
-	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-#endif
 }
 
 struct tlv_packet *fs_separator(struct tlv_handler_ctx *ctx)
@@ -210,8 +210,14 @@ struct tlv_packet *fs_expand_path(struct tlv_handler_ctx *ctx)
 static void fs_file_move_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
 
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	}
+
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 
 	tlv_handler_ctx_free(ctx);
@@ -243,8 +249,14 @@ struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
 static void fs_delete_file_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
 
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	}
+
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 
 	tlv_handler_ctx_free(ctx);
