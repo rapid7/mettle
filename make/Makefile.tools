@@ -12,6 +12,10 @@ else
 endif
 
 TAR=tar
+ELF2BIN=elf2bin$(BITS)
+
+build/tools/$(ELF2BIN): util/$(ELF2BIN).c
+	cc -o $@ $< -static
 
 INSTALL=install
 export PATH:=$(ROOT)/build/tools/$(ELLCC_HOST)/ellcc/bin:$(PATH)
@@ -41,4 +45,4 @@ ifneq "$(TARGET)" "native"
     TOOLS_DEPS=$(BUILD)/include/linux
 endif
 
-build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc
+build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc build/tools/$(ELF2BIN)

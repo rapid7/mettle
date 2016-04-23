@@ -21,3 +21,4 @@ $(BUILD)/mettle.built: $(BUILD)/mettle/Makefile
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 mettle: $(BUILD)/mettle.built
+	build/tools/$(ELF2BIN) $(BUILD)/mettle/mettle $(BUILD)/mettle/mettle.bin
