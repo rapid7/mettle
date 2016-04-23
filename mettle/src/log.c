@@ -37,11 +37,13 @@ static inline void _zlog_buffer_unlock()
 
 static void _zlog_flush_buffer()
 {
-	int i = 0;
-	for (i = 0; i < _zlog_buffer_size; i++) {
-		fprintf(zlog_fout, "%s", _zlog_buffer[i]);
+	if (zlog_fout != NULL) {
+		int i = 0;
+		for (i = 0; i < _zlog_buffer_size; i++) {
+			fprintf(zlog_fout, "%s", _zlog_buffer[i]);
+		}
+		fflush(zlog_fout);
 	}
-	fflush(zlog_fout);
 	_zlog_buffer_size = 0;
 }
 

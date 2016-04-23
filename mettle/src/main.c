@@ -60,12 +60,6 @@ int main(int argc, char * argv[])
 	sigignore(SIGPIPE);
 
 	/*
-	 * Start system logger
-	 */
-	log_init_file(stderr);
-	log_init_flush_thread();
-
-	/*
 	 * Allocate the main dispatcher
 	 */
 	struct mettle *m = mettle();
@@ -74,8 +68,23 @@ int main(int argc, char * argv[])
 		return 1;
 	}
 
-	//parse_cmdline(argc, argv, m);
-	mettle_add_tcp_sock(m, ((int *)argv)[1]);
+	/*
+	 * Check to see if we were injected by metasploit
+	 */
+	if (strcmp(argv[0], "m") == 0) {
+		/*
+		 * There is a fd sitting here, trust me
+		 */
+		mettle_add_tcp_sock(m, (int)((long *)argv)[1]);
+	} else {
+		/*
+		 * Start system logger
+		 */
+		log_init_file(stderr);
+		log_init_flush_thread();
+
+		parse_cmdline(argc, argv, m);
+	}
 
 	/*
 	 * Start mettle and event loop
