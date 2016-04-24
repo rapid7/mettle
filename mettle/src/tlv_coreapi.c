@@ -35,8 +35,19 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
+{
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+	void (*nada)(void) = NULL;
+	nada();
+
+	return p;
+}
+
 void tlv_register_coreapi(struct mettle *m, struct tlv_dispatcher *td)
 {
 	tlv_dispatcher_add_handler(td, "core_enumextcmd", enumextcmd, m);
 	tlv_dispatcher_add_handler(td, "core_machine_id", machine_id, m);
+	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 }
