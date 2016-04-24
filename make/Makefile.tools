@@ -12,9 +12,9 @@ else
 endif
 
 TAR=tar
-ELF2BIN=elf2bin$(BITS)
+ELF2BIN=build/tools/elf2bin
 
-build/tools/$(ELF2BIN): util/$(ELF2BIN).c
+$(ELF2BIN): util/elf2bin.c
 	cc -g -o $@ $< -static
 
 INSTALL=install
@@ -37,4 +37,4 @@ musl-cross-$(BUILD_HOST).tar.xz:
 	@cd /opt && sudo tar xf $(ROOT)/musl-cross-$(BUILD_HOST).tar.xz
 	@sudo touch /opt/musl-cross/lib/libcc1.so
 
-build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so build/tools/$(ELF2BIN)
+build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so $(ELF2BIN)

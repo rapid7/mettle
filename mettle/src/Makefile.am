@@ -37,4 +37,4 @@ bin_PROGRAMS = mettle
 mettle_SOURCES = main.c
 mettle_LDADD = libmettle.la
 
-mettle_LDFLAGS = -static -pie
+mettle_LDFLAGS = -static --static -pie
