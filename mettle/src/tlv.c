@@ -19,12 +19,12 @@
 
 struct tlv_xor_header {
 	uint32_t xor_key;
-	int len;
+	int32_t len;
 	uint32_t type;
 };
 
 struct tlv_header {
-	int len;
+	int32_t len;
 	uint32_t type;
 };
 
@@ -86,7 +86,7 @@ int tlv_total_len(struct tlv_packet *p)
 	return tlv_packet_len(p) + sizeof(uint32_t);
 }
 
-char *tlv_packet_get_buf_str(void * buf, int len)
+char *tlv_packet_get_buf_str(void * buf, size_t len)
 {
 	char *str = buf;
 	if (str != NULL) {
@@ -99,10 +99,10 @@ char *tlv_packet_get_buf_str(void * buf, int len)
 	return str;
 }
 
-void *tlv_packet_iterate(struct tlv_iterator *i, int *len)
+void *tlv_packet_iterate(struct tlv_iterator *i, size_t *len)
 {
 	*len = 0;
-	int packet_len = tlv_packet_len(i->packet) - sizeof(struct tlv_header);
+	size_t packet_len = tlv_packet_len(i->packet) - sizeof(struct tlv_header);
 	while (i->offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(i->packet->buf + i->offset);
 		uint32_t type = ntohl(h->type) & ~TLV_META_TYPE_COMPRESSED;
@@ -117,15 +117,15 @@ void *tlv_packet_iterate(struct tlv_iterator *i, int *len)
 
 char *tlv_packet_iterate_str(struct tlv_iterator *i)
 {
-	int len;
+	size_t len;
 	void *val = tlv_packet_iterate(i, &len);
 	return tlv_packet_get_buf_str(val, len);
 }
 
-void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, int *len)
+void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, size_t *len)
 {
 	*len = 0;
-	size_t offset = 0;
+	off_t offset = 0;
 	int packet_len = tlv_packet_len(p) - sizeof(struct tlv_header);
 	while (offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(p->buf + offset);
@@ -141,13 +141,13 @@ void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, int *len)
 
 char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type)
 {
-	int len;
+	size_t len;
 	void *val = tlv_packet_get_raw(p, value_type, &len);
 	return tlv_packet_get_buf_str(val, len);
 }
 
 struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
-		const void *val, int len)
+		const void *val, size_t len)
 {
 	int packet_len = tlv_packet_len(p);
 	int new_len = packet_len + len;
@@ -168,7 +168,7 @@ struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
 }
 
 struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p, uint32_t type,
-		const void *val, int len)
+		const void *val, size_t len)
 {
 	/*
 	 * This adds memory allocation resiliency all the way down the stack
@@ -476,8 +476,8 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	buffer_queue_copy(q, &h, sizeof(h));
 	uint32_t xor_key = htonl(h.xor_key);
 	tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
-	int len = ntohl(h.len);
-	if (len < 0 || len < sizeof(struct tlv_header)
+	size_t len = ntohl(h.len);
+	if (len > INT_MAX || len < sizeof(struct tlv_header)
 			|| buffer_queue_len(q) < (len + sizeof(xor_key))) {
 		return NULL;
 	}
