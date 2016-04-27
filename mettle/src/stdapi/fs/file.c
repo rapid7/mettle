@@ -61,18 +61,26 @@ static void fs_ls_cb(uv_fs_t *req)
 	struct tlv_handler_ctx *ctx = req->data;
 	struct mettle *m = ctx->arg;
 
-	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	struct tlv_packet *p;
 
-	uv_dirent_t dent;
-	while (uv_fs_scandir_next(req, &dent) != UV_EOF) {
-		p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, dent.name);
-		p = tlv_packet_add_fmt(p, TLV_TYPE_FILE_PATH,
-				"%s/%s", path, dent.name);
 
-		uv_fs_t stat_req;
-		if (uv_fs_stat(mettle_get_loop(m), &stat_req, path, NULL) == 0) {
-			p = add_stat(p, &stat_req.statbuf);
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		uv_dirent_t dent;
+		const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+		while (uv_fs_scandir_next(req, &dent) != UV_EOF) {
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, dent.name);
+			p = tlv_packet_add_fmt(p, TLV_TYPE_FILE_PATH,
+					"%s/%s", path, dent.name);
+
+			uv_fs_t stat_req;
+			if (uv_fs_stat(mettle_get_loop(m), &stat_req, path, NULL) == 0) {
+				p = add_stat(p, &stat_req.statbuf);
+			}
 		}
 	}
 
