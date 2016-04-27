@@ -8,7 +8,6 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libdnet.a \
 	$(BUILD)/lib/libjson-c.a \
 	$(BUILD)/lib/libmbedtls.a \
-	$(BUILD)/lib/libpcap.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libuv.a
 	@echo "Configuring mettle for $(TARGET)"
