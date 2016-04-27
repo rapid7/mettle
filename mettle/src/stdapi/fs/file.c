@@ -151,6 +151,45 @@ struct tlv_packet *fs_getwd(struct tlv_handler_ctx *ctx)
 	return tlv_packet_add_str(p, TLV_TYPE_DIRECTORY_PATH, dir);
 }
 
+#define ASYNC_MKDIR 1
+
+#ifdef ASYNC_MKDIR
+static void fs_mkdir_cb(uv_fs_t *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p = tlv_packet_response_result(ctx,
+		req->result == 0 ? TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+	free(req);
+}
+#endif
+
+struct tlv_packet *fs_mkdir(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+
+#ifdef ASYNC_MKDIR
+	struct mettle *m = ctx->arg;
+	uv_fs_t *req = get_fs_req(ctx, m);
+
+	if (uv_fs_mkdir(mettle_get_loop(m), req, path, 0777, fs_mkdir_cb) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
+
+	return NULL;
+#else
+	int err = mkdir(path, 0777);
+	if (err != 0) {
+		tlv_packet_response_result(ctx, err);
+	}
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+#endif
+}
+
 struct tlv_packet *fs_separator(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
