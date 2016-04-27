@@ -19,6 +19,7 @@ void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td)
 	add_handler("fs_expand_path", fs_expand_path);
 	add_handler("fs_file_move", fs_file_move);
 	add_handler("fs_getwd", fs_getwd);
+	add_handler("fs_mkdir", fs_mkdir);
 	add_handler("fs_ls", fs_ls);
 	add_handler("fs_separator", fs_separator);
 	add_handler("fs_stat", fs_stat);
