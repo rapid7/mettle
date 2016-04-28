@@ -4,42 +4,34 @@ MAKE:=$(MAKE) -j4
 BUILDS=$(ROOT)/build
 
 TARGET:=native
-BITS=64
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring aarch64,$(TARGET)))
         ARCH:=arm64
         HOSTARCH:=aarch64
-        BITS=64
     endif
     ifneq (,$(findstring arm,$(TARGET)))
         ARCH:=arm
         HOSTARCH:=arm
-        BITS=32
     endif
     ifneq (,$(findstring mipsel,$(TARGET)))
         ARCH:=mipsel
         HOSTARCH:=mipsel
-        BITS=32
     endif
     ifneq (,$(findstring mips-,$(TARGET)))
         ARCH:=mips
         HOSTARCH:=mips
-        BITS=32
     endif
     ifneq (,$(findstring powerpc,$(TARGET)))
         ARCH:=powerpc
         HOSTARCH:=powerpc
-        BITS=32
     endif
     ifneq (,$(findstring i486,$(TARGET)))
         ARCH:=x86
         HOSTARCH:=i386
-        BITS=32
     endif
     ifneq (,$(findstring x86_64,$(TARGET)))
         ARCH:=x86
         HOSTARCH:=x86_64
-        BITS=64
     endif
     BUILD:=$(BUILDS)/cross-$(TARGET)
 else
@@ -73,7 +65,7 @@ else
     CFLAGS:=$(CFLAGS) -fpic
 endif
 
-ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
+ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) CPP=/usr/bin/cpp AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"

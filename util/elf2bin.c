@@ -9,7 +9,27 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#include <arpa/inet.h>
+
 #include <elf.h>
+
+
+#define MAP(BIG,SMALL) \
+	for(ii = 0; ii < SMALL(ehdr->e_phnum); ii++, phdr++) { \
+		if(BIG(phdr->p_type) == PT_LOAD) { \
+			source = data + BIG(phdr->p_offset); \
+			dest = mapping + BIG(phdr->p_vaddr); \
+			len = BIG(phdr->p_filesz); \
+			printf("memcpy(%p, %p, %08x)\n", dest, source, len); \
+			memcpy(dest, source, len); \
+			used = BIG(phdr->p_memsz) + BIG(phdr->p_vaddr); \
+		} \
+	}
+
+#define NOP(T) T
+
+#define MAP_LE MAP(NOP,NOP)
+#define MAP_BE MAP(ntohl,ntohs)
 
 int main(int argc, char **argv)
 {
@@ -17,12 +37,11 @@ int main(int argc, char **argv)
 	struct stat statbuf;
 	unsigned char *data; // ELF file
 	unsigned char *mapping; // target memory location
-	Elf32_Ehdr *ehdr;
-	Elf32_Phdr *phdr;
-	int i;
-	int used = 0;
+	size_t len, used = 0;
+	int ii;
 	unsigned char *source, *dest;
-	int len;
+
+	Elf32_Ehdr *arch;
 
 	if(argc < 3) {
 		printf("elf2bin [input file] [output file]\n");
@@ -53,22 +72,31 @@ int main(int argc, char **argv)
 		printf("Failed to mmap(): %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-  	memset(mapping, 0, 0x1000000);
-
-	ehdr = (Elf32_Ehdr *)data;
-	phdr = (Elf32_Phdr *)(data + ehdr->e_phoff);
+	memset(mapping, 0, 0x1000000);
 
 	printf("data @ %p, mapping @ %p\n", data, mapping);
 
-	for(i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		if(phdr->p_type == PT_LOAD) {
-			source = data + phdr->p_offset;
-			dest = mapping + phdr->p_vaddr;
-			len = phdr->p_filesz;
-			printf("memcpy(%p, %p, %08x)\n", dest, source, len);
-			memcpy(dest, source, len);
+	arch = (Elf32_Ehdr *)data;
 
-			used = phdr->p_memsz + phdr->p_vaddr;
+	if (arch->e_ident[EI_CLASS] == ELFCLASS32) {
+		Elf32_Ehdr *ehdr = (Elf32_Ehdr *)data;
+		Elf32_Phdr *phdr = (Elf32_Phdr *)(data + ehdr->e_phoff);
+
+		if (arch->e_ident[EI_DATA] == ELFDATA2LSB) {
+			MAP_LE
+		} else {
+			phdr = (Elf32_Phdr *)(data + ntohl(ehdr->e_phoff));
+			MAP_BE
+		}
+	} else {
+		Elf64_Ehdr *ehdr = (Elf64_Ehdr *)data;
+		Elf64_Phdr *phdr = (Elf64_Phdr *)(data + ehdr->e_phoff);
+
+		if (arch->e_ident[EI_DATA] == ELFDATA2LSB) {
+			MAP_LE
+		} else {
+			printf("Cannot do big-endian and 64-bit, sorry\n");
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -85,4 +113,5 @@ int main(int argc, char **argv)
 
 	close(fd);
 
+	return 0;
 }
