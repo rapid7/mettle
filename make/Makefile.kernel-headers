@@ -1,4 +1,8 @@
-$(BUILD)/kernel-headers/Makefile:
+$(ROOT)/(TOOLCHAIN)/kernel-headers.xz:
+	git submodule init
+	git submodule update
+
+$(BUILD)/kernel-headers/Makefile: $(ROOT)/(TOOLCHAIN)/kernel-headers.xz
 	@echo "Unpacking kernel-headers for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
