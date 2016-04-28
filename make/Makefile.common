@@ -6,12 +6,12 @@ BUILDS=$(ROOT)/build
 TARGET:=native
 BITS=64
 ifneq "$(TARGET)" "native"
-    ifneq (,$(findstring arm64,$(TARGET)))
+    ifneq (,$(findstring aarch64,$(TARGET)))
         ARCH:=arm64
         HOSTARCH:=aarch64
         BITS=64
     endif
-    ifneq (,$(findstring arm32,$(TARGET)))
+    ifneq (,$(findstring arm,$(TARGET)))
         ARCH:=arm
         HOSTARCH:=arm
         BITS=32
@@ -21,12 +21,12 @@ ifneq "$(TARGET)" "native"
         HOSTARCH:=mips
         BITS=32
     endif
-    ifneq (,$(findstring ppc,$(TARGET)))
+    ifneq (,$(findstring powerpc,$(TARGET)))
         ARCH:=powerpc
         HOSTARCH:=ppc
         BITS=32
     endif
-    ifneq (,$(findstring i386,$(TARGET)))
+    ifneq (,$(findstring i486,$(TARGET)))
         ARCH:=x86
         HOSTARCH:=i386
         BITS=32
@@ -56,14 +56,12 @@ ifneq "$(TARGET)" "native"
     else
         HOST=$(firstword $(subst -, ,$(HOSTARCH)))-linux-gnu
     endif
-    CFLAGS:=$(CFLAGS) -target $(TARGET)
 endif
 ifneq "$(HOST)" ""
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
 endif
 
-#CFLAGS:=$(CFLAGS) -Os -fPIE
-#LDFLAGS:=$(LDFLAGS) -Wl,-Bstatic -Wl,-Bsymbolic
+CFLAGS:=$(CFLAGS) -Os -fPIE
 
 ifeq "$(ARCH)" "sparc"
     CFLAGS:=$(CFLAGS) -fPIC
