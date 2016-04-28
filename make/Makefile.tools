@@ -28,21 +28,16 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-$(TOOLCHAIN)/libecc.xz:
-	git submodule init
-	git submodule update
+musl-cross-$(ELLCC_HOST).tar.xz:
+	@echo "Downloading toolchain"
+	curl -f -O hauschen.net/musl-cross-$(ELLCC_HOST).tar.xz
 
-build/tools/$(ELLCC_HOST)/ellcc: $(TOOLCHAIN)/libecc.xz
-	@echo "Unpacking ellcc"
-	@rm -fr build/tools/$(ELLCC_HOST)
-	@mkdir -p build/tools/$(ELLCC_HOST)
-	@cd build/tools/$(ELLCC_HOST) && tar xf $(TOOLCHAIN)/ellcc-$(ELLCC_HOST).xz
-	@cd build/tools/$(ELLCC_HOST)/ellcc && tar xf $(TOOLCHAIN)/libecc.xz
-	@cd build/tools/$(ELLCC_HOST)/ellcc/libecc && tar xf $(TOOLCHAIN)/libecc-mingw.xz && mv libecc-mingw mingw
-	@touch build/tools/$(ELLCC_HOST)/ellcc
+/opt/musl-cross: musl-cross-$(ELLCC_HOST).tar.xz
+	@echo "Unpacking toolchain"
+	@cd /opt && sudo tar xf $(ROOT)/musl-cross-$(ELLCC_HOST).tar.xz
 
 ifneq "$(TARGET)" "native"
     TOOLS_DEPS=$(BUILD)/include/linux
 endif
 
-build/tools: $(TOOLS_DEPS) build/tools/$(ELLCC_HOST)/ellcc build/tools/$(ELF2BIN)
+build/tools: $(TOOLS_DEPS) /opt/musl-cross build/tools/$(ELF2BIN)

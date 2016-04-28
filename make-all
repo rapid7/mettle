@@ -1,22 +1,12 @@
 #!/bin/sh
 
-for i in arm32v6-linux \
-	arm32v6sf-linux \
-	arm32v7ebsf-linux \
-	arm32v7eb-linux \
-	arm32v7sf-linux \
-	arm32v7-linux \
-	cortex-m3-linux \
-	arm64v8-linux \
-	mips32r2el-linux \
-	mips32r2elsf-linux \
-	mips32r2-linux \
-	mips32r2sf-linux \
-	ppc32-linux \
-	x86_32-linux \
-	x86_64-linux \
-	i386-w64-mingw32 \
-	x86_64-w64-mingw32; do
+for i in arm-linux-musleabi \
+	arm-linux-musleabihf \
+	i486-linux-musl \
+	mipsel-linux-musl \
+	mips-linux-musl \
+	powerpc-linux-musl \
+	x86_64-linux-musl; do
 	echo Building target $i
 	make TARGET=$i;
 done
