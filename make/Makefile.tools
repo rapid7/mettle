@@ -15,7 +15,7 @@ TAR=tar
 ELF2BIN=elf2bin$(BITS)
 
 build/tools/$(ELF2BIN): util/$(ELF2BIN).c
-	cc -o $@ $< -static
+	cc -g -o $@ $< -static
 
 INSTALL=install
 export PATH:=/opt/musl-cross/bin:$(PATH)
