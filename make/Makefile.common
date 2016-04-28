@@ -16,14 +16,19 @@ ifneq "$(TARGET)" "native"
         HOSTARCH:=arm
         BITS=32
     endif
-    ifneq (,$(findstring mips,$(TARGET)))
+    ifneq (,$(findstring mipsel,$(TARGET)))
+        ARCH:=mipsel
+        HOSTARCH:=mipsel
+        BITS=32
+    endif
+    ifneq (,$(findstring mips-,$(TARGET)))
         ARCH:=mips
         HOSTARCH:=mips
         BITS=32
     endif
     ifneq (,$(findstring powerpc,$(TARGET)))
         ARCH:=powerpc
-        HOSTARCH:=ppc
+        HOSTARCH:=powerpc
         BITS=32
     endif
     ifneq (,$(findstring i486,$(TARGET)))

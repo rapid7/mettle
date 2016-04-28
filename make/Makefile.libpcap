@@ -10,7 +10,6 @@ $(BUILD)/libpcap/configure:
 
 ifneq "$(TARGET)" "native"
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
-    LIBPCAP_DEPS=$(BUILD)/include/linux
 endif
 
 $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
