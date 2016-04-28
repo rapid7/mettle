@@ -30,7 +30,7 @@ endif
 
 musl-cross-$(BUILD_HOST).tar.xz:
 	@echo "Downloading toolchain"
-	curl -f -O hauschen.net/musl-cross-$(BUILD_HOST).tar.xz
+	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST).tar.xz
 
 /opt/musl-cross/lib/libcc1.so: musl-cross-$(BUILD_HOST).tar.xz
 	@echo "Unpacking toolchain"
