@@ -44,7 +44,6 @@ endif
 LOGFILE=$(BUILD)/build.log
 ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
-TOOLCHAIN=$(ROOT)/toolchain
 OUTPUTDIR=$(BUILD)/data
 
 CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include

@@ -7,7 +7,6 @@ include make/Makefile.libpcap
 include make/Makefile.libsigar
 include make/Makefile.json-c
 include make/Makefile.libuv
-include make/Makefile.kernel-headers
 include make/Makefile.mbedtls
 include make/Makefile.mettle
 include make/Makefile.tools
