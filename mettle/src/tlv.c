@@ -5,6 +5,7 @@
  */
 
 #include <arpa/inet.h>
+#include <endian.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -49,9 +50,12 @@ static uint32_t tlv_xor_key(void)
 
 static void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len)
 {
-	char *xor = (char *)&xor_key;
+	uint32_t real_key = htole32(xor_key);
+	char *xor = (char *)&real_key;
+
 	for (size_t i = 0; i < len; i++)
-		((char *)buf)[i] ^= xor[i % sizeof(xor_key)];
+		((char *)buf)[i] ^= xor[i % sizeof(real_key)];
+
 	return buf;
 }
 
@@ -474,7 +478,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 * Ensure there are enough bytes for the rest of the packet
 	 */
 	buffer_queue_copy(q, &h, sizeof(h));
-	uint32_t xor_key = htonl(h.xor_key);
+	uint32_t xor_key = ntohl(h.xor_key);
 	tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
 	size_t len = ntohl(h.len);
 	if (len > INT_MAX || len < sizeof(struct tlv_header)
@@ -501,7 +505,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	int offset = 0;
 	while (offset < len) {
 		struct tlv_header *tlv = (struct tlv_header *)(p->buf + offset);
-		int tlv_len = htonl(tlv->len);
+		int tlv_len = ntohl(tlv->len);
 		/*
 		 * Ensure the sub-TLV's fit within the packet
 		 */

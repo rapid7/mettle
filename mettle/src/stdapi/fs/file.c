@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <endian.h>
+
 #include <dnet.h>
 #include <mettle.h>
 
@@ -39,17 +41,17 @@ static struct tlv_packet * add_stat(struct tlv_packet *p, uv_stat_t *us)
 		uint64_t mtime;
 		uint64_t ctime;
 	} s = {
-		.dev = us->st_dev,
-		.ino = us->st_ino,
-		.mode = us->st_mode,
-		.nlink = us->st_nlink,
-		.uid = us->st_uid,
-		.gid = us->st_gid,
-		.rdev = us->st_rdev,
-		.size = us->st_size,
-		.mtime = us->st_mtim.tv_sec,
-		.atime = us->st_atim.tv_sec,
-		.ctime = us->st_ctim.tv_sec,
+		.dev = htole32(us->st_dev),
+		.ino = htole16(us->st_ino),
+		.mode = htole16(us->st_mode),
+		.nlink = htole16(us->st_nlink),
+		.uid = htole16(us->st_uid),
+		.gid = htole16(us->st_gid),
+		.rdev = htole32(us->st_rdev),
+		.size = htole32(us->st_size),
+		.mtime = htole64(us->st_mtim.tv_sec),
+		.atime = htole64(us->st_atim.tv_sec),
+		.ctime = htole64(us->st_ctim.tv_sec),
 	};
 
 
