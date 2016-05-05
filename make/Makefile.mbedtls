@@ -9,7 +9,7 @@ $(BUILD)/lib/libmbedtls.a: build/tools
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls
 	@echo "Building mbedtls for $(TARGET)"
 	@cd $(BUILD)/mbedtls; \
-		$(MAKE) $(LOGBUILD) ; \
+		$(ENV) $(MAKE) $(LOGBUILD) ; \
 		$(MAKE_INSTALL) DESTDIR=$(BUILD) $(LOGBUILD)
 
 mbedtls: $(BUILD)/lib/libmbedtls.a
