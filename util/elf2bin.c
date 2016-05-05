@@ -20,7 +20,7 @@
 			source = data + BIG(phdr->p_offset); \
 			dest = mapping + BIG(phdr->p_vaddr); \
 			len = BIG(phdr->p_filesz); \
-			printf("memcpy(%p, %p, %08x)\n", dest, source, len); \
+			printf("memcpy(%p, %p, %08zx)\n", dest, source, len); \
 			memcpy(dest, source, len); \
 			used = BIG(phdr->p_memsz) + BIG(phdr->p_vaddr); \
 		} \
