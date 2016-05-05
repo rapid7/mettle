@@ -37,4 +37,8 @@ musl-cross-$(BUILD_HOST).tar.xz:
 	@cd /opt && sudo tar xf $(ROOT)/musl-cross-$(BUILD_HOST).tar.xz
 	@sudo touch /opt/musl-cross/lib/libcc1.so
 
-build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so $(ELF2BIN)
+ifneq "$(TARGET)" "native"
+	TOOLS_DEPS=$(ELF2BIN)
+endif
+
+build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so
