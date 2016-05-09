@@ -15,6 +15,7 @@ TAR=tar
 ELF2BIN=build/tools/elf2bin
 
 $(ELF2BIN): util/elf2bin.c
+	@mkdir -p build/tools
 	cc -g -o $@ $< -static
 
 INSTALL=install
@@ -34,7 +35,6 @@ musl-cross-$(BUILD_HOST).tar.xz:
 
 /opt/musl-cross/lib/libcc1.so: musl-cross-$(BUILD_HOST).tar.xz
 	@echo "Unpacking toolchain"
-	@cd /opt && sudo tar xf $(ROOT)/musl-cross-$(BUILD_HOST).tar.xz
-	@sudo touch /opt/musl-cross/lib/libcc1.so
+	@cd /opt && sudo tar xfm $(ROOT)/musl-cross-$(BUILD_HOST).tar.xz
 
 build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so $(ELF2BIN)
