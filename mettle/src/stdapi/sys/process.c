@@ -4,6 +4,7 @@
  * @file process.c
  */
 
+#include <libgen.h>
 #include <mettle.h>
 #include <sigar.h>
 
@@ -25,7 +26,7 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 
 	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PARENT_PID, pstate.ppid);
-	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME, pstate.name);
+	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME, basename(pstate.name));
 
 	/*
 	 * XXX Implement process architecture in libsigar
@@ -39,10 +40,9 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	sigar_proc_exe_t procexe;
 	status = sigar_proc_exe_get(sigar, pid, &procexe);
 	if (status == SIGAR_OK) {
-		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, procexe.name);
+		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, dirname(procexe.name));
 	} else {
-		log_debug("error: %d (%s) proc_exe(%d)\n",
-		    status, sigar_strerror(sigar, status), pid);
+		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, "");
 	}
 
 	/*
