@@ -44,7 +44,7 @@ module MetasploitPayloads
       gem_path = expand(data_directory, ::File.join(path_parts))
 	  msf_path = 'thisisnotthefileyouarelookingfor'
       if metasploit_installed?
-        msf_path = expand(Msf::Config.data_directory, 'mettle', ::File.join(path_parts))
+        msf_path = expand(Msf::Config.data_directory, ::File.join('mettle', path_parts))
       end
       readable_path(gem_path, msf_path)
     end
