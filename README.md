@@ -19,6 +19,28 @@ To completely reset your dev environment and delete all binary artifacts:
 rake mettle:ultraclean
 ```
 
+Gem API
+-------
+
+The gem provides one function for accessing binary payloads:
+```ruby
+MetasploitPayloads::Mettle.read(platform_triple, artifact)
+```
+
+The available platform triples are:
+* `arm-linux-musleabi`
+* `arm-linux-musleabihf`
+* `i486-linux-musl`
+* `mipsel-linux-musl`
+* `mips-linux-musl`
+* `powerpc-linux-musl`
+* `x86_64-linux-musl`
+
+The available artifacts are:
+* `mettle` - a standalone executable that take command-line arguments (see `mettle -h`)
+* `mettle.bin` - a process image that must be started with a custom stack (see `doc/stack_requirements.md`)
+
+
 Using with Metasploit
 ---------------------
 
