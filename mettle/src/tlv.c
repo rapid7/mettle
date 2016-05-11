@@ -165,7 +165,7 @@ int tlv_packet_get_u32(struct tlv_packet *p, uint32_t value_type, uint32_t *valu
 {
 	size_t len;
 	char *buf = tlv_packet_get_raw(p, value_type, &len);
-	if (!buf || len != 2)
+	if (!buf || len != 4)
 		return -1;
 
 	*value = ntohl(*(uint32_t *)(buf));
