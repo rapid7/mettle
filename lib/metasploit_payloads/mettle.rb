@@ -1,7 +1,7 @@
 # -*- coding:binary -*-
 
 unless defined? MetasploitPayloads::Mettle::VERSION
-  require 'metasploit-payloads/mettle/version'
+  require 'metasploit_payloads/mettle/version'
 end
 
 #

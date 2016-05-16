@@ -1,8 +1,8 @@
 # -*- coding:binary -*-
-require_relative 'lib/metasploit-payloads/mettle/version'
+require_relative 'lib/metasploit_payloads/mettle/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'metasploit-payloads-mettle'
+  spec.name          = 'metasploit_payloads-mettle'
   spec.version       = MetasploitPayloads::Mettle::VERSION
   spec.authors       = ['Adam Cammack', 'Brent Cook']
   spec.email         = ['adam_cammack@rapid7.com', 'brent_cook@rapid7.com']
