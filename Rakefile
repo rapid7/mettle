@@ -2,7 +2,6 @@ require 'fileutils'
 require 'bundler/gem_tasks'
 
 task default: 'mettle:build'
-task build: 'mettle:build'
 
 namespace :mettle do
   desc 'Remove all build artifacts and tools'
