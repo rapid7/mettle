@@ -1,6 +1,7 @@
 #!/bin/sh
 
 for i in arm-linux-musleabi \
+	aarch64-linux-musl \
 	arm-linux-musleabihf \
 	i486-linux-musl \
 	mipsel-linux-musl \

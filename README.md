@@ -28,6 +28,7 @@ MetasploitPayloads::Mettle.read(platform_triple, artifact)
 ```
 
 The available platform triples are:
+* `aarch64-linux-musl`
 * `arm-linux-musleabi`
 * `arm-linux-musleabihf`
 * `i486-linux-musl`

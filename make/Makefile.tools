@@ -1,14 +1,10 @@
 BUILD_HOST=linux
 ifneq "$(TARGET)" "native"
-    CC=/opt/musl-cross/bin/$(TARGET)-gcc
-    CPP=/opt/musl-cross/bin/$(TARGET)-cpp
-    AR=/opt/musl-cross/bin/$(TARGET)-ar
-    LD=/opt/musl-cross/bin/$(TARGET)-ld
-    RANLIB=/opt/musl-cross/bin/$(TARGET)-ranlib
-else
-    CC=cc
-    AR=ar
-    RANLIB=ranlib
+    CC=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cc
+    CPP=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cpp
+    AR=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ar
+    LD=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ld
+    RANLIB=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ranlib
 endif
 
 TAR=tar
@@ -19,7 +15,7 @@ $(ELF2BIN): util/elf2bin.c
 	cc -g -o $@ $< -static
 
 INSTALL=install
-export PATH:=/opt/musl-cross/bin:$(PATH)
+export PATH:=$(ROOT)/build/tools/musl-cross/bin:$(PATH)
 ifeq "$(shell uname -s)" "Darwin"
     BUILD_HOST=osx
     ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
@@ -29,12 +25,14 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-musl-cross-$(BUILD_HOST).tar.xz:
+musl-cross-$(BUILD_HOST)-2.tar.xz:
 	@echo "Downloading toolchain"
-	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST).tar.xz
+	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST)-2.tar.xz
 
-/opt/musl-cross/lib/libcc1.so: musl-cross-$(BUILD_HOST).tar.xz
+$(ROOT)/build/tools/musl-cross/lib/libcc1.so: musl-cross-$(BUILD_HOST)-2.tar.xz
 	@echo "Unpacking toolchain"
-	@cd /opt && sudo tar xfm $(ROOT)/musl-cross-$(BUILD_HOST).tar.xz
+	@rm -fr build/tools/musl-cross
+	@mkdir -p build/tools/musl-cross
+	@cd build/tools && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-2.tar.xz
 
-build/tools: $(TOOLS_DEPS) /opt/musl-cross/lib/libcc1.so $(ELF2BIN)
+build/tools: $(TOOLS_DEPS) $(ROOT)/build/tools/musl-cross/lib/libcc1.so $(ELF2BIN)
