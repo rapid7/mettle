@@ -73,12 +73,13 @@ static void fs_ls_cb(uv_fs_t *req)
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
 		while (uv_fs_scandir_next(req, &dent) != UV_EOF) {
+			char fq_path[PATH_MAX];
+			snprintf(fq_path, sizeof(fq_path), "%s/%s", path, dent.name);
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, dent.name);
-			p = tlv_packet_add_fmt(p, TLV_TYPE_FILE_PATH,
-					"%s/%s", path, dent.name);
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, fq_path);
 
 			uv_fs_t stat_req;
-			if (uv_fs_stat(mettle_get_loop(m), &stat_req, path, NULL) == 0) {
+			if (uv_fs_stat(mettle_get_loop(m), &stat_req, fq_path, NULL) == 0) {
 				p = add_stat(p, &stat_req.statbuf);
 			}
 		}
