@@ -340,6 +340,13 @@ struct tlv_handler {
 	char method[];
 };
 
+struct tlv_channel {
+	//tlv_channel_handler_cb cb;
+	void *arg;
+	UT_hash_handle hh;
+	int32_t id;
+};
+
 struct tlv_response {
 	struct tlv_packet *p;
 	struct tlv_response *next;
@@ -348,6 +355,7 @@ struct tlv_response {
 struct tlv_dispatcher {
 	struct tlv_handler *handlers;
 	struct tlv_response *responses;
+	struct tlv_channel *channels;
 	tlv_response_cb response_cb;
 	void *response_cb_arg;
 };

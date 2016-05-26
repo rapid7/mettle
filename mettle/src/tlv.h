@@ -126,12 +126,16 @@ void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 
 /*
+ * TLV Channels
+ */
+
+/*
  * APIs
  */
 struct mettle;
 
-void tlv_register_coreapi(struct mettle *m, struct tlv_dispatcher *td);
+void tlv_register_coreapi(struct mettle *m);
 
-void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td);
+void tlv_register_stdapi(struct mettle *m);
 
 #endif

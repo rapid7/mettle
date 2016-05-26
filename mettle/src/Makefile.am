@@ -10,6 +10,7 @@ libmettle_la_LIBADD += -lsigar
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += buffer_queue.c
+libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += network_client.c
 libmettle_la_SOURCES += tlv.c

@@ -127,7 +127,6 @@ struct tlv_packet *
 sys_process_execute(struct tlv_handler_ctx *ctx)
 {
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-
 }
 
 /*

@@ -17,6 +17,7 @@
 #include "tlv.h"
 
 struct mettle {
+	struct channelmgr *cm;
 	struct network_client *nc;
 	struct tlv_dispatcher *td;
 
@@ -69,9 +70,15 @@ sigar_t *mettle_get_sigar(struct mettle *m)
 	return m->sigar;
 }
 
+struct channelmgr * mettle_get_channelmgr(struct mettle *m)
+{
+	return m->cm;
+}
+
 void mettle_free(struct mettle *m)
 {
 	if (m) {
+		channelmgr_free(m->cm);
 		tlv_dispatcher_free(m->td);
 		network_client_free(m->nc);
 		free(m);
@@ -131,8 +138,13 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
-	tlv_register_coreapi(m, m->td);
-	tlv_register_stdapi(m, m->td);
+	m->cm = channelmgr_new();
+	if (m->cm == NULL) {
+		goto err;
+	}
+
+	tlv_register_coreapi(m);
+	tlv_register_stdapi(m);
 
 	return m;
 

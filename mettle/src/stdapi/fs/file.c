@@ -54,7 +54,6 @@ static struct tlv_packet * add_stat(struct tlv_packet *p, uv_stat_t *us)
 		.ctime = htole64(us->st_ctim.tv_sec),
 	};
 
-
 	return tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, &s, sizeof(s));
 }
 
