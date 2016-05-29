@@ -303,7 +303,7 @@ struct tlv_packet *fs_chdir(struct tlv_handler_ctx *ctx)
 static void file_new_async_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
-	struct channel *c = ctx->data;
+	struct channel *c = ctx->channel;
 	struct tlv_packet *p;
 
 	if (req->result < 0) {

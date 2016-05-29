@@ -83,12 +83,14 @@ void tlv_packet_free(struct tlv_packet *p);
 /*
  * TLV Handler
  */
+struct channel;
 struct tlv_handler_ctx {
 	const char *method;
 	const char *id;
 	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
-	void *arg, *data;
+	struct channel *channel;
+	void *arg;
 };
 
 typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *);

@@ -28,13 +28,13 @@ struct channel *channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
 
 struct channel_callbacks {
 	int (*new_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
-	struct tlv_packet * (*new_async_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *);
+	struct tlv_packet * (*new_async_cb)(struct tlv_handler_ctx *tlv_ctx);
 
 	ssize_t (*read_cb)(void *channel_ctx, char *buf, size_t len);
-	struct tlv_packet * (*read_async_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c, size_t len);
+	struct tlv_packet * (*read_async_cb)(struct tlv_handler_ctx *tlv_ctx, size_t len);
 
 	ssize_t (*write_cb)(void *channel_ctx, char *buf, size_t len);
-	struct tlv_packet * (*write_async_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c, size_t len);
+	struct tlv_packet * (*write_async_cb)(struct tlv_handler_ctx *tlv_ctx, size_t len);
 
 	bool (*eof_cb)(void *channel_ctx);
 
