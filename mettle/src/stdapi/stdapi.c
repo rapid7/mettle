@@ -29,11 +29,11 @@ void tlv_register_stdapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
 
 	struct channel_callbacks cbs = {
-		.new_cb = file_new_cb,
-		.read_cb = file_read_cb,
-		.write_cb = file_write_cb,
-		.eof_cb = file_eof_cb,
-		.free_cb = file_free_cb,
+		.new_cb = file_new,
+		.read_cb = file_read,
+		.write_cb = file_write,
+		.eof_cb = file_eof,
+		.free_cb = file_free,
 	};
 	channelmgr_add_channel_type(cm, "stdapi_fs_file", &cbs);
 

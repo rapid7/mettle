@@ -88,7 +88,7 @@ struct tlv_handler_ctx {
 	const char *id;
 	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
-	void *arg;
+	void *arg, *data;
 };
 
 typedef struct tlv_packet *(*tlv_handler_cb)(struct tlv_handler_ctx *);

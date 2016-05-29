@@ -16,6 +16,8 @@
 #include "log.h"
 #include "tlv.h"
 
+#include "__fmodeflags.c"
+
 static uv_fs_t *get_fs_req(struct tlv_handler_ctx *ctx, struct mettle *m)
 {
 	uv_fs_t *req = calloc(1, sizeof(*req));
@@ -85,7 +87,6 @@ static void fs_ls_cb(uv_fs_t *req)
 	}
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
-
 	tlv_handler_ctx_free(ctx);
 	free(req);
 }
@@ -299,7 +300,46 @@ struct tlv_packet *fs_chdir(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, rc);
 }
 
-int file_new_cb(struct tlv_handler_ctx *ctx, struct channel *c)
+static void file_new_async_cb(uv_fs_t *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct channel *c = ctx->data;
+	struct tlv_packet *p;
+
+	if (req->result < 0) {
+		p = channel_tlv_packet_response_result(c, ctx, TLV_RESULT_FAILURE);
+	} else {
+		channel_set_ctx(c, req);
+		p = channel_tlv_packet_response_result(c, ctx, TLV_RESULT_SUCCESS);
+	}
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+
+	uv_fs_req_cleanup(req);
+	tlv_handler_ctx_free(ctx);
+	free(req);
+}
+
+struct tlv_packet * file_new_async(struct tlv_handler_ctx *ctx, struct channel *c)
+{
+	struct mettle *m = ctx->arg;
+	uv_fs_t *req = get_fs_req(ctx, m);
+
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	char *mode = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_MODE);
+	if (mode == NULL) {
+		mode = "r";
+	}
+	int flags = __fmodeflags(mode);
+
+	if (uv_fs_open(mettle_get_loop(m), req, path, flags, 0644,
+		file_new_async_cb) == -1) {
+		return channel_tlv_packet_response_result(c, ctx, errno);
+	}
+	return NULL;
+}
+
+int file_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
 	char *mode = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_MODE);
@@ -315,24 +355,24 @@ int file_new_cb(struct tlv_handler_ctx *ctx, struct channel *c)
 	return 0;
 }
 
-ssize_t file_read_cb(void *ctx, char *buf, size_t len)
+ssize_t file_read(void *ctx, char *buf, size_t len)
 {
 	log_info("reading %zu bytes", len);
 	return fread(buf, 1, len, ctx);
 }
 
-ssize_t file_write_cb(void *ctx, char *buf, size_t len)
+ssize_t file_write(void *ctx, char *buf, size_t len)
 {
 	return fwrite(buf, 1, len, ctx);
 }
 
-bool file_eof_cb(void *ctx)
+bool file_eof(void *ctx)
 {
 	log_info("eof? %u", feof(ctx));
 	return feof(ctx);
 }
 
-int file_free_cb(void *ctx)
+int file_free(void *ctx)
 {
 	return fclose(ctx);
 }
