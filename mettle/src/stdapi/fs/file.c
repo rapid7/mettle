@@ -298,3 +298,41 @@ struct tlv_packet *fs_chdir(struct tlv_handler_ctx *ctx)
 	}
 	return tlv_packet_response_result(ctx, rc);
 }
+
+int file_new_cb(struct tlv_handler_ctx *ctx, struct channel *c)
+{
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	char *mode = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_MODE);
+	if (mode == NULL) {
+		mode = "rb";
+	}
+
+	FILE *f = fopen(path, mode);
+	if (!f) {
+		return -1;
+	}
+	channel_set_ctx(c, f);
+	return 0;
+}
+
+ssize_t file_read_cb(void *ctx, char *buf, size_t len)
+{
+	log_info("reading %zu bytes", len);
+	return fread(buf, 1, len, ctx);
+}
+
+ssize_t file_write_cb(void *ctx, char *buf, size_t len)
+{
+	return fwrite(buf, 1, len, ctx);
+}
+
+bool file_eof_cb(void *ctx)
+{
+	log_info("eof? %u", feof(ctx));
+	return feof(ctx);
+}
+
+int file_free_cb(void *ctx)
+{
+	return fclose(ctx);
+}
