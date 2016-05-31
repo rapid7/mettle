@@ -126,7 +126,6 @@ static void fs_stat_cb(uv_fs_t *req)
 	}
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
-
 	tlv_handler_ctx_free(ctx);
 	free(req);
 }
@@ -160,19 +159,13 @@ struct tlv_packet *fs_getwd(struct tlv_handler_ctx *ctx)
 }
 
 
-static void fs_mkdir_cb(uv_fs_t *req)
+static void fs_generic_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
-	struct tlv_packet *p;
-
-	if (req->result < 0) {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-	} else {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	}
+	struct tlv_packet *p = tlv_packet_response_result(ctx,
+		req->result < 0 ? TLV_RESULT_FAILURE : TLV_RESULT_SUCCESS);
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
-
 	tlv_handler_ctx_free(ctx);
 	free(req);
 }
@@ -187,7 +180,24 @@ struct tlv_packet *fs_mkdir(struct tlv_handler_ctx *ctx)
 	struct mettle *m = ctx->arg;
 	uv_fs_t *req = get_fs_req(ctx, m);
 
-	if (uv_fs_mkdir(mettle_get_loop(m), req, path, 0777, fs_mkdir_cb) == -1) {
+	if (uv_fs_mkdir(mettle_get_loop(m), req, path, 0777, fs_generic_cb) == -1) {
+		return tlv_packet_response_result(ctx, errno);
+	}
+
+	return NULL;
+}
+
+struct tlv_packet *fs_rmdir(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+
+	struct mettle *m = ctx->arg;
+	uv_fs_t *req = get_fs_req(ctx, m);
+
+	if (uv_fs_rmdir(mettle_get_loop(m), req, path, fs_generic_cb) == -1) {
 		return tlv_packet_response_result(ctx, errno);
 	}
 
@@ -211,23 +221,6 @@ struct tlv_packet *fs_expand_path(struct tlv_handler_ctx *ctx)
 	return tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, path);
 }
 
-static void fs_file_move_cb(uv_fs_t *req)
-{
-	struct tlv_handler_ctx *ctx = req->data;
-	struct tlv_packet *p;
-
-	if (req->result < 0) {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-	} else {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	}
-
-	tlv_dispatcher_enqueue_response(ctx->td, p);
-
-	tlv_handler_ctx_free(ctx);
-	free(req);
-}
-
 struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
 {
 	const char *src = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_NAME);
@@ -243,28 +236,11 @@ struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, ENOMEM);
 	}
 
-	if (uv_fs_rename(mettle_get_loop(m), req, src, dst, fs_file_move_cb) == -1) {
+	if (uv_fs_rename(mettle_get_loop(m), req, src, dst, fs_generic_cb) == -1) {
 		return tlv_packet_response_result(ctx, errno);
 	}
 
 	return NULL;
-}
-
-static void fs_delete_file_cb(uv_fs_t *req)
-{
-	struct tlv_handler_ctx *ctx = req->data;
-	struct tlv_packet *p;
-
-	if (req->result < 0) {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-	} else {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	}
-
-	tlv_dispatcher_enqueue_response(ctx->td, p);
-
-	tlv_handler_ctx_free(ctx);
-	free(req);
 }
 
 struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
@@ -280,7 +256,7 @@ struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, ENOMEM);
 	}
 
-	if (uv_fs_unlink(mettle_get_loop(m), req, path, fs_delete_file_cb) == -1) {
+	if (uv_fs_unlink(mettle_get_loop(m), req, path, fs_generic_cb) == -1) {
 		return tlv_packet_response_result(ctx, errno);
 	}
 
@@ -317,7 +293,6 @@ static void file_new_async_cb(uv_fs_t *req)
 	}
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
-
 	uv_fs_req_cleanup(req);
 	tlv_handler_ctx_free(ctx);
 	free(req);
@@ -399,6 +374,7 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_mkdir", fs_mkdir, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_dir", fs_rmdir, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_ls", fs_ls, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_separator", fs_separator, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
