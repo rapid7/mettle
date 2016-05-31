@@ -89,14 +89,6 @@ struct channel_callbacks * channel_get_callbacks(struct channel *c)
 	return &c->type->cbs;
 }
 
-struct tlv_packet * channel_tlv_packet_response_result(struct channel *c,
-	struct tlv_handler_ctx *ctx, int rc)
-{
-	struct tlv_packet *p = tlv_packet_response_result(ctx, rc);
-	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
-	return p;
-}
-
 struct channel_type * channelmgr_type_by_name(struct channelmgr *cm, char *name)
 {
 	struct channel_type *ct;

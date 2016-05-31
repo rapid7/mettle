@@ -89,6 +89,7 @@ struct tlv_handler_ctx {
 	const char *id;
 	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
+	uint32_t channel_id;
 	struct channel *channel;
 	void *arg;
 };

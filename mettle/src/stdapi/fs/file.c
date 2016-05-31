@@ -13,6 +13,7 @@
 #include <dnet.h>
 #include <mettle.h>
 
+#include "channel.h"
 #include "log.h"
 #include "tlv.h"
 
@@ -304,13 +305,15 @@ static void file_new_async_cb(uv_fs_t *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
 	struct channel *c = ctx->channel;
+	struct mettle *m = ctx->arg;
 	struct tlv_packet *p;
 
 	if (req->result < 0) {
-		p = channel_tlv_packet_response_result(c, ctx, TLV_RESULT_FAILURE);
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		channelmgr_channel_free(mettle_get_channelmgr(m), c);
 	} else {
 		channel_set_ctx(c, req);
-		p = channel_tlv_packet_response_result(c, ctx, TLV_RESULT_SUCCESS);
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	}
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
@@ -320,7 +323,7 @@ static void file_new_async_cb(uv_fs_t *req)
 	free(req);
 }
 
-struct tlv_packet * file_new_async(struct tlv_handler_ctx *ctx, struct channel *c)
+struct tlv_packet * file_new_async(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	uv_fs_t *req = get_fs_req(ctx, m);
@@ -334,7 +337,7 @@ struct tlv_packet * file_new_async(struct tlv_handler_ctx *ctx, struct channel *
 
 	if (uv_fs_open(mettle_get_loop(m), req, path, flags, 0644,
 		file_new_async_cb) == -1) {
-		return channel_tlv_packet_response_result(c, ctx, errno);
+		return tlv_packet_response_result(ctx, errno);
 	}
 	return NULL;
 }
@@ -357,7 +360,6 @@ int file_new(struct tlv_handler_ctx *ctx, struct channel *c)
 
 ssize_t file_read(void *ctx, char *buf, size_t len)
 {
-	log_info("reading %zu bytes", len);
 	return fread(buf, 1, len, ctx);
 }
 
@@ -368,7 +370,6 @@ ssize_t file_write(void *ctx, char *buf, size_t len)
 
 bool file_eof(void *ctx)
 {
-	log_info("eof? %u", feof(ctx));
 	return feof(ctx);
 }
 

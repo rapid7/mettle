@@ -321,6 +321,9 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
 			tlv_packet_len(ctx->req) + 32);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
+	if (ctx->channel_id) {
+		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
+	}
 	return tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, ctx->id);
 };
 
@@ -338,13 +341,6 @@ struct tlv_handler {
 	void *arg;
 	UT_hash_handle hh;
 	char method[];
-};
-
-struct tlv_channel {
-	//tlv_channel_handler_cb cb;
-	void *arg;
-	UT_hash_handle hh;
-	int32_t id;
 };
 
 struct tlv_response {

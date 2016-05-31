@@ -54,7 +54,4 @@ void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
 
-struct tlv_packet * channel_tlv_packet_response_result(struct channel *c,
-	struct tlv_handler_ctx *ctx, int rc);
-
 #endif
