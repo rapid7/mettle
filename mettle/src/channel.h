@@ -38,6 +38,10 @@ struct channel_callbacks {
 
 	bool (*eof_cb)(void *channel_ctx);
 
+	int (*seek_cb)(void *channel_ctx, ssize_t offset, int whence);
+
+	ssize_t (*tell_cb)(void *channel_ctx);
+
 	int (*free_cb)(void *channel_ctx);
 };
 

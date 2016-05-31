@@ -368,6 +368,16 @@ ssize_t file_write(void *ctx, char *buf, size_t len)
 	return fwrite(buf, 1, len, ctx);
 }
 
+int file_seek(void *ctx, ssize_t offset, int whence)
+{
+	return fseek(ctx, offset, whence);
+}
+
+ssize_t file_tell(void *ctx)
+{
+	return ftell(ctx);
+}
+
 bool file_eof(void *ctx)
 {
 	return feof(ctx);
@@ -376,4 +386,30 @@ bool file_eof(void *ctx)
 int file_free(void *ctx)
 {
 	return fclose(ctx);
+}
+
+void file_register_handlers(struct mettle *m)
+{
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	struct channelmgr *cm = mettle_get_channelmgr(m);
+
+	tlv_dispatcher_add_handler(td, "stdapi_fs_chdir", fs_chdir, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_file", fs_delete_file, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_expand_path", fs_expand_path, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_mkdir", fs_mkdir, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_ls", fs_ls, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_separator", fs_separator, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
+
+	struct channel_callbacks cbs = {
+		.new_cb = file_new,
+		.read_cb = file_read,
+		.write_cb = file_write,
+		.eof_cb = file_eof,
+		.seek_cb = file_seek,
+		.free_cb = file_free,
+	};
+	channelmgr_add_channel_type(cm, "stdapi_fs_file", &cbs);
 }
