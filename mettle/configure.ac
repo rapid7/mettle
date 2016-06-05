@@ -12,8 +12,6 @@ AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
 LT_INIT
 
-CFLAGS="$CFLAGS -Wall -Werror -std=gnu99"
-
 case $host_os in
 	*linux*)
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_GNU_SOURCE -D_XOPEN_SOURCE=700"
@@ -27,9 +25,17 @@ AM_CONDITIONAL([HAVE_STRLCAT], [test "x$ac_cv_func_strlcat" = xyes])
 AM_CONDITIONAL([HAVE_STRLCPY], [test "x$ac_cv_func_strlcpy" = xyes])
 AM_CONDITIONAL([HAVE_STRTONUM], [test "x$ac_cv_func_strtonum" = xyes])
 
+CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing"
+
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 ])
 
 AC_OUTPUT
+
+AC_ARG_ENABLE([staticpie],
+	AS_HELP_STRING([--enable-staticpie], [Building Static PIE]))
+AS_IF([test "x$enable_staticpie" = "xyes"], [
+	AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])
+])

@@ -1,24 +1,35 @@
-$(ROOT)/mettle/configure:
+deps/README.md:
+	git submodule init
+	git submodule update
+
+METTLE_DEPS=
+METTLE_OPTS=
+ifneq "$(TARGET)" "native"
+    METTLE_DEPS=$(BUILD)/bin/mettle.bin
+    METTLE_OPTS=--enable-staticpie
+endif
+
+$(ROOT)/mettle/configure: deps/README.md
 	mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
 		autoreconf -i $(LOGBUILD)
 
 $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
-	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libdnet.a \
-	$(BUILD)/lib/libjson-c.a \
 	$(BUILD)/lib/libmbedtls.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libuv.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \
-		$(ENV) $(ROOT)/mettle/$(CONFIGURE) $(LOGBUILD)
+		$(ENV) $(ROOT)/mettle/$(CONFIGURE) $(METTLE_OPTS) $(LOGBUILD)
 
 $(BUILD)/mettle.built: $(BUILD)/mettle/Makefile
 	@echo "Building mettle for $(TARGET)"
 	@cd $(BUILD)/mettle; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
-mettle: $(BUILD)/mettle.built
+$(BUILD)/bin/mettle.bin:
 	$(ELF2BIN) $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
+
+mettle: $(BUILD)/mettle.built $(METTLE_DEPS)

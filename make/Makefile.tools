@@ -41,3 +41,4 @@ ifneq "$(TARGET)" "native"
 endif
 
 build/tools: $(TOOLS_DEPS)
+	mkdir -p build/tools	

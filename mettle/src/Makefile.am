@@ -3,7 +3,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 lib_LTLIBRARIES = libmettle.la
 
 libmettle_la_LIBADD = -luv
-libmettle_la_LIBADD += -lcurl
 libmettle_la_LIBADD += -ldnet
 libmettle_la_LIBADD += -lsigar
 #libmettle_la_LIBADD += -ltls
@@ -38,4 +37,4 @@ bin_PROGRAMS = mettle
 mettle_SOURCES = main.c
 mettle_LDADD = libmettle.la
 
-mettle_LDFLAGS = -static --static -pie
+mettle_LDFLAGS = $(PLATFORM_LDADD)
