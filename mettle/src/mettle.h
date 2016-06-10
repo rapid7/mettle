@@ -7,10 +7,10 @@
 #ifndef _METTLE_H_
 #define _METTLE_H_
 
-#include <sigar.h>
-#include <uv.h>
-
 #include "channel.h"
+
+#include <ev.h>
+#include <sigar.h>
 
 struct mettle * mettle(void);
 
@@ -20,7 +20,7 @@ const char *mettle_get_fqdn(struct mettle *m);
 
 sigar_t *mettle_get_sigar(struct mettle *m);
 
-uv_loop_t * mettle_get_loop(struct mettle *m);
+struct ev_loop * mettle_get_loop(struct mettle *m);
 
 struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m);
 

@@ -8,6 +8,7 @@
 #include "tlv.h"
 
 #include <mettle.h>
+#include <errno.h>
 #include <stdlib.h>
 
 static struct tlv_packet *machine_id(struct tlv_handler_ctx *ctx)

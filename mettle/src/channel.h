@@ -20,7 +20,8 @@ struct channelmgr * channelmgr_new(void);
 
 void channelmgr_free(struct channelmgr *cm);
 
-struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_type);
+struct channel * channelmgr_channel_new(struct channelmgr *cm, char
+*channel_type);
 
 void channelmgr_channel_free(struct channelmgr *cm, struct channel *c);
 

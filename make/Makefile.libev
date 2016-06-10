@@ -1,0 +1,22 @@
+LIBEV_VERSION=4.22
+
+$(BUILD)/libev/configure:
+	@echo "Unpacking libev for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/libev; \
+		$(TAR) zxf $(DEPS)/libev-$(LIBEV_VERSION).tar.gz; \
+		mv libev-$(LIBEV_VERSION) libev
+
+$(BUILD)/libev/Makefile: build/tools $(BUILD)/libev/configure $(LIBEV_DEPS)
+	@echo "Configuring libev for $(TARGET)"
+	@cd $(BUILD)/libev; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libev.a: $(BUILD)/libev/Makefile
+	@echo "Building libev for $(TARGET)"
+	@cd $(BUILD)/libev; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libev: $(BUILD)/lib/libev.a

@@ -7,13 +7,13 @@
 #ifndef _NETWORK_CLIENT_H_
 #define _NETWORK_CLIENT_H_
 
-#include <uv.h>
+#include <ev.h>
 
 #include "buffer_queue.h"
 
 struct network_client;
 
-struct network_client * network_client_new(uv_loop_t *loop);
+struct network_client * network_client_new(struct ev_loop *loop);
 
 int network_client_add_server(struct network_client *nc, const char *uri);
 
@@ -40,7 +40,7 @@ size_t network_client_read(struct network_client *nc, void *buf, size_t buflen);
 
 size_t network_client_bytes_available(struct network_client *nc);
 
-int network_client_write(struct network_client *nc, void *buf, size_t buflen);
+ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen);
 
 int network_client_close(struct network_client *nc);
 

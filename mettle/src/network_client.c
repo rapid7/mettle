@@ -4,11 +4,21 @@
  * @file network-client.h
  */
 
+#include <ev.h>
+#include <eio.h>
+#include <errno.h>
 #include <string.h>
 #include <strings.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 #include "buffer_queue.h"
 #include "log.h"
@@ -30,35 +40,26 @@ struct network_client_server {
 };
 
 struct network_client {
-	uv_loop_t *loop;
-	uv_timer_t connect_timer;
+	struct ev_timer connect_timer;
+	struct ev_loop *loop;
 	struct network_client_server *servers;
 	int num_servers;
+
+	int sock;
+	struct ev_io data_ev;
 
 	int curr_server, curr_service;
 	uint64_t connect_time_s;
 
-	union uv_any_handle conn;
 	struct addrinfo *addrinfo;
-
-	uv_getaddrinfo_t getaddrinfo_req;
-
-	/*
-	struct tls *tls;
-	struct tls_config *tls_config;
-	int tls_state;
-	uv_poll_t tls_poll_req;
-	*/
-
-	uv_connect_t connect_req;
 
 	struct buffer_queue *rx_queue;
 
 	enum {
-		network_client_connected,
+		network_client_closed,
 		network_client_resolving,
 		network_client_connecting,
-		network_client_closed,
+		network_client_connected,
 	} state;
 
 	network_client_cb_t read_cb;
@@ -75,10 +76,11 @@ struct {
 } proto_list[] = {
 	{network_client_proto_udp, "udp"},
 	{network_client_proto_tcp, "tcp"},
-	{network_client_proto_tls, "tls"},
+	{network_client_proto_tcp, "tls"},
 };
 
-static const char *proto_to_str(enum network_client_proto proto)
+const char
+*proto_to_str(enum network_client_proto proto)
 {
 	for (int i = 0; i < COUNT_OF(proto_list); i++) {
 		if (proto_list[i].proto == proto) {
@@ -88,7 +90,8 @@ static const char *proto_to_str(enum network_client_proto proto)
 	return "unknown";
 }
 
-static enum network_client_proto str_to_proto(const char *proto)
+enum network_client_proto
+str_to_proto(const char *proto)
 {
 	for (int i = 0; i < COUNT_OF(proto_list); i++) {
 		if (!strcasecmp(proto_list[i].str, proto)) {
@@ -109,7 +112,7 @@ void server_free(struct network_client_server *srv)
 	memset(srv, 0, sizeof(*srv));
 }
 
-static int add_server_service(struct network_client_server *srv, const char *service)
+int add_server_service(struct network_client_server *srv, const char *service)
 {
 	char *service_cpy = strdup(service);
 	if (service_cpy == NULL) {
@@ -124,7 +127,7 @@ static int add_server_service(struct network_client_server *srv, const char *ser
 	return 0;
 }
 
-static int init_server(struct network_client_server *srv, const char *uri)
+int init_server(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
 	char *services = NULL;
@@ -193,34 +196,8 @@ out:
 	return rc;
 }
 
-static int init_socket(struct network_client_server *srv, uv_tcp_t *handle)
-{
-	int rc = -1;
-	char service[7] = {0};
-	char *proto = "tcp";
-	struct sockaddr_in name; /* TODO: IPv4 only for now */
-	int sockaddr_in_sz = sizeof(struct sockaddr_in);
-
-	uv_tcp_getpeername(handle, (struct sockaddr *)&name, &sockaddr_in_sz);
-
-	srv->host = strdup(inet_ntoa(name.sin_addr));
-	srv->proto = str_to_proto(proto);
-	snprintf(service, 7, "%d", ntohs(name.sin_port));
-
-	add_server_service(srv, service);
-
-	rc = 0;
-	/* TODO: Add error handling
-out:
-	if (rc != 0) {
-		server_free(srv);
-	}
-	*/
-
-	return rc;
-}
-
-int network_client_remove_servers(struct network_client *nc)
+int
+network_client_remove_servers(struct network_client *nc)
 {
 	if (nc->servers) {
 		for (int i = 0; i < nc->num_servers; i++) {
@@ -233,7 +210,8 @@ int network_client_remove_servers(struct network_client *nc)
 	return 0;
 }
 
-int network_client_add_server(struct network_client *nc, const char *uri)
+int
+network_client_add_server(struct network_client *nc, const char *uri)
 {
 	nc->servers = reallocarray(nc->servers, nc->num_servers + 1,
 			sizeof(struct network_client_server));
@@ -249,7 +227,8 @@ int network_client_add_server(struct network_client *nc, const char *uri)
 	return 0;
 }
 
-static struct network_client_server *get_curr_server(struct network_client *nc)
+struct network_client_server *
+get_curr_server(struct network_client *nc)
 {
 	if (nc->servers) {
 		return &nc->servers[nc->curr_server];
@@ -258,7 +237,8 @@ static struct network_client_server *get_curr_server(struct network_client *nc)
 	}
 }
 
-static const char * get_curr_service(struct network_client *nc)
+const char *
+get_curr_service(struct network_client *nc)
 {
 	if (nc->servers) {
 		return nc->servers[nc->curr_server].services[nc->curr_service];
@@ -267,7 +247,8 @@ static const char * get_curr_service(struct network_client *nc)
 	}
 }
 
-static struct network_client_server *choose_next_server(struct network_client *nc)
+struct network_client_server *
+choose_next_server(struct network_client *nc)
 {
 	struct network_client_server *srv = get_curr_server(nc);
 	if (srv && nc->curr_service < srv->num_services - 1) {
@@ -329,61 +310,18 @@ size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 	return buffer_queue_remove(nc->rx_queue, buf, buflen);
 }
 
-static int write_tls(struct network_client *nc, void *buf, size_t buflen)
-{
-	return -1;
-	/*
-	if (nc->tls == NULL) {
-		return -1;
-	}
-	return tls_write(nc->tls, buf, buflen) == -1 ? -1 : 0;
-	*/
-}
-
-struct write_request {
-	uv_write_t req;
-	uv_buf_t buf;
-};
-
-static void on_tcp_write(uv_write_t *req, int status)
-{
-	struct write_request *wr = (struct write_request *)req;
-	free(wr->buf.base);
-	free(wr);
-}
-
-static int write_tcp(struct network_client *nc, void *buf, size_t buflen)
-{
-	struct write_request *wr = calloc(1, sizeof(*wr));
-	if (wr == NULL) {
-		return -1;
-	}
-
-	wr->req.data = nc;
-	wr->buf.base = malloc(buflen);
-	if (wr->buf.base == NULL) {
-		free(wr);
-		return -1;
-	}
-
-	memcpy(wr->buf.base, buf, buflen);
-	wr->buf.len = buflen;
-	uv_write((uv_write_t *)wr, (uv_stream_t *)&nc->conn.tcp,
-			&wr->buf, 1, on_tcp_write);
-
-	return 0;
-}
-
-int network_client_write(struct network_client *nc, void *buf, size_t buflen)
+ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
 	if (nc->state == network_client_connected) {
 		switch (get_curr_server(nc)->proto) {
 		case network_client_proto_udp:
+			return send(nc->sock, buf, buflen, 0);
 			break;
 		case network_client_proto_tcp:
-			return write_tcp(nc, buf, buflen);
+			return send(nc->sock, buf, buflen, 0);
+			break;
 		case network_client_proto_tls:
-			return write_tls(nc, buf, buflen);
+			break;
 		}
 	}
 	return -1;
@@ -394,17 +332,9 @@ static void set_closed(struct network_client *nc)
 	bool was_connected = nc->state == network_client_connected;
 	nc->state = network_client_closed;
 	if (nc->addrinfo) {
-		uv_freeaddrinfo(nc->addrinfo);
+		freeaddrinfo(nc->addrinfo);
 		nc->addrinfo = NULL;
 	}
-
-	/*
-	if (nc->tls) {
-		tls_free(nc->tls);
-		nc->tls_state = 0;
-		nc->tls = NULL;
-	}
-	*/
 
 	buffer_queue_drain_all(nc->rx_queue);
 
@@ -413,30 +343,27 @@ static void set_closed(struct network_client *nc)
 	}
 }
 
-static void on_close(uv_handle_t *handle)
-{
-	struct network_client *nc = handle->data;
-	set_closed(nc);
-}
-
 int network_client_close(struct network_client *nc)
 {
 	if (nc->state != network_client_connected) {
 		return -1;
 	}
-	uv_close((uv_handle_t *)&nc->conn.tcp, on_close);
+	set_closed(nc);
 	return 0;
 }
 
-static void client_connected(struct network_client *nc)
+void client_connected(struct network_client *nc)
 {
 	nc->state = network_client_connected;
+	struct network_client_server *srv = get_curr_server(nc);
+	log_info("connect to '%s://%s:%s'",
+			proto_to_str(srv->proto), srv->host, get_curr_service(nc));
 	if (nc->connect_cb) {
 		nc->connect_cb(nc, nc->connect_cb_arg);
 	}
 }
 
-static void enqueue_data(struct network_client *nc, void *data, size_t len)
+void enqueue_data(struct network_client *nc, void *data, size_t len)
 {
 	if (len) {
 		buffer_queue_add(nc->rx_queue, data, len);
@@ -446,176 +373,101 @@ static void enqueue_data(struct network_client *nc, void *data, size_t len)
 	}
 }
 
-/*
-void poll_tls(uv_poll_t *req, int status, int events)
+void on_read(struct ev_loop *loop, struct ev_io *w, int events)
 {
-	struct network_client *nc = req->data;
+	struct network_client *nc = w->data;
 
-	if (nc->state == network_client_connecting) {
-		if (nc->tls_state == TLS_WANT_POLLIN ||
-		    nc->tls_state == TLS_WANT_POLLOUT) {
-			nc->tls_state = tls_connect_socket(nc->tls, 0, NULL);
-
-			if (nc->tls_state == 0) {
-				client_connected(nc);
-			} else if (nc->tls_state == -1) {
-				log_info("%d %s", nc->tls_state, tls_error(nc->tls));
-				uv_poll_stop(&nc->tls_poll_req);
-				network_client_close(nc);
-			}
-		}
-		return;
+	ssize_t bytes_read = 0;
+	char buf[4096];
+	ssize_t rc;
+	while ((rc = recv(nc->sock, buf, sizeof(buf), 0)) > 0) {
+		bytes_read += rc;
+		enqueue_data(nc, buf, rc);
 	}
 
-	if (nc->state == network_client_connected) {
-		char buf[4096];
-		ssize_t bytes_read = 0;
-		do {
-			bytes_read = tls_read(nc->tls, buf, sizeof(buf));
-			if (bytes_read > 0) {
-				enqueue_data(nc, buf, bytes_read);
-			}
-		} while (bytes_read > 0);
-
-		if (bytes_read == -1) {
-			uv_poll_stop(&nc->tls_poll_req);
-			network_client_close(nc);
-		}
-	}
-}
-*/
-
-static void read_tcp(uv_stream_t *tcp, ssize_t bytes_read, const struct uv_buf_t *buf)
-{
-	struct network_client *nc = tcp->data;
-	if (bytes_read >= 0) {
-		enqueue_data(nc, buf->base, bytes_read);
-		free(buf->base);
-	} else {
-		uv_close((uv_handle_t *)tcp, on_close);
+	if (bytes_read <= 0) {
+		ev_io_stop(nc->loop, &nc->data_ev);
+		set_closed(nc);
 	}
 }
 
-static void connect_tcp_cb(uv_connect_t *req, int status)
+static void
+on_connect(struct ev_loop *loop, struct ev_io *w, int events)
 {
-	struct network_client *nc = req->data;
+	struct network_client *nc = w->data;
 	struct network_client_server *srv = get_curr_server(nc);
+	ev_io_stop(nc->loop, &nc->data_ev);
 
+	int status;
+	socklen_t len = sizeof(status);
+	getsockopt(nc->sock, SOL_SOCKET, SO_ERROR, &status, &len);
 	if (status != 0) {
-		log_info("failed to connect to '%s://%s:%s': %s",
-				proto_to_str(srv->proto), srv->host, get_curr_service(nc),
-				uv_strerror(status));
+		log_info("failed to connect to '%s://%s:%s'",
+				proto_to_str(srv->proto), srv->host, get_curr_service(nc));
 		set_closed(nc);
 		return;
 	}
 
-	if (srv->proto == network_client_proto_tcp) {
-		client_connected(nc);
-		uv_read_start(req->handle, uv_buf_alloc, read_tcp);
+	client_connected(nc);
 
-	} else {
-		/*
-		nc->tls = tls_client();
-		if (nc->tls == NULL) {
-			log_error("could not allocate TLS client");
-			set_closed(nc);
-			return;
-		}
-		tls_configure(nc->tls, nc->tls_config);
+	ev_io_init(&nc->data_ev, on_read, nc->sock, EV_READ);
+	nc->data_ev.data = nc;
+	ev_io_start(nc->loop, &nc->data_ev);
+}
 
-		int socket;
-		if (uv_fileno((uv_handle_t *)req->handle, &socket) == 0) {
-			int rc = tls_connect_socket(nc->tls, socket, srv->host);
-			if (rc == -1) {
-				log_info("could not setup TLS connection: %s", tls_error(nc->tls));
-				return;
-			}
-			nc->tls_state = rc;
+static int
+on_resolve(struct eio_req *req)
+{
+	struct network_client *nc = req->data;
+	char ipstr[INET6_ADDRSTRLEN];
+	struct network_client_server *srv = get_curr_server(nc);
+
+	if (req->result != 0) {
+	       log_info("could not resolve '%s://%s:%s': %s",
+		   proto_to_str(srv->proto), srv->host, get_curr_service(nc),
+		   gai_strerror(req->result));
+	       set_closed(nc);
+	       return -1;
+	}
+
+	for (struct addrinfo *p = nc->addrinfo; p; p = p->ai_next) {
+		void *addr;
+
+		if (p->ai_family == AF_INET) {
+			struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+			addr = &ipv4->sin_addr;
 		} else {
-			log_error("could not find file descriptor");
-			return;
+			struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+			addr = &ipv6->sin6_addr;
 		}
 
-		memset(&nc->tls_poll_req, 0, sizeof(nc->tls_poll_req));
-		nc->tls_poll_req.data = nc;
-		uv_poll_init(nc->loop, &nc->tls_poll_req, socket);
-		uv_poll_start(&nc->tls_poll_req, UV_READABLE, poll_tls);
-		*/
+		inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+
+		nc->sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+		if (nc->sock >= 0) {
+			make_socket_nonblocking(nc->sock);
+			nc->state = network_client_connecting;
+			int rc = connect(nc->sock, p->ai_addr, p->ai_addrlen);
+			if (rc == 0 || errno == EINPROGRESS) {
+				log_info("connecting to %s: %s (%s)", srv->host, ipstr, strerror(errno));
+				ev_io_init(&nc->data_ev, on_connect, nc->sock, EV_WRITE);
+				nc->data_ev.data = nc;
+				ev_io_start(nc->loop, &nc->data_ev);
+			}
+			return 0;
+		}
 	}
-}
 
-static int connect_tcp(struct network_client *nc, struct addrinfo *addrinfo)
-{
-	memset(&nc->connect_req, 0, sizeof(nc->connect_req));
-	nc->connect_req.data = nc;
-	uv_tcp_init(nc->loop, &nc->conn.tcp);
-	nc->conn.tcp.data = nc;
-	return uv_tcp_connect(&nc->connect_req, &nc->conn.tcp,
-			(const struct sockaddr *)addrinfo->ai_addr, connect_tcp_cb);
-}
-
-static int connect_udp(struct network_client *nc, struct addrinfo *addrinfo)
-{
-	uv_udp_init(nc->loop, &nc->conn.udp);
-
-	if (nc->connect_cb) {
-		nc->connect_cb(nc, nc->connect_cb_arg);
-	}
+	set_closed(nc);
 	return 0;
 }
 
-void resolving_cb(uv_getaddrinfo_t *req, int status, struct addrinfo *addrinfo)
+static void
+resolve(struct eio_req *req)
 {
 	struct network_client *nc = req->data;
 	struct network_client_server *srv = get_curr_server(nc);
-
-	if (status < 0) {
-		log_info("could not resolve '%s://%s:%s': %s",
-				proto_to_str(srv->proto), srv->host, get_curr_service(nc),
-				uv_strerror(status));
-		set_closed(nc);
-		return;
-	}
-
-	nc->addrinfo = addrinfo;
-
-	switch (srv->proto) {
-
-		case network_client_proto_udp:
-			if (connect_udp(nc, addrinfo) == 0) {
-				client_connected(nc);
-			} else {
-				set_closed(nc);
-			}
-			break;
-
-		case network_client_proto_tls:
-		case network_client_proto_tcp:
-			if (connect_tcp(nc, addrinfo) == 0) {
-				nc->state = network_client_connecting;
-			} else {
-				set_closed(nc);
-			}
-			break;
-	}
-}
-
-static void reconnect_cb(uv_timer_t *timer)
-{
-	struct network_client *nc = timer->data;
-
-	if (nc->state != network_client_closed || nc->num_servers == 0) {
-		return;
-	}
-
-	struct network_client_server *srv = choose_next_server(nc);
 	const char *service = get_curr_service(nc);
-
-	log_info("connecting to %s://%s:%s",
-			proto_to_str(srv->proto), srv->host, service);
-
-	memset(&nc->getaddrinfo_req, 0, sizeof(nc->getaddrinfo_req));
-	nc->getaddrinfo_req.data = nc;
 
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
@@ -630,50 +482,82 @@ static void reconnect_cb(uv_timer_t *timer)
 		hints.ai_protocol = IPPROTO_TCP;
 	}
 
+	log_info("resolving %s://%s:%s",
+			proto_to_str(srv->proto), srv->host, service);
+
 	nc->state = network_client_resolving;
-	uv_getaddrinfo(nc->loop, &nc->getaddrinfo_req, resolving_cb, srv->host, service, &hints);
+	req->result = getaddrinfo(srv->host, service, &hints, &nc->addrinfo);
+}
+
+static void
+reconnect_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+	struct network_client *nc = (struct network_client *)w;
+
+	if (nc->state != network_client_closed || nc->num_servers == 0) {
+		return;
+	}
+
+	choose_next_server(nc);
+	eio_custom(resolve, 0, on_resolve, nc);
 }
 
 int network_client_start(struct network_client *nc)
 {
-	if (uv_timer_init(nc->loop, &nc->connect_timer) != 0) {
-		return -1;
-	}
-
-	return uv_timer_start(&nc->connect_timer, reconnect_cb, 0, 5000);
+	ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
+	ev_timer_start(nc->loop, &nc->connect_timer);
+	return 0;
 }
 
 int network_client_add_tcp_sock(struct network_client *nc, int sock)
 {
-	log_info("Adding opened fd %d", sock);
+	log_info("Adding opened socket %d", sock);
 	nc->servers = reallocarray(nc->servers, nc->num_servers + 1,
 			sizeof(struct network_client_server));
 	if (nc->servers == NULL) {
 		return -1;
 	}
+	nc->num_servers++;
 
-	uv_tcp_init(nc->loop, &nc->conn.tcp);
-	nc->conn.tcp.data = nc;
+	struct network_client_server *srv = &nc->servers[nc->num_servers];
 
-	if(uv_tcp_open(&nc->conn.tcp, sock) != 0) {
-		log_error("Could not create handle for fd %d", sock);
+	char service[7];
+	struct sockaddr_storage addr;
+	socklen_t addr_len = sizeof(addr);
+	getpeername(sock, (struct sockaddr *)&addr, &addr_len);
+
+	srv->host = calloc(1, INET6_ADDRSTRLEN);
+	if (srv->host == NULL) {
+		log_error("Could not allocate host space");
 		return -1;
 	}
 
-	if (init_socket(&nc->servers[nc->num_servers], &nc->conn.tcp) != 0) {
-		return -1;
+	if (addr.ss_family == AF_INET) {
+		struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+		inet_ntop(AF_INET, &s->sin_addr, srv->host, INET6_ADDRSTRLEN);
+		snprintf(service, sizeof(service), "%d", ntohs(s->sin_port));
+	} else {
+		struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+		inet_ntop(AF_INET6, &s->sin6_addr, srv->host, INET6_ADDRSTRLEN);
+		snprintf(service, sizeof(service), "%d", ntohs(s->sin6_port));
 	}
+
+	srv->proto = str_to_proto("tcp");
+
+	nc->sock = sock;
+
+	add_server_service(srv, service);
 
 	client_connected(nc);
-	uv_read_start((uv_stream_t *)&nc->conn.tcp, uv_buf_alloc, read_tcp);
-	nc->num_servers++;
+	ev_io_init(&nc->data_ev, on_read, nc->sock, EV_READ);
+	nc->data_ev.data = nc;
+	ev_io_start(nc->loop, &nc->data_ev);
 	return 0;
 }
 
-
 int network_client_stop(struct network_client *nc)
 {
-	uv_timer_stop(&nc->connect_timer);
+	ev_timer_stop(nc->loop, &nc->connect_timer);
 	return 0;
 }
 
@@ -682,13 +566,12 @@ void network_client_free(struct network_client *nc)
 	if (nc) {
 		network_client_stop(nc);
 		network_client_remove_servers(nc);
-		//tls_config_free(nc->tls_config);
 		buffer_queue_free(nc->rx_queue);
 		free(nc);
 	}
 }
 
-struct network_client * network_client_new(uv_loop_t *loop)
+struct network_client * network_client_new(struct ev_loop *loop)
 {
 	struct network_client *nc = calloc(1, sizeof(*nc));
 	if (!nc) {
@@ -700,37 +583,11 @@ struct network_client * network_client_new(uv_loop_t *loop)
 		goto err;
 	}
 
-	/*
-	 * initialize libtls
-	 */
-	/*
-	tls_init();
-	nc->tls_config = tls_config_new();
-	if (nc->tls_config == NULL) {
-		goto err;
-	}
-
-	tls_config_insecure_noverifycert(nc->tls_config);
-	tls_config_insecure_noverifyname(nc->tls_config);
-	*/
-
-	/*
-	 * grab the default event loop if none is specified
-	 */
-	if (loop == NULL) {
-		loop = uv_default_loop();
-		if (loop == NULL) {
-			goto err;
-		}
-	}
 	nc->loop = loop;
 
 	/*
 	 * initialize the connection timer
 	 */
-	uv_timer_init(nc->loop, &nc->connect_timer);
-	nc->connect_timer.data = nc;
-
 	nc->state = network_client_closed;
 
 	return nc;

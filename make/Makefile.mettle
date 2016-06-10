@@ -1,3 +1,9 @@
+include make/Makefile.libdnet
+include make/Makefile.libev
+include make/Makefile.libeio
+include make/Makefile.libsigar
+include make/Makefile.mbedtls
+
 deps/README.md:
 	git submodule init
 	git submodule update
@@ -16,9 +22,10 @@ $(ROOT)/mettle/configure: deps/README.md
 
 $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libdnet.a \
+	$(BUILD)/lib/libeio.a \
+	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libmbedtls.a \
-	$(BUILD)/lib/libsigar.a \
-	$(BUILD)/lib/libuv.a
+	$(BUILD)/lib/libsigar.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \
