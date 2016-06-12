@@ -180,7 +180,7 @@ struct mettle *mettle(void)
 	}
 
 	tlv_register_coreapi(m);
-	//tlv_register_stdapi(m);
+	tlv_register_stdapi(m);
 
 	return m;
 

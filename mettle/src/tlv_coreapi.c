@@ -90,6 +90,26 @@ static struct channel * get_channel_by_id(struct tlv_handler_ctx *ctx)
 	return ctx->channel;
 }
 
+static struct tlv_packet *core_channel_close(struct tlv_handler_ctx *ctx)
+{
+	struct channel *c = get_channel_by_id(ctx);
+	if (c == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+
+	struct channel_callbacks *cbs = channel_get_callbacks(c);
+
+	struct tlv_packet *p;
+	if (cbs->free_cb) {
+		p = tlv_packet_response_result(ctx,
+			cbs->free_cb(channel_get_ctx(c)) == 0 ?
+				TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+	return p;
+}
+
 static struct tlv_packet *core_channel_eof(struct tlv_handler_ctx *ctx)
 {
 	struct channel *c = get_channel_by_id(ctx);
@@ -209,7 +229,6 @@ static struct tlv_packet *core_channel_write(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 
-
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
 	if (cbs->write_cb) {
@@ -223,11 +242,10 @@ static struct tlv_packet *core_channel_write(struct tlv_handler_ctx *ctx)
 		struct tlv_packet *p;
 		if (bytes_written > 0) {
 			p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-			p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, bytes_written);
+			p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, bytes_written);
 		} else {
 			p = tlv_packet_response_result(ctx, errno);
 		}
-		free(buf);
 		return p;
 
 	} else if (cbs->write_async_cb) {
@@ -250,5 +268,5 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_channel_tell", core_channel_tell, m);
 	tlv_dispatcher_add_handler(td, "core_channel_read", core_channel_read, m);
 	tlv_dispatcher_add_handler(td, "core_channel_write", core_channel_write, m);
-	tlv_dispatcher_add_handler(td, "core_channel_close", core_channel_write, m);
+	tlv_dispatcher_add_handler(td, "core_channel_close", core_channel_close, m);
 }
