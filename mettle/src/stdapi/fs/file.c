@@ -4,17 +4,19 @@
  * @file file.c
  */
 
+#include <endian.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <endian.h>
+#include <sys/stat.h>
 
 #include <dnet.h>
 #include <eio.h>
 #include <mettle.h>
-#include <sys/stat.h>
+#include <mbedtls/md5.h>
+#include <mbedtls/sha1.h>
 
 #include "channel.h"
 #include "log.h"
@@ -251,6 +253,102 @@ struct tlv_packet *fs_chdir(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, rc);
 }
 
+static void
+fs_md5_async(struct eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	int rc = 0;
+	unsigned char digest[16] = {0};
+	if (path == NULL) {
+		rc = EINVAL;
+		goto out;
+	}
+
+	FILE *f = fopen(path, "rb");
+	if (f == NULL) {
+		rc = errno;
+		goto out;
+	}
+
+	mbedtls_md5_context md5;
+	mbedtls_md5_init(&md5);
+	mbedtls_md5_starts(&md5);
+	unsigned char buf[65535];
+	size_t buf_len = 0;
+	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
+		mbedtls_md5_update(&md5, buf, buf_len);
+	}
+	mbedtls_md5_finish(&md5, digest);
+	mbedtls_md5_free(&md5);
+
+	fclose(f);
+
+out:
+	p = tlv_packet_response_result(ctx, rc);
+	if (rc == 0) {
+		p = tlv_packet_add_raw(p, TLV_TYPE_FILE_HASH, digest, sizeof(digest));
+	}
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *fs_md5(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	eio_custom(fs_md5_async, 0, NULL, ctx);
+	return NULL;
+}
+
+static void
+fs_sha1_async(struct eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	int rc = 0;
+	unsigned char digest[20] = {0};
+	if (path == NULL) {
+		rc = EINVAL;
+		goto out;
+	}
+
+	FILE *f = fopen(path, "rb");
+	if (f == NULL) {
+		rc = errno;
+		goto out;
+	}
+
+	mbedtls_sha1_context sha1;
+	mbedtls_sha1_init(&sha1);
+	mbedtls_sha1_starts(&sha1);
+	unsigned char buf[65535];
+	size_t buf_len = 0;
+	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
+		mbedtls_sha1_update(&sha1, buf, buf_len);
+	}
+	mbedtls_sha1_finish(&sha1, digest);
+	mbedtls_sha1_free(&sha1);
+
+	fclose(f);
+
+out:
+	p = tlv_packet_response_result(ctx, rc);
+	if (rc == 0) {
+		p = tlv_packet_add_raw(p, TLV_TYPE_FILE_HASH, digest, sizeof(digest));
+	}
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *fs_sha1(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	eio_custom(fs_sha1_async, 0, NULL, ctx);
+	return NULL;
+}
+
 int file_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
@@ -312,6 +410,8 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_fs_ls", fs_ls, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_separator", fs_separator, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_md5", fs_md5, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_sha1", fs_sha1, m);
 
 	struct channel_callbacks cbs = {
 		.new_cb = file_new,

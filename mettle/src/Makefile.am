@@ -5,9 +5,10 @@ lib_LTLIBRARIES = libmettle.la
 libmettle_la_LIBADD = -ldnet
 libmettle_la_LIBADD += -leio
 libmettle_la_LIBADD += -lev
+libmettle_la_LIBADD += -lmbedcrypto
+libmettle_la_LIBADD += -lmbedtls
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
-#libmettle_la_LIBADD += -ltls
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += buffer_queue.c
