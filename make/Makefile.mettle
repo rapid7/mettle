@@ -4,7 +4,7 @@ include make/Makefile.libeio
 include make/Makefile.libsigar
 include make/Makefile.mbedtls
 
-deps/README.md:
+deps/README.md: make/Makefile.tools
 	git submodule init
 	git submodule update
 
