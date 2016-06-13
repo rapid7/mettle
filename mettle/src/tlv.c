@@ -94,10 +94,10 @@ char *tlv_packet_get_buf_str(void * buf, size_t len)
 {
 	char *str = buf;
 	if (str != NULL) {
-		if (len > 0) {
-			str[len - 1] = '\0';
-		} else {
+		if (len <= 0) {
 			str = NULL;
+		} else if (str[len - 1] != '\0') {
+			str[len - 1] = '\0';
 		}
 	}
 	return str;
