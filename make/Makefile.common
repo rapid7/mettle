@@ -43,7 +43,7 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
-CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include
+CFLAGS:=$(CFLAGS) -O -I$(BUILD)/include
 CPPFLAGS:=-I$(BUILD)/include
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
@@ -63,6 +63,17 @@ ifeq "$(ARCH)" "sparc"
     CFLAGS:=$(CFLAGS) -fPIC
 else
     CFLAGS:=$(CFLAGS) -fpic
+endif
+
+ifeq "$(shell uname -s)" "Darwin"
+  CFLAGS:=$(CFLAGS) -g
+else
+# if Debug is enabled, build with debug symbols, otherwise strip the symbol table
+  ifeq "$(D)" "1"
+    CFLAGS:=$(CFLAGS) -g
+  else
+    LDFLAGS:=$(LDFLAGS) -s
+  endif
 endif
 
 ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
