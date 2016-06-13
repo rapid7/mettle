@@ -275,7 +275,7 @@ fs_md5_async(struct eio_req *req)
 	mbedtls_md5_context md5;
 	mbedtls_md5_init(&md5);
 	mbedtls_md5_starts(&md5);
-	unsigned char buf[65535];
+	unsigned char buf[8096];
 	size_t buf_len = 0;
 	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
 		mbedtls_md5_update(&md5, buf, buf_len);
@@ -323,7 +323,7 @@ fs_sha1_async(struct eio_req *req)
 	mbedtls_sha1_context sha1;
 	mbedtls_sha1_init(&sha1);
 	mbedtls_sha1_starts(&sha1);
-	unsigned char buf[65535];
+	unsigned char buf[8096];
 	size_t buf_len = 0;
 	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
 		mbedtls_sha1_update(&sha1, buf, buf_len);
