@@ -148,7 +148,15 @@ struct mettle *mettle(void)
 		return NULL;
 	}
 
-	m->loop = ev_default_loop(EVFLAG_NOENV);
+	/*
+	 * TODO: let libev choose the backend instead of demanding select. On Linux
+	 * 2.6.22 we get the following with the epoll backend (compiled with much
+	 * more recent headers):
+	 *
+	 * (libev) epoll_wait: Bad file descriptor
+	 * Abort
+	 */
+	m->loop = ev_default_loop(EVFLAG_NOENV | EVBACKEND_SELECT);
 
 	ev_idle_init(&eio_idle_watcher, eio_idle_cb);
 	ev_async_init(&eio_async_watcher, eio_async_cb);

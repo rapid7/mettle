@@ -517,9 +517,9 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	if (nc->servers == NULL) {
 		return -1;
 	}
-	nc->num_servers++;
 
 	struct network_client_server *srv = &nc->servers[nc->num_servers];
+	nc->num_servers++;
 
 	char service[7];
 	struct sockaddr_storage addr;
