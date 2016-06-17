@@ -545,6 +545,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	srv->proto = str_to_proto("tcp");
 
 	nc->sock = sock;
+	make_socket_nonblocking(nc->sock);
 
 	add_server_service(srv, service);
 
