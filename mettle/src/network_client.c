@@ -423,11 +423,11 @@ on_resolve(struct eio_req *req)
 	struct network_client_server *srv = get_curr_server(nc);
 
 	if (req->result != 0) {
-	       log_info("could not resolve '%s://%s:%s': %s",
-		   proto_to_str(srv->proto), srv->host, get_curr_service(nc),
-		   gai_strerror(req->result));
-	       set_closed(nc);
-	       return -1;
+		log_info("could not resolve '%s://%s:%s': %s",
+			proto_to_str(srv->proto), srv->host, get_curr_service(nc),
+			gai_strerror(req->result));
+		set_closed(nc);
+		return -1;
 	}
 
 	for (struct addrinfo *p = nc->addrinfo; p; p = p->ai_next) {
