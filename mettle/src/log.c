@@ -145,20 +145,22 @@ void zlog_time(char *filename, int line, char const *fmt, ...)
 
 	va_list va;
 
-	gettimeofday(&tv, NULL);
-	curtime = tv.tv_sec;
-	strftime(timebuf, 64, "%m-%d-%Y %T", localtime(&curtime));
-	snprintf(usecbuf, 16, "%.03f", tv.tv_usec / 1000000.0);
+	if (zlog_fout) {
+		gettimeofday(&tv, NULL);
+		curtime = tv.tv_sec;
+		strftime(timebuf, 64, "%m-%d-%Y %T", localtime(&curtime));
+		snprintf(usecbuf, 16, "%.03f", tv.tv_usec / 1000000.0);
 
-	buffer = zlog_get_buffer();
-	snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s%ss] [%s:%d] ",
-		timebuf, usecbuf + 1, basename(filename), line);
-	buffer += strlen(buffer);
+		buffer = zlog_get_buffer();
+		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s%ss] [%s:%d] ",
+			timebuf, usecbuf + 1, basename(filename), line);
+		buffer += strlen(buffer);
 
-	va_start(va, fmt);
-	vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
-	zlog_finish_buffer();
-	va_end(va);
+		va_start(va, fmt);
+		vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
+		zlog_finish_buffer();
+		va_end(va);
+	}
 }
 
 void zlog(char *filename, int line, char const *fmt, ...)
@@ -166,12 +168,14 @@ void zlog(char *filename, int line, char const *fmt, ...)
 	char *buffer = NULL;
 	va_list va;
 
-	buffer = zlog_get_buffer();
-	snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s:%d]", filename, line);
-	va_start(va, fmt);
-	vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
-	zlog_finish_buffer();
-	va_end(va);
+	if (zlog_fout) {
+		buffer = zlog_get_buffer();
+		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s:%d]", filename, line);
+		va_start(va, fmt);
+		vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
+		zlog_finish_buffer();
+		va_end(va);
+	}
 }
 
 /*
