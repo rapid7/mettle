@@ -53,6 +53,7 @@ struct network_client {
 
 	struct addrinfo *addrinfo;
 
+	struct buffer_queue *tx_queue;
 	struct buffer_queue *rx_queue;
 
 	enum {
@@ -312,16 +313,21 @@ size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
+	ssize_t off = 0, rc;
 	if (nc->state == network_client_connected) {
 		switch (get_curr_server(nc)->proto) {
 		case network_client_proto_udp:
 			return send(nc->sock, buf, buflen, 0);
-			break;
 		case network_client_proto_tcp:
-			return send(nc->sock, buf, buflen, 0);
+			do {
+				rc = send(nc->sock, buf + off, buflen - off, 0);
+				if (rc > 0)
+					off += rc;
+			} while (rc > 0 || (rc < 0 && (errno == EAGAIN || errno == EINTR)));
 			break;
+
 		case network_client_proto_tls:
-			break;
+			return buffer_queue_add(nc->tx_queue, buf, buflen);
 		}
 	}
 	return -1;
@@ -568,6 +574,7 @@ void network_client_free(struct network_client *nc)
 		network_client_stop(nc);
 		network_client_remove_servers(nc);
 		buffer_queue_free(nc->rx_queue);
+		buffer_queue_free(nc->tx_queue);
 		free(nc);
 	}
 }
@@ -581,6 +588,11 @@ struct network_client * network_client_new(struct ev_loop *loop)
 
 	nc->rx_queue = buffer_queue_new();
 	if (nc->rx_queue == NULL) {
+		goto err;
+	}
+
+	nc->tx_queue = buffer_queue_new();
+	if (nc->tx_queue == NULL) {
 		goto err;
 	}
 
