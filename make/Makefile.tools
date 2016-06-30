@@ -35,4 +35,10 @@ $(ROOT)/build/tools/musl-cross/lib/libcc1.so: musl-cross-$(BUILD_HOST)-2.tar.xz
 	@mkdir -p build/tools/musl-cross
 	@cd build/tools && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-2.tar.xz
 
-build/tools: $(TOOLS_DEPS) $(ROOT)/build/tools/musl-cross/lib/libcc1.so $(ELF2BIN)
+TOOLS_DEPS=
+ifneq "$(TARGET)" "native"
+  TOOLS_DEPS=$(ROOT)/build/tools/musl-cross/lib/libcc1.so $(ELF2BIN)
+endif
+
+build/tools: $(TOOLS_DEPS)
+	mkdir -p build/tools	

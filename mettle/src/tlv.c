@@ -94,10 +94,10 @@ char *tlv_packet_get_buf_str(void * buf, size_t len)
 {
 	char *str = buf;
 	if (str != NULL) {
-		if (len > 0) {
-			str[len - 1] = '\0';
-		} else {
+		if (len <= 0) {
 			str = NULL;
+		} else if (str[len - 1] != '\0') {
+			str[len - 1] = '\0';
 		}
 	}
 	return str;
@@ -321,6 +321,9 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
 			tlv_packet_len(ctx->req) + 32);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
+	if (ctx->channel_id) {
+		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
+	}
 	return tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, ctx->id);
 };
 
@@ -348,6 +351,7 @@ struct tlv_response {
 struct tlv_dispatcher {
 	struct tlv_handler *handlers;
 	struct tlv_response *responses;
+	struct tlv_channel *channels;
 	tlv_response_cb response_cb;
 	void *response_cb_arg;
 };

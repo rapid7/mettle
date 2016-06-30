@@ -83,11 +83,14 @@ void tlv_packet_free(struct tlv_packet *p);
 /*
  * TLV Handler
  */
+struct channel;
 struct tlv_handler_ctx {
 	const char *method;
 	const char *id;
 	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
+	uint32_t channel_id;
+	struct channel *channel;
 	void *arg;
 };
 
@@ -125,13 +128,10 @@ void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 
-/*
- * APIs
- */
 struct mettle;
 
-void tlv_register_coreapi(struct mettle *m, struct tlv_dispatcher *td);
+void tlv_register_coreapi(struct mettle *m);
 
-void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td);
+void tlv_register_stdapi(struct mettle *m);
 
 #endif

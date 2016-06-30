@@ -4,41 +4,33 @@
  * @file stdapi.c
  */
 
+#include "mettle.h"
 #include "fs/file.c"
 #include "net/config.c"
 #include "sys/config.c"
 #include "sys/process.c"
 
-#define add_handler(name, cb) \
-	tlv_dispatcher_add_handler(td, "stdapi_" name, cb, m)
-
-void tlv_register_stdapi(struct mettle *m, struct tlv_dispatcher *td)
+void tlv_register_stdapi(struct mettle *m)
 {
-	add_handler("fs_chdir", fs_chdir);
-	add_handler("fs_delete_file", fs_delete_file);
-	add_handler("fs_expand_path", fs_expand_path);
-	add_handler("fs_file_move", fs_file_move);
-	add_handler("fs_getwd", fs_getwd);
-	add_handler("fs_mkdir", fs_mkdir);
-	add_handler("fs_ls", fs_ls);
-	add_handler("fs_separator", fs_separator);
-	add_handler("fs_stat", fs_stat);
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	add_handler("net_config_get_interfaces", net_config_get_interfaces);
-	add_handler("net_config_get_routes", net_config_get_routes);
+	file_register_handlers(m);
 
-	add_handler("sys_config_getenv", sys_config_getenv);
-	add_handler("sys_config_getuid", sys_config_getuid);
-	add_handler("sys_config_sysinfo", sys_config_sysinfo);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_interfaces", net_config_get_interfaces, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_routes", net_config_get_routes, m);
+
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getenv", sys_config_getenv, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid", sys_config_getuid, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo", sys_config_sysinfo, m);
 
 	// Process
-	add_handler("sys_process_get_processes", sys_process_get_processes);
-	add_handler("sys_process_attach", sys_process_attach);
-	add_handler("sys_process_close", sys_process_close);
-	add_handler("sys_process_execute", sys_process_execute);
-	add_handler("sys_process_kill", sys_process_kill);
-	add_handler("sys_process_get_processes", sys_process_get_processes);
-	add_handler("sys_process_getpid", sys_process_getpid);
-	add_handler("sys_process_get_info", sys_process_get_info);
-	add_handler("sys_process_wait", sys_process_wait);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_processes", sys_process_get_processes, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_attach", sys_process_attach, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_close", sys_process_close, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_execute", sys_process_execute, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_kill", sys_process_kill, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_processes", sys_process_get_processes, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_getpid", sys_process_getpid, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_info", sys_process_get_info, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_process_wait", sys_process_wait, m);
 }

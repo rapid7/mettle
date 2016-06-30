@@ -4,6 +4,7 @@
  * @file config.c
  */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 

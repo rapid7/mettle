@@ -43,7 +43,7 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
-CFLAGS:=$(CFLAGS) -g -O -I$(BUILD)/include
+CFLAGS:=$(CFLAGS) -Os -fPIE -I$(BUILD)/include
 CPPFLAGS:=-I$(BUILD)/include
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
@@ -57,15 +57,20 @@ ifneq "$(HOST)" ""
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
 endif
 
-CFLAGS:=$(CFLAGS) -Os -fPIE
-
 ifeq "$(ARCH)" "sparc"
     CFLAGS:=$(CFLAGS) -fPIC
 else
     CFLAGS:=$(CFLAGS) -fpic
 endif
 
-ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC=$(CC) CPP=$(CPP) AR=$(AR) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
+# if Debug is enabled, build with debug symbols, otherwise strip the symbol table
+ifeq "$(D)" "1"
+    CFLAGS:=$(CFLAGS) -g
+else
+    LDFLAGS:=$(LDFLAGS) -s
+endif
+
+ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"
