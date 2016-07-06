@@ -45,15 +45,17 @@ static int add_intf_info(const struct intf_entry *entry, void *arg)
 
 	p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, entry->intf_name);
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_MTU, entry->intf_mtu);
-	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_MTU, entry->intf_mtu);
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_INDEX, entry->intf_index);
 	p = tlv_packet_add_str(p, TLV_TYPE_INTERFACE_FLAGS,
 			flags2string(entry->intf_flags));
-	p = tlv_packet_add_raw(p, TLV_TYPE_MAC_ADDRESS,
-			entry->intf_addr.addr_data8, ETH_ADDR_LEN);
+	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0,
+			&entry->intf_link_addr);
 	p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
 			&entry->intf_addr);
 
+	// TODO (possibly): add scope per addr for IPv6 addrs
+	//	Maybe make it part of tlv_packet_add_addr?
+	//	Casual glance, looks like dnet doesn't return scope...
 	for (int i = 0; i < entry->intf_alias_num; i++) {
 		p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
 				&entry->intf_alias_addrs[i]);
@@ -94,3 +96,168 @@ struct tlv_packet *net_config_get_routes(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+static int add_arp_info(const struct arp_entry *entry, void *arg)
+{
+	struct tlv_packet **parent = arg;
+	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETWORK_ROUTE, 0);
+	p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, &entry->arp_pa);
+	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, &entry->arp_ha);
+	// TODO unsure how to get the device/interface name via dnet...
+	//p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, entry->intf_name);
+	*parent = tlv_packet_add_child(*parent, p);
+	return 0;
+}
+
+struct tlv_packet *net_config_get_arp_table(struct tlv_handler_ctx *ctx)
+{
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	arp_t *a = arp_open();
+	arp_loop(a, add_arp_info, &p);
+	arp_close(a);
+	return p;
+}
+
+typedef enum {
+	UPDATE_ROUTE_ADD,
+	UPDATE_ROUTE_REMOVE
+} update_route_action_t;
+
+static
+int update_route(struct tlv_packet *p, update_route_action_t action)
+{
+	int ret_val = TLV_RESULT_SUCCESS;
+	const char *subnet_str = tlv_packet_get_str(p, TLV_TYPE_SUBNET_STRING);
+	const char *netmask_str = tlv_packet_get_str(p, TLV_TYPE_NETMASK_STRING);
+	const char *gateway_str = tlv_packet_get_str(p, TLV_TYPE_GATEWAY_STRING);
+
+	route_t *r = route_open();
+	if (!r) {
+		ret_val = TLV_RESULT_FAILURE;
+		goto done;
+	}
+
+	struct route_entry entry = { 0 };
+	if (addr_pton(subnet_str, &entry.route_dst)) {
+		ret_val = TLV_RESULT_EINVAL;
+		goto done;
+	}
+	if (netmask_str && strlen(netmask_str)) {
+		if (entry.route_dst.addr_type == ADDR_TYPE_IP) {
+			ip_addr_t mask;
+			if (ip_pton(netmask_str, &mask) == 0) {
+				addr_mtob(&mask, sizeof(mask), &entry.route_dst.addr_bits);
+			}
+		} else if (entry.route_dst.addr_type == ADDR_TYPE_IP6) {
+			ip6_addr_t mask;
+			if (ip6_pton(netmask_str, &mask) == 0) {
+				addr_mtob(&mask, sizeof(mask), &entry.route_dst.addr_bits);
+			}
+		}
+	}
+	if (addr_pton(gateway_str, &entry.route_gw)) {
+		ret_val = TLV_RESULT_EINVAL;
+		goto done;
+	}
+
+	if (action == UPDATE_ROUTE_ADD) {
+		if (route_add(r, &entry) != 0) {
+			ret_val = TLV_RESULT_FAILURE;
+		}
+	} else if (action == UPDATE_ROUTE_REMOVE) {
+		if (route_delete(r, &entry) != 0) {
+			ret_val = TLV_RESULT_FAILURE;
+		}
+	}
+
+done:
+	route_close(r);
+	return ret_val;
+}
+
+struct tlv_packet *net_config_add_route(struct tlv_handler_ctx *ctx)
+{
+	return tlv_packet_response_result(ctx, update_route(ctx->req, UPDATE_ROUTE_ADD));
+}
+
+struct tlv_packet *net_config_remove_route(struct tlv_handler_ctx *ctx)
+{
+	return tlv_packet_response_result(ctx, update_route(ctx->req, UPDATE_ROUTE_REMOVE));
+}
+
+struct tlv_packet *net_config_get_proxy(struct tlv_handler_ctx *ctx)
+{
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+	char *proxy = getenv("http_proxy");
+	if (proxy) {
+		p = tlv_packet_add_str(p, TLV_TYPE_PROXY_CFG_PROXY, proxy);
+	}
+
+	char *proxy_bypass = getenv("no_proxy");
+	if (proxy_bypass) {
+		p = tlv_packet_add_str(p, TLV_TYPE_PROXY_CFG_PROXYBYPASS, proxy_bypass);
+	}
+
+	return p;
+}
+
+static
+void get_netstat_async(struct eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	sigar_t *sigar = mettle_get_sigar(ctx->arg);
+	struct tlv_packet *p = tlv_packet_response(ctx);
+	int ret_val = TLV_RESULT_SUCCESS;
+
+	sigar_net_connection_list_t connections;
+	int status = sigar_net_connection_list_get(sigar, &connections,
+			SIGAR_NETCONN_TCP | SIGAR_NETCONN_UDP | \
+			SIGAR_NETCONN_CLIENT | SIGAR_NETCONN_SERVER);
+	if (status != SIGAR_OK) {
+		log_debug("netstat error: %d (%s)",
+				status, sigar_strerror(sigar, status));
+		ret_val = TLV_RESULT_FAILURE;
+		goto done;
+	}
+
+	for (int i = 0; i < connections.number; i++) {
+		sigar_net_connection_t *connection = &connections.data[i];
+		struct addr local_addr = { 0 };
+		struct addr remote_addr = { 0 };
+
+		if (connection->local_address.family == SIGAR_AF_INET) {
+			local_addr.addr_type = remote_addr.addr_type = ADDR_TYPE_IP;
+			local_addr.addr_ip = connection->local_address.addr.in;
+			remote_addr.addr_ip = connection->remote_address.addr.in;
+		} else if (connection->local_address.family == SIGAR_AF_INET6) {
+			local_addr.addr_type = remote_addr.addr_type = ADDR_TYPE_IP6;
+			memcpy(&local_addr.addr_ip6, &connection->local_address.addr.in6, sizeof(local_addr.addr_ip6));
+			memcpy(&remote_addr.addr_ip6, &connection->remote_address.addr.in6, sizeof(remote_addr.addr_ip6));
+		}
+		if (local_addr.addr_type) {
+			p = tlv_packet_add_addr(p, TLV_TYPE_LOCAL_HOST_RAW, 0, &local_addr);
+			p = tlv_packet_add_addr(p, TLV_TYPE_PEER_HOST_RAW, 0, &remote_addr);
+		}
+		p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, connection->local_port);
+		p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, connection->remote_port);
+		if (connection->type == SIGAR_NETCONN_TCP) {
+			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "tcp");
+		} else if (connection->type == SIGAR_NETCONN_UDP) {
+			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "udp");
+		}
+		p = tlv_packet_add_u32(p, TLV_TYPE_PID, connection->uid);
+	}
+
+	sigar_net_connection_list_destroy(sigar, &connections);
+done:
+	tlv_packet_add_result(p, ret_val);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *net_config_get_netstat(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	eio_custom(get_netstat_async, 0, NULL, ctx);
+	return NULL;
+}

@@ -289,14 +289,16 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 			uint32_t mask = bitmask32(a->addr_bits);
 			p = tlv_packet_add_raw(p, mask_tlv, &mask, IP_ADDR_LEN);
 		}
-
 	} else if (a->addr_type == ADDR_TYPE_IP6) {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, IP6_ADDR_LEN);
 		if (mask_tlv) {
 			uint32_t mask[4];
 			bitmask128(a->addr_bits, mask);
 			p = tlv_packet_add_raw(p, mask_tlv, mask, IP6_ADDR_LEN);
+			// p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, val, );
 		}
+	} else if (a->addr_type == ADDR_TYPE_ETH) {
+		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, ETH_ADDR_LEN);
 	}
 	return p;
 }
@@ -330,7 +332,7 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc)
 {
 	struct tlv_packet *p = tlv_packet_response(ctx);
-	return tlv_packet_add_u32(p, TLV_TYPE_RESULT, rc);
+	return tlv_packet_add_result(p, rc);
 }
 
 /*
