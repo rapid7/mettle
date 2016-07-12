@@ -123,6 +123,7 @@
 #define TLV_TYPE_GATEWAY               (TLV_META_TYPE_RAW     | 1422)
 #define TLV_TYPE_NETWORK_ROUTE         (TLV_META_TYPE_GROUP   | 1423)
 #define TLV_TYPE_IP_PREFIX             (TLV_META_TYPE_UINT    | 1424)
+#define TLV_TYPE_ARP_ENTRY             (TLV_META_TYPE_GROUP   | 1425)
 
 #define TLV_TYPE_IP                    (TLV_META_TYPE_RAW     | 1430)
 #define TLV_TYPE_MAC_ADDRESS           (TLV_META_TYPE_RAW     | 1431)

@@ -297,7 +297,7 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 			p = tlv_packet_add_raw(p, mask_tlv, mask, IP6_ADDR_LEN);
 			// p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, val, );
 		}
-	} else if (a->addr_type == ADDR_TYPE_ETH) {
+	} else {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, ETH_ADDR_LEN);
 	}
 	return p;

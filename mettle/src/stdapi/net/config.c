@@ -12,6 +12,7 @@
 
 #include "log.h"
 #include "tlv.h"
+#include "util.h"
 
 static char * flags2string(u_short flags)
 {
@@ -99,7 +100,7 @@ struct tlv_packet *net_config_get_routes(struct tlv_handler_ctx *ctx)
 static int add_arp_info(const struct arp_entry *entry, void *arg)
 {
 	struct tlv_packet **parent = arg;
-	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETWORK_ROUTE, 0);
+	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_ARP_ENTRY, 0);
 	p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, &entry->arp_pa);
 	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, &entry->arp_ha);
 	// TODO unsure how to get the device/interface name via dnet...
@@ -201,12 +202,20 @@ struct tlv_packet *net_config_get_proxy(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+const char * const tcp_connection_states[] = {
+   "", "ESTABLISHED", "SYN_SENT", "SYN_RECV", "FIN_WAIT1", "FIN_WAIT2", "TIME_WAIT",
+   "CLOSED", "CLOSE_WAIT", "LAST_ACK", "LISTEN", "CLOSING", "UNKNOWN"
+};
+const char * const udp_connection_states[] = {
+   "", "ESTABLISHED", "", "", "", "", "", "", "", "", "", "", "UNKNOWN"
+};
+
 static
 void get_netstat_async(struct eio_req *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
 	sigar_t *sigar = mettle_get_sigar(ctx->arg);
-	struct tlv_packet *p = tlv_packet_response(ctx);
+	struct tlv_packet *p_response = tlv_packet_response(ctx);
 	int ret_val = TLV_RESULT_SUCCESS;
 
 	sigar_net_connection_list_t connections;
@@ -224,6 +233,7 @@ void get_netstat_async(struct eio_req *req)
 		sigar_net_connection_t *connection = &connections.data[i];
 		struct addr local_addr = { 0 };
 		struct addr remote_addr = { 0 };
+		struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETSTAT_ENTRY, 0);
 
 		if (connection->local_address.family == SIGAR_AF_INET) {
 			local_addr.addr_type = remote_addr.addr_type = ADDR_TYPE_IP;
@@ -242,16 +252,24 @@ void get_netstat_async(struct eio_req *req)
 		p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, connection->remote_port);
 		if (connection->type == SIGAR_NETCONN_TCP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "tcp");
+			if (connection->state && connection->state < COUNT_OF(tcp_connection_states)) {
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, tcp_connection_states[connection->state]);
+			}
 		} else if (connection->type == SIGAR_NETCONN_UDP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "udp");
+			if (connection->state && connection->state < COUNT_OF(udp_connection_states)) {
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, udp_connection_states[connection->state]);
+			}
 		}
 		p = tlv_packet_add_u32(p, TLV_TYPE_PID, connection->uid);
+
+		p_response = tlv_packet_add_child(p_response, p);
 	}
 
 	sigar_net_connection_list_destroy(sigar, &connections);
 done:
-	tlv_packet_add_result(p, ret_val);
-	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_packet_add_result(p_response, ret_val);
+	tlv_dispatcher_enqueue_response(ctx->td, p_response);
 	tlv_handler_ctx_free(ctx);
 }
 

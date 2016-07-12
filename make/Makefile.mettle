@@ -36,7 +36,7 @@ $(BUILD)/mettle.built: $(BUILD)/mettle/Makefile
 	@cd $(BUILD)/mettle; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
-$(BUILD)/bin/mettle.bin:
+$(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle
 	$(ELF2BIN) $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
 
 mettle: $(BUILD)/mettle.built $(METTLE_DEPS)
