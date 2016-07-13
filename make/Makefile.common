@@ -33,10 +33,11 @@ ifneq "$(TARGET)" "native"
         ARCH:=x86
         HOSTARCH:=x86_64
     endif
-    BUILD:=$(BUILDS)/cross-$(TARGET)
+    TARGET_BUILD_DIR:=cross-$(TARGET)
 else
-    BUILD:=$(BUILDS)/native-$(shell uname -s|tr '[:upper:]' '[:lower:]').$(shell uname -m)
+    TARGET_BUILD_DIR:=native-$(shell uname -s|tr '[:upper:]' '[:lower:]').$(shell uname -m)
 endif
+BUILD:=$(BUILDS)/$(TARGET_BUILD_DIR)
 
 LOGFILE=$(BUILD)/build.log
 ERRFILE=$(BUILD)/build.err
