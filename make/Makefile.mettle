@@ -40,3 +40,13 @@ $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle
 	$(ELF2BIN) $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
 
 mettle: $(BUILD)/mettle.built $(METTLE_DEPS)
+
+DATADIR:=../metasploit-framework/data
+METTLEDIR:=$(DATADIR)/mettle
+
+install: mettle
+	mkdir -p $(METTLEDIR)/$(TARGET_BUILD_DIR)/bin/
+	cp build/$(TARGET_BUILD_DIR)/bin/mettle* $(METTLEDIR)/$(TARGET_BUILD_DIR)/bin/
+
+uninstall:
+	rm -rf $(METTLEDIR)/$(TARGET_BUILD_DIR)
