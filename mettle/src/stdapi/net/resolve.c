@@ -28,10 +28,10 @@ void resolve_host_async(struct eio_req *req)
 		goto done;
 	}
 
-	struct addrinfo hints = { 
+	struct addrinfo hints = {
 		.ai_family = addr_type,
 	};
-	
+
         struct tlv_iterator i = {
                 .packet = ctx->req,
                 .value_type = TLV_TYPE_HOST_NAME,
@@ -86,4 +86,12 @@ struct tlv_packet *net_resolve_host(struct tlv_handler_ctx *ctx)
 struct tlv_packet *net_resolve_hosts(struct tlv_handler_ctx *ctx)
 {
 	return resolve_host_req(ctx);
+}
+
+void net_resolve_register_handlers(struct mettle *m)
+{
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+
+	tlv_dispatcher_add_handler(td, "stdapi_net_resolve_host", net_resolve_host, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_resolve_hosts", net_resolve_hosts, m);
 }

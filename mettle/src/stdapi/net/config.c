@@ -280,3 +280,16 @@ struct tlv_packet *net_config_get_netstat(struct tlv_handler_ctx *ctx)
 	eio_custom(get_netstat_async, 0, NULL, ctx);
 	return NULL;
 }
+
+void net_config_register_handlers(struct mettle *m)
+{
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_interfaces", net_config_get_interfaces, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_routes", net_config_get_routes, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_add_route", net_config_add_route, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_remove_route", net_config_remove_route, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_arp_table", net_config_get_arp_table, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_proxy", net_config_get_proxy, m);
+	tlv_dispatcher_add_handler(td, "stdapi_net_config_get_netstat", net_config_get_netstat, m);
+}
