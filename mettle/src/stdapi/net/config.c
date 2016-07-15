@@ -137,7 +137,8 @@ int update_route(struct tlv_packet *p, update_route_action_t action)
 		goto done;
 	}
 
-	struct route_entry entry = { 0 };
+	struct route_entry entry;
+	memset(&entry, 0, sizeof(entry));
 	if (addr_pton(subnet_str, &entry.route_dst)) {
 		ret_val = TLV_RESULT_EINVAL;
 		goto done;
