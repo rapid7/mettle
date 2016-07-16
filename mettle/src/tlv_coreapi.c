@@ -263,6 +263,10 @@ const char * mettle_get_machine_id(void)
   struct dirent *data;
   static char machine_id[UUID_MAX] = "";
 
+  if(strlen(machine_id)) {
+    return machine_id;
+  }
+
   if (uname(&utsbuf) == 0) {
     strncat(machine_id, utsbuf.nodename, sizeof(machine_id) - strlen(utsbuf.nodename) - 1);
   }
@@ -271,13 +275,17 @@ const char * mettle_get_machine_id(void)
 
   if (ctx) {
     while ((data = readdir(ctx)) != NULL) {
-      if (!strcmp(data->d_name, ".") || !strcmp(data->d_name, "..")) {
-        /* skip */
-      }
-      else {
-        const char *partition_uuid = data->d_name;
+
+      /*
+       * we don't care about optical drives and the like,
+       * and the d_name field is the only one we can count
+       * on in POSIX systems
+       */
+
+      if (strlen(data->d_name) == 36) {
+        const char *drive_serial = data->d_name;
         strncat(machine_id, ":", sizeof(char));
-        strncat(machine_id, partition_uuid, sizeof(machine_id) - strlen(partition_uuid) - 1);
+        strncat(machine_id, drive_serial, sizeof(machine_id) - strlen(drive_serial) - 1);
 
         /* the first one encountered will do */
         break;
