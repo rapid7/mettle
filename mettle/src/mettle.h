@@ -11,8 +11,6 @@
 
 #include <ev.h>
 #include <sigar.h>
-#include <dirent.h>
-#include <sys/utsname.h>
 
 struct mettle * mettle(void);
 

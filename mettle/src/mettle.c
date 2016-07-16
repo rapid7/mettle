@@ -16,8 +16,6 @@
 #include "network_client.h"
 #include "tlv.h"
 
-#define MAX_PATH 256
-
 struct mettle {
 	struct channelmgr *cm;
 	struct network_client *nc;
@@ -197,38 +195,6 @@ struct mettle *mettle(void)
 err:
 	mettle_free(m);
 	return NULL;
-}
-
-const char * mettle_get_machine_id(void)
-{
-  struct utsname utsbuf;
-  struct dirent *data;
-  static char machine_id[MAX_PATH] = "";
-
-  if (uname(&utsbuf) == 0) {
-    strncat(machine_id, utsbuf.nodename, sizeof(machine_id) - strlen(utsbuf.nodename) - 1);
-  }
-
-  DIR *ctx = opendir("/dev/disk/by-uuid");
-
-  if (ctx) {
-    while ((data = readdir(ctx)) != NULL) {
-      if (!strcmp(data->d_name, ".") || !strcmp(data->d_name, "..")) {
-        /* skip */
-      }
-      else {
-        const char *partition_uuid = data->d_name;
-        strncat(machine_id, ":", sizeof(char));
-        strncat(machine_id, partition_uuid, sizeof(machine_id) - strlen(partition_uuid) - 1);
-
-        /* the first one encountered will do */
-        break;
-      }
-    }
-  }
-
-  closedir(ctx);
-  return machine_id;
 }
 
 int mettle_start(struct mettle *m)

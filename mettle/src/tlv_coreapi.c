@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#define UUID_MAX 256
+
 static struct tlv_packet *machine_id(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
@@ -255,12 +257,44 @@ static struct tlv_packet *core_channel_write(struct tlv_handler_ctx *ctx)
 	}
 }
 
+const char * mettle_get_machine_id(void)
+{
+  struct utsname utsbuf;
+  struct dirent *data;
+  static char machine_id[UUID_MAX] = "";
+
+  if (uname(&utsbuf) == 0) {
+    strncat(machine_id, utsbuf.nodename, sizeof(machine_id) - strlen(utsbuf.nodename) - 1);
+  }
+
+  DIR *ctx = opendir("/dev/disk/by-uuid");
+
+  if (ctx) {
+    while ((data = readdir(ctx)) != NULL) {
+      if (!strcmp(data->d_name, ".") || !strcmp(data->d_name, "..")) {
+        /* skip */
+      }
+      else {
+        const char *partition_uuid = data->d_name;
+        strncat(machine_id, ":", sizeof(char));
+        strncat(machine_id, partition_uuid, sizeof(machine_id) - strlen(partition_uuid) - 1);
+
+        /* the first one encountered will do */
+        break;
+      }
+    }
+  }
+
+  closedir(ctx);
+  return machine_id;
+}
+
 void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
 	tlv_dispatcher_add_handler(td, "core_enumextcmd", enumextcmd, m);
-	tlv_dispatcher_add_handler(td, "core_machine_id", machine_id, m);
+	tlv_dispatcher_add_handler(td, "core_machine_id", mettle_machine_id, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 	tlv_dispatcher_add_handler(td, "core_channel_open", core_channel_open, m);
 	tlv_dispatcher_add_handler(td, "core_channel_eof", core_channel_eof, m);

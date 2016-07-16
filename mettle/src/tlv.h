@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <dirent.h>
+#include <sys/utsname.h>
 
 #include <dnet.h>
 
