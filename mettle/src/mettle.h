@@ -11,6 +11,8 @@
 
 #include <ev.h>
 #include <sigar.h>
+#include <dirent.h>
+#include <sys/utsname.h>
 
 struct mettle * mettle(void);
 
@@ -31,5 +33,7 @@ int mettle_add_server_uri(struct mettle *m, const char *uri);
 int mettle_add_tcp_sock(struct mettle *m, int fd);
 
 struct channelmgr * mettle_get_channelmgr(struct mettle *m);
+
+const char * mettle_get_machine_id(void);
 
 #endif
