@@ -294,7 +294,7 @@ void tlv_register_coreapi(struct mettle *m)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
 	tlv_dispatcher_add_handler(td, "core_enumextcmd", enumextcmd, m);
-	tlv_dispatcher_add_handler(td, "core_machine_id", mettle_machine_id, m);
+	tlv_dispatcher_add_handler(td, "core_machine_id", mettle_get_machine_id, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 	tlv_dispatcher_add_handler(td, "core_channel_open", core_channel_open, m);
 	tlv_dispatcher_add_handler(td, "core_channel_eof", core_channel_eof, m);
