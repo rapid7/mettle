@@ -5,9 +5,9 @@ BUILDS=$(ROOT)/build
 
 TARGET:=native
 ifneq "$(TARGET)" "native"
-    TARGET_BUILD_DIR:=cross-$(TARGET)
+    TARGET_BUILD_DIR:=$(TARGET)
 else
-    TARGET_BUILD_DIR:=native-$(shell uname -s|tr '[:upper:]' '[:lower:]').$(shell uname -m)
+    TARGET_BUILD_DIR:=$(shell uname -s|tr '[:upper:]' '[:lower:]').$(shell uname -m)
 endif
 BUILD:=$(BUILDS)/$(TARGET_BUILD_DIR)
 
