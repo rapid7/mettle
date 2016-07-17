@@ -11,7 +11,7 @@
 
 #include <arpa/inet.h>
 
-#include <elf.h>
+#include "elf.h"
 
 
 #define MAP(BIG,SMALL) \

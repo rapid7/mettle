@@ -13,7 +13,7 @@ ELF2BIN=build/tools/elf2bin
 
 $(ELF2BIN): util/elf2bin.c
 	@mkdir -p build/tools
-	cc -g -o $@ $< -static
+	cc -g -o $@ $<
 
 INSTALL=install
 export PATH:=$(ROOT)/build/tools/musl-cross/bin:$(PATH)
