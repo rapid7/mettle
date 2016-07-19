@@ -29,16 +29,15 @@ MetasploitPayloads::Mettle.read(platform_triple, artifact)
 
 The available platform triples are:
 * `aarch64-linux-musl`
-* `arm-linux-musleabi`
-* `arm-linux-musleabihf`
+* `armv5l-linux-musleabi`
+* `armv5b-linux-musleabi`
 * `i486-linux-musl`
-* `mipsel-linux-musl`
-* `mips-linux-musl`
-* `mipsel-linux-muslsf`
-* `mips-linux-muslsf`
-* `powerpc-linux-musl`
-* `powerpc-linux-muslsf`
 * `x86_64-linux-musl`
+* `powerpc-linux-muslsf`
+* `powerpc64le-linux-musl`
+* `mips-linux-muslsf`
+* `mipsel-linux-muslsf`
+* `mips64-linux-muslsf`
 
 The available artifacts are:
 * `mettle` - a standalone executable that take command-line arguments (see `mettle -h`)
