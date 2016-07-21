@@ -18,6 +18,8 @@ int mettle_start(struct mettle *m);
 
 const char *mettle_get_fqdn(struct mettle *m);
 
+const char *mettle_get_uuid(struct mettle *m);
+
 sigar_t *mettle_get_sigar(struct mettle *m);
 
 struct ev_loop * mettle_get_loop(struct mettle *m);

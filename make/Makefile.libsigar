@@ -1,4 +1,4 @@
-$(BUILD)/libsigar/configure:
+$(BUILD)/libsigar/configure: $(ROOT)/deps/libsigar-1.6.2.tar.gz
 	@echo "Unpacking libsigar for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \

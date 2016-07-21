@@ -22,6 +22,7 @@ struct mettle {
 	struct tlv_dispatcher *td;
 
 	sigar_t *sigar;
+	sigar_sys_info_t sysinfo;
 	char fqdn[SIGAR_MAXDOMAINNAMELEN];
 	struct ev_loop *loop;
 	struct ev_timer heartbeat;
@@ -90,6 +91,11 @@ struct ev_loop * mettle_get_loop(struct mettle *m)
 const char *mettle_get_fqdn(struct mettle *m)
 {
 	return m->fqdn;
+}
+
+const char *mettle_get_uuid(struct mettle *m)
+{
+	return m->sysinfo.uuid;
 }
 
 struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m)
@@ -174,6 +180,8 @@ struct mettle *mettle(void)
 	}
 
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
+
+	sigar_sys_info_get(m->sigar, &m->sysinfo);
 
 	network_client_set_read_cb(m->nc, on_network_read, m);
 
