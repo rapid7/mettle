@@ -6,12 +6,24 @@ $(BUILD)/libdnet/configure:
 		$(TAR) zxf $(ROOT)/deps/libdnet-1.12.tar.gz; \
 		mv libdnet-1.12 libdnet
 
-DNET_CONFIGURE_FLAGS=
+DNET_CONFIGURE_FLAGS:=""
 ifneq "$(TARGET)" "native"
-	DNET_CONFIGURE_FLAGS=ac_cv_dnet_linux_procfs=yes ac_cv_dnet_bsd_bpf=no
+    DNET_CONFIGURE_FLAGS:=ac_cv_dnet_linux_procfs=yes ac_cv_dnet_bsd_bpf=no
 endif
 
-$(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure
+$(BUILD)/wpdpack:
+	@echo "Unpacking wpdpack for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr wpdpack; \
+		$(TAR) zxf $(ROOT)/deps/wpdpack.tar.gz
+
+ifneq "$(TARGET)" "mingw"
+    DNET_CONFIGURE_FLAGS:=$(DNET_CONFIGURE_FLAGS) --with-wpdpack=$(BUILD)/wpdpack
+    DNET_DEPS:=$(BUILD)/wpdpack
+endif
+
+$(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure $(DNET_DEPS)
 	@echo "Configuring libdnet for $(TARGET)"
 	@mkdir -p $(BUILD)/libdnet
 	@cd $(BUILD)/libdnet; \

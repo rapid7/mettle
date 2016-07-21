@@ -21,11 +21,11 @@ $(ROOT)/mettle/configure: deps/README.md
 		autoreconf -i $(LOGBUILD)
 
 $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
-	$(BUILD)/lib/libdnet.a \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libmbedtls.a \
-	$(BUILD)/lib/libsigar.a
+	$(BUILD)/lib/libsigar.a \
+	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \
