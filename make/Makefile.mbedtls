@@ -1,4 +1,10 @@
-MBEDTLS_VERSION=2.2.1
+MBEDTLS_VERSION=2.3.0
+
+MBEDTLS_ENV=
+ifneq (,$(findstring mingw,$(TARGET)))
+    MBEDTLS_ENV=WINDOWS=1
+endif
+
 
 $(BUILD)/lib/libmbedtls.a: build/tools
 	@echo "Unpacking mbedtls for $(TARGET)"
@@ -9,7 +15,10 @@ $(BUILD)/lib/libmbedtls.a: build/tools
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls
 	@echo "Building mbedtls for $(TARGET)"
 	@cd $(BUILD)/mbedtls; \
-		$(ENV) $(MAKE) $(LOGBUILD) ; \
-		$(MAKE_INSTALL) DESTDIR=$(BUILD) $(LOGBUILD)
+		$(ENV) $(MBEDTLS_ENV) make $(LOGBUILD) ; \
+		cp -r library/*.a $(BUILD)/lib ; \
+		cp -r include/mbedtls $(BUILD)/include
+		
+	#$(MBEDTLS_ENV) $(MAKE_INSTALL) DESTDIR=$(BUILD) $(LOGBUILD)
 
 mbedtls: $(BUILD)/lib/libmbedtls.a

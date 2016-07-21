@@ -14,10 +14,15 @@
 #include <stdlib.h>
 
 #include <sys/types.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#else
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
+#endif
 #include <unistd.h>
 
 #include "buffer_queue.h"

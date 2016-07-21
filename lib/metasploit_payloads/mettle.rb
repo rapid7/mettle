@@ -26,7 +26,7 @@ module MetasploitPayloads
     # Get the contents of any file packaged in this gem by local path and name.
     #
     def self.read(triple, file)
-      file_path = path("cross-#{triple}", 'bin', file)
+      file_path = path("#{triple}", 'bin', file)
       if file_path.nil?
         full_path = ::File.join([triple, file])
         fail RuntimeError, "#{full_path} not found", caller
