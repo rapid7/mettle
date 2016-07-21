@@ -16,7 +16,16 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
-CFLAGS:=$(CFLAGS) -Os -fPIE -I$(BUILD)/include
+CFLAGS:=$(CFLAGS) -Os -I$(BUILD)/include
+ifeq (,$(findstring mingw,$(TARGET)))
+    CFLAGS:=$(CFLAGS) -fPIE
+    ifneq (,$(findstring sparc,$(TARGET)))
+        CFLAGS:=$(CFLAGS) -fPIC
+    else
+        CFLAGS:=$(CFLAGS) -fpic
+    endif
+endif
+
 CPPFLAGS:=-I$(BUILD)/include
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
@@ -24,12 +33,6 @@ ifneq "$(TARGET)" "native"
 endif
 ifneq "$(HOST)" ""
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
-endif
-
-ifneq (,$(findstring sparc,$(TARGET)))
-    CFLAGS:=$(CFLAGS) -fPIC
-else
-    CFLAGS:=$(CFLAGS) -fpic
 endif
 
 # if Debug is enabled, build with debug symbols, otherwise strip the symbol table

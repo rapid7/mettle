@@ -148,7 +148,7 @@ void zlog_time(char *filename, int line, char const *fmt, ...)
 	if (zlog_fout) {
 		gettimeofday(&tv, NULL);
 		curtime = tv.tv_sec;
-		strftime(timebuf, 64, "%m-%d-%Y %T", localtime(&curtime));
+		strftime(timebuf, 64, "%m-%d-%Y %H:%M:%S", localtime(&curtime));
 		snprintf(usecbuf, 16, "%.03f", tv.tv_usec / 1000000.0);
 
 		buffer = zlog_get_buffer();

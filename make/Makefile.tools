@@ -1,11 +1,20 @@
 BUILD_HOST=linux
 TOOLCHAIN_VERSION=3
 ifneq "$(TARGET)" "native"
-    CC=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cc
-    CPP=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cpp
-    AR=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ar
-    LD=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ld
-    RANLIB=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ranlib
+    ifneq (,$(findstring musl,$(TARGET)))
+        CC=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-gcc
+        CPP=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cpp
+        AR=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ar
+        LD=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ld
+        RANLIB=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ranlib
+    endif
+    ifneq (,$(findstring mingw,$(TARGET)))
+        CC=$(TARGET)-gcc
+        CPP=$(TARGET)-cpp
+        AR=$(TARGET)-ar
+        LD=$(TARGET)-ld
+        RANLIB=$(TARGET)-ranlib
+    endif
 endif
 
 TAR=tar
