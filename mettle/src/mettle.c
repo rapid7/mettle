@@ -149,7 +149,7 @@ static void on_network_read(struct network_client *nc, void *arg)
 	struct tlv_packet *request;
 
 	if (m->first_packet) {
-		if (tlv_have_sync_packet(q)) {
+		if (tlv_have_sync_packet(q, "core_machine_id")) {
 			m->first_packet = false;
 		} else {
 			return;

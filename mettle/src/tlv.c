@@ -508,21 +508,21 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 }
 
 /*
- * This works around garbage on the socket by attempting to read past it,
- * looking for an initial packet of length 73
+ * This works around garbage on the socket by attempting to read past it.
  */
-bool tlv_have_sync_packet(struct buffer_queue *q)
+bool tlv_have_sync_packet(struct buffer_queue *q, const char *method)
 {
 	bool found = false;
+	size_t method_len = strlen(method);
 
-	while (buffer_queue_len(q) >= 77) {
+	while (buffer_queue_len(q) >= 62 + method_len) {
 
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
 		uint32_t xor_key = ntohl(h.xor_key);
 		tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
 		size_t len = ntohl(h.len);
-		if (len == 73 && h.type == 0) {
+		if (len == (58 + method_len) && h.type == 0) {
 			found = true;
 			break;
 		}
