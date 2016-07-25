@@ -81,3 +81,12 @@ struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 
 	return p;
 }
+
+void sys_config_register_handlers(struct mettle *m)
+{
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getenv", sys_config_getenv, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid", sys_config_getuid, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo", sys_config_sysinfo, m);
+}
