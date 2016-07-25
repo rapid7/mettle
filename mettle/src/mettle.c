@@ -19,6 +19,7 @@
 struct mettle {
 	struct channelmgr *cm;
 	struct network_client *nc;
+	bool first_packet;
 	struct tlv_dispatcher *td;
 
 	sigar_t *sigar;
@@ -135,11 +136,25 @@ static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 	}
 }
 
+static void on_network_connect(struct network_client *nc, void *arg)
+{
+	struct mettle *m = arg;
+	m->first_packet = true;
+}
+
 static void on_network_read(struct network_client *nc, void *arg)
 {
 	struct mettle *m = arg;
 	struct buffer_queue *q = network_client_rx_queue(nc);
 	struct tlv_packet *request;
+
+	if (m->first_packet) {
+		if (tlv_have_sync_packet(q)) {
+			m->first_packet = false;
+		} else {
+			return;
+		}
+	}
 
 	while ((request = tlv_packet_read_buffer_queue(q))) {
 		tlv_dispatcher_process_request(m->td, request);
@@ -182,6 +197,8 @@ struct mettle *mettle(void)
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
+
+	network_client_set_connect_cb(m->nc, on_network_connect, m);
 
 	network_client_set_read_cb(m->nc, on_network_read, m);
 
