@@ -17,8 +17,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	sigar_proc_state_t pstate;
 	int status = sigar_proc_state_get(sigar, pid, &pstate);
 	if (status != SIGAR_OK) {
-		log_debug("error: %d (%s) proc_state(%d)\n",
-		    status, sigar_strerror(sigar, status), pid);
+		log_debug("error: %d (%s) proc_state(%d)",
+			status, sigar_strerror(sigar, status), pid);
 		return NULL;
 	}
 
@@ -26,12 +26,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 
 	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PARENT_PID, pstate.ppid);
-	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME, basename(pstate.name));
-
-	/*
-	 * XXX Implement process architecture in libsigar
-	 */
-	p = tlv_packet_add_u32(p, TLV_TYPE_PROCESS_ARCH, PROCESS_ARCH_X86);
+	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
+			(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
 
 	/*
 	 * the path data comes from another sigar struct; try to get it for each
@@ -45,6 +41,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, "");
 	}
 
+	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_ARCH_NAME, procexe.arch);
+
 	/*
 	 * the username data comes from another sigar struct; try to get it for each
 	 * process and add the data if it is available to us
@@ -54,8 +52,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	if (status == SIGAR_OK) {
 		p = tlv_packet_add_str(p, TLV_TYPE_USER_NAME, uname_data.user);
 	} else {
-		log_debug("error: %d (%s) proc_state(%d)\n",
-		    status, sigar_strerror(sigar, status), pid);
+		log_debug("error: %d (%s) proc_state(%d)",
+			status, sigar_strerror(sigar, status), pid);
 	}
 
 	return p;
@@ -81,7 +79,7 @@ sys_process_get_processes(struct tlv_handler_ctx *ctx)
 	int status = sigar_proc_list_get(sigar, &processes);
 
 	if (status != SIGAR_OK) {
-		log_debug("proc_list error: %d (%s)\n",
+		log_debug("proc_list error: %d (%s)",
 			   status, sigar_strerror(sigar, status));
 		return tlv_packet_response_result(ctx, sigar_to_tlv_status(status));
 	}
