@@ -24,6 +24,8 @@ struct tlv_packet;
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len);
 
+bool tlv_have_sync_packet(struct buffer_queue *q, const char *method);
+
 struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q);
 
 void *tlv_packet_data(struct tlv_packet *p);

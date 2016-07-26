@@ -507,6 +507,31 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	return tlv_dispatcher_enqueue_response(td, response);
 }
 
+/*
+ * This works around garbage on the socket by attempting to read past it.
+ */
+bool tlv_have_sync_packet(struct buffer_queue *q, const char *method)
+{
+	bool found = false;
+	size_t method_len = strlen(method);
+
+	while (buffer_queue_len(q) >= 62 + method_len) {
+
+		struct tlv_xor_header h;
+		buffer_queue_copy(q, &h, sizeof(h));
+		uint32_t xor_key = ntohl(h.xor_key);
+		tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
+		size_t len = ntohl(h.len);
+		if (len == (58 + method_len) && h.type == 0) {
+			found = true;
+			break;
+		}
+		buffer_queue_drain(q, 1);
+	}
+
+	return found;
+}
+
 struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 {
 	/*
