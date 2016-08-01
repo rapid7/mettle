@@ -66,8 +66,6 @@ static inline int sigar_to_tlv_status(int rc)
 
 /*
  * use sigar to create a process list and add the data to the response packet
- *
- * XXX: build in the ability to query each process's architecture
  */
 struct tlv_packet *
 sys_process_get_processes(struct tlv_handler_ctx *ctx)
@@ -95,6 +93,7 @@ sys_process_get_processes(struct tlv_handler_ctx *ctx)
 
 	return p;
 }
+
 /*
  * return a packet with a process handle if the OS is Windows-based if the OS
  * is not windows based, return ERROR_NOT_SUPPORTED should be a wrapper for the
@@ -127,12 +126,6 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
-/*
- * kills the process associated with the provided pid
- * should be a wrapper for sigar_proc_kill
- *
- * SIGAR_DECLARE(int) sigar_proc_kill(sigar_pid_t pid, int signum)
- */
 struct tlv_packet *
 sys_process_kill(struct tlv_handler_ctx *ctx)
 {
@@ -149,9 +142,6 @@ sys_process_kill(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, sigar_to_tlv_status(status));
 }
 
-/*
- * sends back a packet containing the current PID
- */
 struct tlv_packet *
 sys_process_getpid(struct tlv_handler_ctx *ctx)
 {
@@ -162,15 +152,18 @@ sys_process_getpid(struct tlv_handler_ctx *ctx)
 	return tlv_packet_add_u32(p, TLV_TYPE_PID, sigar_pid_get(sigar));
 }
 
-/*
- * in windows, returns a packet containing the name of the first loaded module
- * and the filename of the executable
- * can probably reproduce with sigar_proc_modules_get and sigar_proc_exe_peb_get
- */
 struct tlv_packet *
 sys_process_get_info(struct tlv_handler_ctx *ctx)
 {
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	struct mettle *m = ctx->arg;
+	sigar_t *sigar = mettle_get_sigar(m);
+
+	uint32_t pid;
+	if (tlv_packet_get_u32(ctx->req, TLV_TYPE_PID, &pid)) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+
+	return get_process_info(sigar, pid);
 }
 
 /*
