@@ -22,8 +22,6 @@
 #include "log.h"
 #include "tlv.h"
 
-#include "__fmodeflags.c"
-
 #ifdef __APPLE__
 #define st_mtim st_mtimespec
 #define st_ctim st_ctimespec
