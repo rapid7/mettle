@@ -154,6 +154,17 @@ char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type)
 	return tlv_packet_get_buf_str(val, len);
 }
 
+int tlv_packet_get_bool(struct tlv_packet *p, uint32_t value_type, bool *value)
+{
+	size_t len;
+	char *buf = tlv_packet_get_raw(p, value_type, &len);
+	if (!buf || len != 1)
+		return -1;
+
+	*value = *(bool *)(buf);
+	return 0;
+}
+
 int tlv_packet_get_u16(struct tlv_packet *p, uint32_t value_type, uint16_t *value)
 {
 	size_t len;
@@ -357,7 +368,6 @@ struct tlv_response {
 struct tlv_dispatcher {
 	struct tlv_handler *handlers;
 	struct tlv_response *responses;
-	struct tlv_channel *channels;
 	tlv_response_cb response_cb;
 	void *response_cb_arg;
 };
