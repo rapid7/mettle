@@ -15,7 +15,7 @@ ifneq "$(TARGET)" "native"
     METTLE_OPTS=--enable-staticpie
 endif
 
-$(ROOT)/mettle/configure: deps/README.md
+$(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
 		autoreconf -i $(LOGBUILD)
