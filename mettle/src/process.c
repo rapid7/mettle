@@ -102,42 +102,44 @@ static int switch_user(const char *user)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, char *const *args, char **env,
-    struct process_options *opts)
+    const char *file, struct process_options *opts)
 {
-	if (opts != NULL) {
+	int argc = 1;
+	char **argv = malloc(2 * sizeof(char *));
+
+	if (opts) {
 		if (opts->cwd != NULL && chdir(opts->cwd)) {
 			exit(1);
 		}
-
 		if (opts->user != NULL) {
 			switch_user(opts->user);
 		}
+		if (opts->env != NULL) {
+			environ = opts->env;
+		}
+		if (opts->process_name) {
+			argv[0] = strdup(opts->process_name);
+		}
 	}
 
-	if (env != NULL) {
-		environ = env;
-	}
-
-	int argc = 1;
-	char **argv = malloc(2 * sizeof(char *));
-	if (opts && opts->process_name) {
-		argv[0] = strdup(opts->process_name);
-	} else {
+	if (argv[0] == NULL) {
 		argv[0] = strdup(file);
 	}
 
-	while (args) {
-		argv = realloc(argv, (argc + 2) * sizeof(char *));
-		if (!argv) {
-			exit(1);
+	if (opts) {
+		char * const* args = opts->args;
+		while (args) {
+			argv = realloc(argv, (argc + 2) * sizeof(char *));
+			if (!argv) {
+				exit(1);
+			}
+			argv[argc + 1] = strdup(*args);
+			if (!argv[argc + 1]) {
+				exit(1);
+			}
+			args++;
+			argc++;
 		}
-		argv[argc + 1] = strdup(*args);
-		if (!argv[argc + 1]) {
-			exit(1);
-		}
-		args++;
-		argc++;
 	}
 
 	argv[argc] = NULL;
@@ -196,9 +198,20 @@ static void stderr_cb(struct ev_loop *loop, struct ev_io *w, int events)
 	}
 }
 
+void process_set_callbacks(struct process *p,
+	process_read_cb_t stdout_cb,
+	process_read_cb_t stderr_cb,
+	process_exit_cb_t exit_cb,
+	void *cb_arg)
+{
+	p->out_cb = stdout_cb;
+	p->err_cb = stderr_cb;
+	p->exit_cb = exit_cb;
+	p->cb_arg = cb_arg;
+}
+
 struct process * process_create(struct procmgr *mgr,
-    const char *file, char *const *args, char **env,
-    struct process_options *opts)
+    const char *file, struct process_options *opts)
 {
 	int stdin_pair[2];
 	if (pipe(stdin_pair) == -1) {
@@ -215,14 +228,13 @@ struct process * process_create(struct procmgr *mgr,
 		return NULL;
 	}
 
-	struct process *proc = calloc(1, sizeof(*proc));
-	if (proc == NULL) {
+	struct process *p = calloc(1, sizeof(*p));
+	if (p == NULL) {
 		return NULL;
 	}
 
-	proc->pid = fork();
-	if (proc->pid == 0) {
-
+	pid_t pid = fork();
+	if (pid == 0) {
 		dup2(stdin_pair[0], STDIN_FILENO);
 		dup2(stdout_pair[1], STDOUT_FILENO);
 		dup2(stderr_pair[1], STDERR_FILENO);
@@ -234,70 +246,64 @@ struct process * process_create(struct procmgr *mgr,
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 
-		exec_child(mgr, file, args, env, opts);
+		exec_child(mgr, file, opts);
 		return NULL;
 
-	} else if (proc->pid == -1) {
-
+	} else if (pid == -1) {
 		close(stdin_pair[1]);
 		close(stdin_pair[0]);
 		close(stdout_pair[1]);
 		close(stdout_pair[0]);
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
-		free(proc);
+		free(p);
 		return NULL;
 	}
+	p->pid = pid;
 
 	/*
 	 * Add to the hash before starting the signal watcher
 	 */
-	proc->mgr = mgr;
-	HASH_ADD_INT(mgr->processes, pid, proc);
+	p->mgr = mgr;
+	HASH_ADD_INT(mgr->processes, pid, p);
 
-	log_debug("child pid %u started", proc->pid);
-
-	proc->cb_arg = opts->cb_arg;
+	log_debug("child pid %u started", p->pid);
 
 	/*
 	 * Register exit handler
 	 */
-	proc->cw.data = proc;
-	ev_child_init(&proc->cw, child_cb, proc->pid, 0);
-	ev_child_start(mgr->loop, &proc->cw);
-	proc->exit_cb = opts->exit_cb;
+	p->cw.data = p;
+	ev_child_init(&p->cw, child_cb, p->pid, 0);
+	ev_child_start(mgr->loop, &p->cw);
 
+	/*
+	 * Setup stdin
+	 */
 	close(stdin_pair[0]);
 	fcntl(stdin_pair[1], F_SETFL, O_NONBLOCK);
-	proc->in_fd = stdin_pair[1];
+	p->in_fd = stdin_pair[1];
 
 	/*
-	 * Register stdout handler
+	 * Register stdout watcher
 	 */
-	proc->out_fd = stdout_pair[1];
-	if (opts->stdout_cb) {
-		fcntl(stdout_pair[0], F_SETFL, O_NONBLOCK);
-		proc->out.queue = buffer_queue_new();
-		proc->out.w.data = proc;
-		proc->out_cb = opts->stdout_cb;
-		ev_io_init(&proc->out.w, stdout_cb, stdout_pair[0], EV_READ);
-		ev_io_start(mgr->loop, &proc->out.w);
-	}
+	p->out_fd = stdout_pair[1];
+	fcntl(stdout_pair[0], F_SETFL, O_NONBLOCK);
+	p->out.queue = buffer_queue_new();
+	p->out.w.data = p;
+	ev_io_init(&p->out.w, stdout_cb, stdout_pair[0], EV_READ);
+	ev_io_start(mgr->loop, &p->out.w);
 
 	/*
-	 * Register stderr handler
+	 * Register stderr watcher
 	 */
-	proc->err_fd = stderr_pair[1];
-	if (opts->stderr_cb) {
-		fcntl(stderr_pair[0], F_SETFL, O_NONBLOCK);
-		proc->err.queue = buffer_queue_new();
-		proc->err.w.data = proc;
-		proc->err_cb = opts->stderr_cb;
-		ev_io_init(&proc->err.w, stderr_cb, stderr_pair[0], EV_READ);
-		ev_io_start(mgr->loop, &proc->err.w);
-	}
+	p->err_fd = stderr_pair[1];
+	fcntl(stderr_pair[0], F_SETFL, O_NONBLOCK);
+	p->err.queue = buffer_queue_new();
+	p->err.w.data = p;
+	ev_io_init(&p->err.w, stderr_cb, stderr_pair[0], EV_READ);
+	ev_io_start(mgr->loop, &p->err.w);
 
-	return proc;
+	return p;
 }
 
 int process_kill(struct process* process)

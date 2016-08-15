@@ -218,40 +218,42 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct procmgr *pm = mettle_get_procmgr(m);
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
 	char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
-	struct channel *c = channelmgr_channel_new(cm, "process");
 	uint32_t flags = 0;
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_FLAGS, &flags);
 
 	log_debug("process_new: %s %s 0x%08x", path, args, flags);
 
-	if (c == NULL) {
-		goto err;
-	}
-
 	struct process_options opts = {
 		.process_name = path,
+		.args = NULL,
+		.env = NULL,
 		.cwd = NULL,
 		.user = NULL,
-
-		.stdout_cb = process_channel_read_cb,
-		.stderr_cb = process_channel_read_cb,
-		.exit_cb = process_channel_exit_cb,
-		.cb_arg = c,
 	};
 
-	struct process *p = process_create(pm, path, NULL, NULL, &opts);
+	struct process *p = process_create(pm, path, &opts);
 	if (p == NULL) {
-		goto err;
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 
-	channel_set_ctx(c, p);
-	ctx->channel = c;
-	ctx->channel_id = channel_get_id(c);
+	if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED) {
+		struct channel *c = channelmgr_channel_new(cm, "process");
+		if (c == NULL) {
+			process_kill(p);
+			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		}
+
+		channel_set_ctx(c, p);
+		ctx->channel = c;
+		ctx->channel_id = channel_get_id(c);
+
+		process_set_callbacks(p,
+		    process_channel_read_cb,
+		    process_channel_read_cb,
+		    process_channel_exit_cb, c);
+	}
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-err:
-	channelmgr_channel_free(cm, c);
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
 
