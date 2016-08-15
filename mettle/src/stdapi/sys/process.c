@@ -226,7 +226,7 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 
 	struct process_options opts = {
 		.process_name = path,
-		.args = NULL,
+		.args = args,
 		.env = NULL,
 		.cwd = NULL,
 		.user = NULL,

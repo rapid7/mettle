@@ -16,7 +16,7 @@ typedef void (*process_exit_cb_t)(struct process *, int exit_status, void *arg);
 typedef	void (*process_read_cb_t)(struct buffer_queue *queue, void *arg);
 
 struct process_options {
-	char *const *args;              /* Process arguments (none if not specified) */
+	const char *args;               /* Process arguments (none if not specified) */
 	char **env;                     /* Process environment (inherited if not specified) */
 	const char *process_name;       /* Alternate process name */
 	const char *cwd;                /* Current working directory */

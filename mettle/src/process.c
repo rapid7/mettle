@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <wordexp.h>
 
 #include "log.h"
 #include "process.h"
@@ -126,19 +127,22 @@ static void exec_child(struct procmgr *mgr,
 		argv[0] = strdup(file);
 	}
 
-	if (opts) {
-		char * const* args = opts->args;
-		while (args) {
-			argv = realloc(argv, (argc + 2) * sizeof(char *));
-			if (!argv) {
-				exit(1);
+	if (opts && opts->args) {
+		wordexp_t we = {0};
+		if (wordexp(opts->args, &we, 0) == 0) {
+			for (int i = 0; i < we.we_wordc; i++) {
+				log_info("%s %d", we.we_wordv[i], i);
+				argv = realloc(argv, (argc + 2) * sizeof(char *));
+				if (!argv) {
+					exit(1);
+				}
+				argv[argc + 1] = strdup(we.we_wordv[i]);
+				if (!argv[argc + 1]) {
+					exit(1);
+				}
+				argc++;
 			}
-			argv[argc + 1] = strdup(*args);
-			if (!argv[argc + 1]) {
-				exit(1);
-			}
-			args++;
-			argc++;
+			wordfree(&we);
 		}
 	}
 
