@@ -8,6 +8,7 @@
 #define _METTLE_H_
 
 #include "channel.h"
+#include "process.h"
 
 #include <ev.h>
 #include <sigar.h>
@@ -33,5 +34,7 @@ int mettle_add_server_uri(struct mettle *m, const char *uri);
 int mettle_add_tcp_sock(struct mettle *m, int fd);
 
 struct channelmgr * mettle_get_channelmgr(struct mettle *m);
+
+struct procmgr * mettle_get_procmgr(struct mettle *m);
 
 #endif

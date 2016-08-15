@@ -14,10 +14,13 @@
 #include "mettle.h"
 #include "log.h"
 #include "network_client.h"
+#include "process.h"
 #include "tlv.h"
 
 struct mettle {
 	struct channelmgr *cm;
+	struct procmgr *pm;
+
 	struct network_client *nc;
 	bool first_packet;
 	struct tlv_dispatcher *td;
@@ -114,6 +117,11 @@ struct channelmgr * mettle_get_channelmgr(struct mettle *m)
 	return m->cm;
 }
 
+struct procmgr * mettle_get_procmgr(struct mettle *m)
+{
+	return m->pm;
+}
+
 void mettle_free(struct mettle *m)
 {
 	if (m) {
@@ -193,6 +201,8 @@ struct mettle *mettle(void)
 	if (sigar_open(&m->sigar) == -1) {
 		goto err;
 	}
+
+	m->pm = procmgr_new(m->loop);
 
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
