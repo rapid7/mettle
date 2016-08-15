@@ -207,7 +207,7 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
-	m->cm = channelmgr_new();
+	m->cm = channelmgr_new(m->td);
 	if (m->cm == NULL) {
 		goto err;
 	}

@@ -1,12 +1,15 @@
 #include "channel.h"
 #include "log.h"
+#include "tlv.h"
 #include "uthash.h"
 
 struct channel {
 	uint32_t id;
 	UT_hash_handle hh;
 	struct channel_type *type;
+	struct channelmgr *cm;
 	void *ctx;
+	bool interactive;
 };
 
 struct channel_type {
@@ -16,16 +19,18 @@ struct channel_type {
 };
 
 struct channelmgr {
+	struct tlv_dispatcher *td;
 	struct channel *channels;
 	struct channel_type *types;
 	uint32_t next_channel_id;
 };
 
-struct channelmgr * channelmgr_new(void)
+struct channelmgr * channelmgr_new(struct tlv_dispatcher *td)
 {
 	struct channelmgr *cm = calloc(1, sizeof(*cm));
 	if (cm) {
 		cm->next_channel_id = 1;
+		cm->td = td;
 	}
 	return cm;
 }
@@ -51,6 +56,7 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 	if (c) {
 		c->id = cm->next_channel_id++;
 		c->type = ct;
+		c->cm = cm;
 		HASH_ADD_INT(cm->channels, id, c);
 	}
 	return c;
@@ -84,10 +90,40 @@ void channel_set_ctx(struct channel *c, void *ctx)
 	c->ctx = ctx;
 }
 
+bool channel_is_interactive(struct channel *c)
+{
+	return c->interactive;
+}
+
+void channel_set_interactive(struct channel *c, bool interactive)
+{
+	c->interactive = true;
+}
+
 struct channel_callbacks * channel_get_callbacks(struct channel *c)
 {
 	return &c->type->cbs;
 }
+
+int channel_send_write_request(struct channel *c, void *buf, size_t buf_len)
+{
+	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, buf_len + 64);
+	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_write");
+	p = tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, "1234");
+	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
+	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
+	return tlv_dispatcher_enqueue_response(c->cm->td, p);
+};
+
+int channel_send_close_request(struct channel *c)
+{
+	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, 64);
+	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_close");
+	p = tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, "1234");
+	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+	return tlv_dispatcher_enqueue_response(c->cm->td, p);
+};
 
 struct channel_type * channelmgr_type_by_name(struct channelmgr *cm, char *name)
 {

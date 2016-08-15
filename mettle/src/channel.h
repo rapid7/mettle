@@ -13,15 +13,15 @@
 #include "tlv.h"
 
 struct channel;
-
 struct channelmgr;
+struct tlv_dispatcher;
 
-struct channelmgr * channelmgr_new(void);
+struct channelmgr * channelmgr_new(struct tlv_dispatcher *td);
 
 void channelmgr_free(struct channelmgr *cm);
 
-struct channel * channelmgr_channel_new(struct channelmgr *cm, char
-*channel_type);
+struct channel * channelmgr_channel_new(struct channelmgr *cm,
+    char *channel_type);
 
 void channelmgr_channel_free(struct channelmgr *cm, struct channel *c);
 
@@ -37,6 +37,8 @@ struct channel_callbacks {
 	ssize_t (*write_cb)(void *channel_ctx, char *buf, size_t len);
 	struct tlv_packet * (*write_async_cb)(struct tlv_handler_ctx *tlv_ctx, size_t len);
 
+	int (*interact_cb)(void *channel_ctx, bool interact);
+
 	bool (*eof_cb)(void *channel_ctx);
 
 	int (*seek_cb)(void *channel_ctx, ssize_t offset, int whence);
@@ -51,6 +53,10 @@ int channelmgr_add_channel_type(struct channelmgr *cm,
 
 struct channel_type * channelmgr_type_by_name(struct channelmgr *cm, char *name);
 
+bool channel_is_interactive(struct channel *c);
+
+void channel_set_interactive(struct channel *c, bool interactive);
+
 uint32_t channel_get_id(struct channel *c);
 
 void * channel_get_ctx(struct channel *c);
@@ -58,5 +64,9 @@ void * channel_get_ctx(struct channel *c);
 void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
+
+int channel_send_write_request(struct channel *c, void *buf, size_t buf_len);
+
+int channel_send_close_request(struct channel *c);
 
 #endif
