@@ -4,6 +4,7 @@
  * @file tlv_coreapi.c
  */
 
+#include "channel.h"
 #include "log.h"
 #include "tlv.h"
 
@@ -109,6 +110,25 @@ static struct tlv_packet *core_channel_close(struct tlv_handler_ctx *ctx)
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 	return p;
+}
+
+static struct tlv_packet *core_channel_interact(struct tlv_handler_ctx *ctx)
+{
+	struct channel *c = get_channel_by_id(ctx);
+	if (c == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+
+	struct channel_callbacks *cbs = channel_get_callbacks(c);
+	bool interact = false;
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &interact);
+
+	channel_set_interactive(c, interact);
+
+	if (cbs->interact_cb) {
+		cbs->interact_cb(channel_get_ctx(c), interact);
+	}
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
 static struct tlv_packet *core_channel_eof(struct tlv_handler_ctx *ctx)
@@ -279,4 +299,5 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_channel_read", core_channel_read, m);
 	tlv_dispatcher_add_handler(td, "core_channel_write", core_channel_write, m);
 	tlv_dispatcher_add_handler(td, "core_channel_close", core_channel_close, m);
+	tlv_dispatcher_add_handler(td, "core_channel_interact", core_channel_interact, m);
 }

@@ -16,7 +16,7 @@ libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += network_client.c
 libmettle_la_SOURCES += tlv.c
-libmettle_la_SOURCES += tlv_coreapi.c
+libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += stdapi/stdapi.c
 libmettle_la_SOURCES += util.c
 
