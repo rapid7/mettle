@@ -116,16 +116,6 @@ sys_process_close(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
-/*
- * Starts a process on any OS Multiple configuration options, including pipes,
- * ptys, create suspended, etc
- */
-struct tlv_packet *
-sys_process_execute(struct tlv_handler_ctx *ctx)
-{
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-}
-
 struct tlv_packet *
 sys_process_kill(struct tlv_handler_ctx *ctx)
 {
@@ -172,12 +162,103 @@ sys_process_get_info(struct tlv_handler_ctx *ctx)
  */
 struct tlv_packet *sys_process_wait(struct tlv_handler_ctx *ctx)
 {
+	struct mettle *m = ctx->arg;
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
+
+/*
+ * Handlers registered with the channel manager to send data to the process manager
+ */
+ssize_t sys_process_read(void *ctx, char *buf, size_t len)
+{
+	struct process *p = ctx;
+	return process_read(p, buf, len);
+}
+
+ssize_t sys_process_write(void *ctx, char *buf, size_t len)
+{
+	struct process *p = ctx;
+	return process_write(p, buf, len);
+}
+
+int sys_process_free(void *ctx)
+{
+	struct process *p = ctx;
+	return process_kill(p);
+}
+
+/*
+ * Handlers registered with the process manager to send data to the channel manager
+ */
+static void process_channel_exit_cb(struct process *p, int exit_status, void *arg)
+{
+	struct channel *c = arg;
+	channel_send_close_request(c);
+}
+
+static void process_channel_read_cb(struct buffer_queue *queue, void *arg)
+{
+	struct channel *c = arg;
+	if (channel_is_interactive(c)) {
+		size_t len = buffer_queue_len(queue);
+		void *buf = malloc(len);
+		if (buf) {
+			buffer_queue_remove(queue, buf, len);
+			channel_send_write_request(c, buf, len);
+			free(buf);
+		}
+	}
+}
+
+struct tlv_packet *
+sys_process_execute(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	struct channelmgr *cm = mettle_get_channelmgr(m);
+	struct procmgr *pm = mettle_get_procmgr(m);
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
+	char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
+	struct channel *c = channelmgr_channel_new(cm, "process");
+	uint32_t flags = 0;
+
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_FLAGS, &flags);
+
+	log_debug("process_new: %s %s 0x%08x", path, args, flags);
+
+	if (c == NULL) {
+		goto err;
+	}
+
+	struct process_options opts = {
+		.process_name = path,
+		.cwd = NULL,
+		.user = NULL,
+
+		.stdout_cb = process_channel_read_cb,
+		.stderr_cb = process_channel_read_cb,
+		.exit_cb = process_channel_exit_cb,
+		.cb_arg = c,
+	};
+
+	struct process *p = process_create(pm, path, NULL, NULL, &opts);
+	if (p == NULL) {
+		goto err;
+	}
+
+	channel_set_ctx(c, p);
+	ctx->channel = c;
+	ctx->channel_id = channel_get_id(c);
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+err:
+	channelmgr_channel_free(cm, c);
+	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+}
+
 
 void sys_process_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	struct channelmgr *cm = mettle_get_channelmgr(m);
 
 	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_processes", sys_process_get_processes, m);
 	tlv_dispatcher_add_handler(td, "stdapi_sys_process_attach", sys_process_attach, m);
@@ -188,4 +269,11 @@ void sys_process_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_sys_process_getpid", sys_process_getpid, m);
 	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_info", sys_process_get_info, m);
 	tlv_dispatcher_add_handler(td, "stdapi_sys_process_wait", sys_process_wait, m);
+
+	struct channel_callbacks cbs = {
+		.read_cb = sys_process_read,
+		.write_cb = sys_process_write,
+		.free_cb = sys_process_free,
+	};
+	channelmgr_add_channel_type(cm, "process", &cbs);
 }
