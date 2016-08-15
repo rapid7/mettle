@@ -308,18 +308,23 @@ int process_kill(struct process* process)
 	return -1;
 }
 
-ssize_t process_read(struct process *process, const void *buf, size_t nbyte)
+ssize_t process_read(struct process *process, void *buf, size_t buf_len)
 {
-	return 0;
+	size_t bytes_read = buffer_queue_remove(process->out.queue, buf, buf_len);
+	if (bytes_read < buf_len) {
+		bytes_read += buffer_queue_remove(process->err.queue,
+				buf + bytes_read, buf_len - bytes_read);
+	}
+	return bytes_read;
 }
 
-ssize_t process_write(struct process *process, const void *buf, size_t nbyte)
+ssize_t process_write(struct process *process, const void *buf, size_t buf_len)
 {
 	ssize_t len;
-	for (len = 0; len < nbyte;) {
+	for (len = 0; len < buf_len;) {
 		ssize_t n;
 		do {
-			n = write(process->in_fd, buf + len, nbyte - len);
+			n = write(process->in_fd, buf + len, buf_len - len);
 		} while (n == -1 && errno == EINTR);
 
 		if (n < 0) {

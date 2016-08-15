@@ -42,7 +42,7 @@ ssize_t process_write(struct process *p, const void *buf, size_t nbyte);
 /*
  * Reads from stdout/stderr
  */
-ssize_t process_read(struct process *p, const void *buf, size_t nbyte);
+ssize_t process_read(struct process *p, void *buf, size_t nbyte);
 
 /*
  * Kill the given process. Cleanup happens asynchronously from this call.
