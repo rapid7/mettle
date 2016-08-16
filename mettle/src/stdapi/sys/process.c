@@ -173,7 +173,7 @@ ssize_t sys_process_read(struct channel *c, char *buf, size_t len)
 {
 	ssize_t rc = channel_dequeue(c, buf, len);
 	if (channel_get_ctx(c) == NULL && channel_queue_len(c) < 1) {
-		channel_send_close_request(c);
+		channel_shutdown(c);
 	}
 	return rc;
 }

@@ -48,10 +48,6 @@ int channelmgr_add_channel_type(struct channelmgr *cm,
 
 struct channel_type * channelmgr_type_by_name(struct channelmgr *cm, char *name);
 
-bool channel_is_interactive(struct channel *c);
-
-void channel_set_interactive(struct channel *c, bool interactive);
-
 uint32_t channel_get_id(struct channel *c);
 
 void * channel_get_ctx(struct channel *c);
@@ -66,6 +62,8 @@ ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len);
 
 size_t channel_queue_len(struct channel *c);
 
-int channel_send_close_request(struct channel *c);
+void channel_shutdown(struct channel *c);
+
+void tlv_register_channelapi(struct mettle *m);
 
 #endif

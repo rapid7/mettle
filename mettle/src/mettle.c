@@ -255,6 +255,8 @@ int mettle_start(struct mettle *m)
 {
 	tlv_register_coreapi(m);
 
+	tlv_register_channelapi(m);
+
 	tlv_register_stdapi(m);
 
 	network_client_start(m->nc);
