@@ -69,15 +69,14 @@ static struct tlv_packet *core_channel_open(struct tlv_handler_ctx *ctx)
 
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
-	if (cbs->new_cb) {
-		if (cbs->new_cb(ctx, c) == -1) {
-			channel_free(c);
-			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-		}
-		return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	struct tlv_packet *p;
+	if (cbs->new_cb && cbs->new_cb(ctx, c) == -1) {
+		channel_free(c);
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	} else {
-		return cbs->new_async_cb(ctx);
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	}
+	return p;
 }
 
 static struct channel * get_channel_by_id(struct tlv_handler_ctx *ctx)
@@ -102,13 +101,12 @@ static struct tlv_packet *core_channel_close(struct tlv_handler_ctx *ctx)
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
 	struct tlv_packet *p;
-	if (cbs->free_cb) {
-		p = tlv_packet_response_result(ctx,
-			cbs->free_cb(channel_get_ctx(c)) == 0 ?
-				TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
-	} else {
+	if (cbs->free_cb && cbs->free_cb(c) == -1) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	}
+	channel_free(c);
 	return p;
 }
 
@@ -125,9 +123,6 @@ static struct tlv_packet *core_channel_interact(struct tlv_handler_ctx *ctx)
 
 	channel_set_interactive(c, interact);
 
-	if (cbs->interact_cb) {
-		cbs->interact_cb(channel_get_ctx(c), interact);
-	}
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
@@ -143,7 +138,7 @@ static struct tlv_packet *core_channel_eof(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p;
 	if (cbs->eof_cb) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-		p = tlv_packet_add_bool(p, TLV_TYPE_BOOL, cbs->eof_cb(channel_get_ctx(c)));
+		p = tlv_packet_add_bool(p, TLV_TYPE_BOOL, cbs->eof_cb(c));
 	} else {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -167,7 +162,7 @@ static struct tlv_packet *core_channel_seek(struct tlv_handler_ctx *ctx)
 
 	struct tlv_packet *p;
 	if (cbs->seek_cb) {
-		int rc = cbs->seek_cb(channel_get_ctx(c), offset, whence);
+		int rc = cbs->seek_cb(c, offset, whence);
 		p = tlv_packet_response_result(ctx,
 			rc == 0 ? TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
 	} else {
@@ -187,7 +182,7 @@ static struct tlv_packet *core_channel_tell(struct tlv_handler_ctx *ctx)
 
 	struct tlv_packet *p;
 	if (cbs->tell_cb) {
-		ssize_t offset = cbs->tell_cb(channel_get_ctx(c));
+		ssize_t offset = cbs->tell_cb(c);
 		if (offset >= 0) {
 			p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 			p = tlv_packet_add_u32(p, TLV_TYPE_SEEK_POS, offset);
@@ -220,7 +215,7 @@ static struct tlv_packet *core_channel_read(struct tlv_handler_ctx *ctx)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 		}
 
-		ssize_t bytes_read = cbs->read_cb(channel_get_ctx(c), buf, len);
+		ssize_t bytes_read = cbs->read_cb(c, buf, len);
 		struct tlv_packet *p;
 		if (bytes_read > 0) {
 			p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
@@ -230,9 +225,6 @@ static struct tlv_packet *core_channel_read(struct tlv_handler_ctx *ctx)
 		}
 		free(buf);
 		return p;
-
-	} else if (cbs->read_async_cb) {
-		return cbs->new_async_cb(ctx);
 	} else {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -259,7 +251,7 @@ static struct tlv_packet *core_channel_write(struct tlv_handler_ctx *ctx)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 		}
 
-		ssize_t bytes_written = cbs->write_cb(channel_get_ctx(c), buf, len);
+		ssize_t bytes_written = cbs->write_cb(c, buf, len);
 		struct tlv_packet *p;
 		if (bytes_written > 0) {
 			p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
@@ -268,9 +260,6 @@ static struct tlv_packet *core_channel_write(struct tlv_handler_ctx *ctx)
 			p = tlv_packet_response_result(ctx, errno);
 		}
 		return p;
-
-	} else if (cbs->write_async_cb) {
-		return cbs->new_async_cb(ctx);
 	} else {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}

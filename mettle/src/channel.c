@@ -132,7 +132,8 @@ struct channel_type * channelmgr_type_by_name(struct channelmgr *cm, char *name)
 	return ct;
 }
 
-int channelmgr_add_channel_type(struct channelmgr *cm, char *name, struct channel_callbacks *cbs)
+int channelmgr_add_channel_type(struct channelmgr *cm, char *name,
+    struct channel_callbacks *cbs)
 {
 	struct channel_type *ct = calloc(1, sizeof(*ct));
 	if (ct == NULL) {

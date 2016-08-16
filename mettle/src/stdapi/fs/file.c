@@ -363,34 +363,40 @@ int file_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	return 0;
 }
 
-ssize_t file_read(void *ctx, char *buf, size_t len)
+ssize_t file_read(struct channel *c, char *buf, size_t len)
 {
-	return fread(buf, 1, len, ctx);
+	FILE *f = channel_get_ctx(c);
+	return fread(buf, 1, len, f);
 }
 
-ssize_t file_write(void *ctx, char *buf, size_t len)
+ssize_t file_write(struct channel *c, char *buf, size_t len)
 {
-	return fwrite(buf, 1, len, ctx);
+	FILE *f = channel_get_ctx(c);
+	return fwrite(buf, 1, len, f);
 }
 
-int file_seek(void *ctx, ssize_t offset, int whence)
+int file_seek(struct channel *c, ssize_t offset, int whence)
 {
-	return fseek(ctx, offset, whence);
+	FILE *f = channel_get_ctx(c);
+	return fseek(f, offset, whence);
 }
 
-ssize_t file_tell(void *ctx)
+ssize_t file_tell(struct channel *c)
 {
-	return ftell(ctx);
+	FILE *f = channel_get_ctx(c);
+	return ftell(f);
 }
 
-bool file_eof(void *ctx)
+bool file_eof(struct channel *c)
 {
-	return feof(ctx);
+	FILE *f = channel_get_ctx(c);
+	return feof(f);
 }
 
-int file_free(void *ctx)
+int file_free(struct channel *c)
 {
-	return fclose(ctx);
+	FILE *f = channel_get_ctx(c);
+	return fclose(f);
 }
 
 void file_register_handlers(struct mettle *m)
