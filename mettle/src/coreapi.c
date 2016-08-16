@@ -217,7 +217,7 @@ static struct tlv_packet *core_channel_read(struct tlv_handler_ctx *ctx)
 
 		ssize_t bytes_read = cbs->read_cb(c, buf, len);
 		struct tlv_packet *p;
-		if (bytes_read > 0) {
+		if (bytes_read >= 0) {
 			p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 			p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, bytes_read);
 		} else {

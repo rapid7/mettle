@@ -171,8 +171,11 @@ struct tlv_packet *sys_process_wait(struct tlv_handler_ctx *ctx)
  */
 ssize_t sys_process_read(struct channel *c, char *buf, size_t len)
 {
-	struct process *p = channel_get_ctx(c);
-	return process_read(p, buf, len);
+	ssize_t rc = channel_dequeue(c, buf, len);
+	if (channel_get_ctx(c) == NULL && channel_queue_len(c) < 1) {
+		channel_send_close_request(c);
+	}
+	return rc;
 }
 
 ssize_t sys_process_write(struct channel *c, char *buf, size_t len)
@@ -193,21 +196,18 @@ int sys_process_free(struct channel *c)
 static void process_channel_exit_cb(struct process *p, int exit_status, void *arg)
 {
 	struct channel *c = arg;
-	channel_send_close_request(c);
-	channel_free(c);
+	channel_set_ctx(c, NULL);
 }
 
 static void process_channel_read_cb(struct buffer_queue *queue, void *arg)
 {
 	struct channel *c = arg;
-	if (channel_is_interactive(c)) {
-		size_t len = buffer_queue_len(queue);
-		void *buf = malloc(len);
-		if (buf) {
-			buffer_queue_remove(queue, buf, len);
-			channel_send_write_request(c, buf, len);
-			free(buf);
-		}
+	size_t len = buffer_queue_len(queue);
+	void *buf = malloc(len);
+	if (buf) {
+		buffer_queue_remove(queue, buf, len);
+		channel_enqueue(c, buf, len);
+		free(buf);
 	}
 }
 

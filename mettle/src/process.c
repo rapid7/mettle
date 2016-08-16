@@ -131,13 +131,12 @@ static void exec_child(struct procmgr *mgr,
 		wordexp_t we = {0};
 		if (wordexp(opts->args, &we, 0) == 0) {
 			for (int i = 0; i < we.we_wordc; i++) {
-				log_info("%s %d", we.we_wordv[i], i);
 				argv = realloc(argv, (argc + 2) * sizeof(char *));
 				if (!argv) {
 					exit(1);
 				}
-				argv[argc + 1] = strdup(we.we_wordv[i]);
-				if (!argv[argc + 1]) {
+				argv[argc] = strdup(we.we_wordv[i]);
+				if (!argv[argc]) {
 					exit(1);
 				}
 				argc++;
@@ -320,6 +319,10 @@ int process_kill(struct process* process)
 
 ssize_t process_read(struct process *process, void *buf, size_t buf_len)
 {
+	if (process == NULL) {
+		return -1;
+	}
+
 	size_t bytes_read = buffer_queue_remove(process->out.queue, buf, buf_len);
 	if (bytes_read < buf_len) {
 		bytes_read += buffer_queue_remove(process->err.queue,
@@ -330,6 +333,10 @@ ssize_t process_read(struct process *process, void *buf, size_t buf_len)
 
 ssize_t process_write(struct process *process, const void *buf, size_t buf_len)
 {
+	if (process == NULL) {
+		return -1;
+	}
+
 	ssize_t len;
 	for (len = 0; len < buf_len;) {
 		ssize_t n;

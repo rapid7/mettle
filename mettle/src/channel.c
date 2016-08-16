@@ -9,6 +9,7 @@ struct channel {
 	struct channel_type *type;
 	struct channelmgr *cm;
 	void *ctx;
+	struct buffer_queue *queue;
 	bool interactive;
 };
 
@@ -57,7 +58,13 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 		c->id = cm->next_channel_id++;
 		c->type = ct;
 		c->cm = cm;
-		HASH_ADD_INT(cm->channels, id, c);
+		c->queue = buffer_queue_new();
+		if (c->queue == NULL) {
+			free(c);
+			c = NULL;
+		} else {
+			HASH_ADD_INT(cm->channels, id, c);
+		}
 	}
 	return c;
 }
@@ -65,6 +72,7 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 void channel_free(struct channel *c)
 {
 	HASH_DEL(c->cm->channels, c);
+	buffer_queue_free(c->queue);
 	free(c);
 }
 
@@ -105,7 +113,7 @@ struct channel_callbacks * channel_get_callbacks(struct channel *c)
 	return &c->type->cbs;
 }
 
-int channel_send_write_request(struct channel *c, void *buf, size_t buf_len)
+static int send_write_request(struct channel *c, void *buf, size_t buf_len)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, buf_len + 64);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_write");
@@ -115,6 +123,25 @@ int channel_send_write_request(struct channel *c, void *buf, size_t buf_len)
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
+
+int channel_enqueue(struct channel *c, void *buf, size_t buf_len)
+{
+	if (c->interactive) {
+		return send_write_request(c, buf, buf_len);
+	} else {
+		return buffer_queue_add(c->queue, buf, buf_len);
+	}
+}
+
+ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len)
+{
+	return buffer_queue_remove(c->queue, buf, buf_len);
+}
+
+size_t channel_queue_len(struct channel *c)
+{
+	return buffer_queue_len(c->queue);
+}
 
 int channel_send_close_request(struct channel *c)
 {

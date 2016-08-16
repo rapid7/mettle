@@ -60,7 +60,11 @@ void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
 
-int channel_send_write_request(struct channel *c, void *buf, size_t buf_len);
+int channel_enqueue(struct channel *c, void *buf, size_t buf_len);
+
+ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len);
+
+size_t channel_queue_len(struct channel *c);
 
 int channel_send_close_request(struct channel *c);
 
