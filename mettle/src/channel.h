@@ -23,7 +23,7 @@ void channelmgr_free(struct channelmgr *cm);
 struct channel * channelmgr_channel_new(struct channelmgr *cm,
     char *channel_type);
 
-void channelmgr_channel_free(struct channelmgr *cm, struct channel *c);
+void channel_free(struct channel *c);
 
 struct channel *channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
 

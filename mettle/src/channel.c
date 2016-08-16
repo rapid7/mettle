@@ -62,9 +62,9 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 	return c;
 }
 
-void channelmgr_channel_free(struct channelmgr *cm, struct channel *c)
+void channel_free(struct channel *c)
 {
-	HASH_DEL(cm->channels, c);
+	HASH_DEL(c->cm->channels, c);
 	free(c);
 }
 
@@ -109,7 +109,7 @@ int channel_send_write_request(struct channel *c, void *buf, size_t buf_len)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, buf_len + 64);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_write");
-	p = tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, "1234");
+	p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID, "channel-req-%d", channel_get_id(c));
 	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
@@ -120,7 +120,7 @@ int channel_send_close_request(struct channel *c)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, 64);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_close");
-	p = tlv_packet_add_str(p, TLV_TYPE_REQUEST_ID, "1234");
+	p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID, "channel-req-%d", channel_get_id(c));
 	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };

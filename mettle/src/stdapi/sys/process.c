@@ -194,6 +194,7 @@ static void process_channel_exit_cb(struct process *p, int exit_status, void *ar
 {
 	struct channel *c = arg;
 	channel_send_close_request(c);
+	channel_free(c);
 }
 
 static void process_channel_read_cb(struct buffer_queue *queue, void *arg)

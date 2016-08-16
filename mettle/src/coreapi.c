@@ -71,7 +71,7 @@ static struct tlv_packet *core_channel_open(struct tlv_handler_ctx *ctx)
 
 	if (cbs->new_cb) {
 		if (cbs->new_cb(ctx, c) == -1) {
-			channelmgr_channel_free(cm, c);
+			channel_free(c);
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 		}
 		return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
