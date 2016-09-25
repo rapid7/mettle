@@ -169,16 +169,19 @@ struct tlv_packet *sys_process_wait(struct tlv_handler_ctx *ctx)
 /*
  * Handlers registered with the channel manager to send data to the process manager
  */
-ssize_t sys_process_read(struct channel *c, char *buf, size_t len)
+ssize_t sys_process_read(struct channel *c, void *buf, size_t len)
 {
 	ssize_t rc = channel_dequeue(c, buf, len);
+	if (rc > 0) {
+		log_debug("read %zu bytes for channel", rc);
+	}
 	if (channel_get_ctx(c) == NULL && channel_queue_len(c) < 1) {
 		channel_shutdown(c);
 	}
 	return rc;
 }
 
-ssize_t sys_process_write(struct channel *c, char *buf, size_t len)
+ssize_t sys_process_write(struct channel *c, void *buf, size_t len)
 {
 	struct process *p = channel_get_ctx(c);
 	return process_write(p, buf, len);

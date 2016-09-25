@@ -17,6 +17,8 @@
 #include "process.h"
 #include "tlv.h"
 
+#define EV_LOOP_FLAGS  (EVFLAG_NOENV | EVBACKEND_SELECT | EVFLAG_FORKCHECK)
+
 struct mettle {
 	struct channelmgr *cm;
 	struct procmgr *pm;
@@ -51,19 +53,19 @@ eio_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 	if (eio_poll() == -1) {
 		ev_idle_start(loop, &eio_idle_watcher);
 	}
-	ev_async_start(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_start(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
 eio_want_poll(void)
 {
-	ev_async_send(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_send(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
 eio_done_poll(void)
 {
-	ev_async_stop(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_stop(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
@@ -207,7 +209,7 @@ struct mettle *mettle(void)
 	 * (libev) epoll_wait: Bad file descriptor
 	 * Abort
 	 */
-	m->loop = ev_default_loop(EVFLAG_NOENV | EVBACKEND_SELECT);
+	m->loop = ev_default_loop(EV_LOOP_FLAGS);
 
 	ev_idle_init(&eio_idle_watcher, eio_idle_cb);
 	ev_async_init(&eio_async_watcher, eio_async_cb);

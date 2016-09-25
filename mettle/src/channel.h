@@ -30,9 +30,9 @@ struct channel *channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
 struct channel_callbacks {
 	int (*new_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
 
-	ssize_t (*read_cb)(struct channel *c, char *buf, size_t len);
+	ssize_t (*read_cb)(struct channel *c, void *buf, size_t len);
 
-	ssize_t (*write_cb)(struct channel *c, char *buf, size_t len);
+	ssize_t (*write_cb)(struct channel *c, void *buf, size_t len);
 
 	bool (*eof_cb)(struct channel *c);
 
@@ -57,6 +57,8 @@ void channel_set_ctx(struct channel *c, void *ctx);
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
 
 int channel_enqueue(struct channel *c, void *buf, size_t buf_len);
+
+int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *bq);
 
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len);
 

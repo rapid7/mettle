@@ -110,7 +110,7 @@ static void exec_child(struct procmgr *mgr,
 
 	if (opts) {
 		if (opts->cwd != NULL && chdir(opts->cwd)) {
-			exit(1);
+			abort();
 		}
 		if (opts->user != NULL) {
 			switch_user(opts->user);
@@ -133,11 +133,11 @@ static void exec_child(struct procmgr *mgr,
 			for (int i = 0; i < we.we_wordc; i++) {
 				argv = realloc(argv, (argc + 2) * sizeof(char *));
 				if (!argv) {
-					exit(1);
+					abort();
 				}
 				argv[argc] = strdup(we.we_wordv[i]);
 				if (!argv[argc]) {
-					exit(1);
+					abort();
 				}
 				argc++;
 			}
@@ -148,9 +148,10 @@ static void exec_child(struct procmgr *mgr,
 	argv[argc] = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
+	ev_loop_destroy(EV_DEFAULT_UC);
 
 	execvp(file, argv);
-	exit(1);
+	abort();
 }
 
 static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
@@ -188,7 +189,9 @@ static void stdout_cb(struct ev_loop *loop, struct ev_io *w, int events)
 	struct process *process = w->data;
 
 	if (read_fd_into_queue(w->fd, process->out.queue) > 0) {
-		process->out_cb(process->out.queue, process->cb_arg);
+		if (process->out_cb) {
+			process->out_cb(process->out.queue, process->cb_arg);
+		}
 	}
 }
 
@@ -197,7 +200,9 @@ static void stderr_cb(struct ev_loop *loop, struct ev_io *w, int events)
 	struct process *process = w->data;
 
 	if (read_fd_into_queue(w->fd, process->err.queue) > 0) {
-		process->err_cb(process->err.queue, process->cb_arg);
+		if (process->err_cb) {
+			process->err_cb(process->err.queue, process->cb_arg);
+		}
 	}
 }
 

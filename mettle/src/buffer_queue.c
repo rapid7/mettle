@@ -128,3 +128,15 @@ size_t buffer_queue_remove(struct buffer_queue *q, void *data, size_t len)
 	q->bytes -= removed;
 	return removed;
 }
+
+ssize_t buffer_queue_remove_all(struct buffer_queue *q, void **data)
+{
+	void *buf = malloc(q->bytes);
+	if (!buf) {
+		return -1;
+	}
+
+	size_t bytes = buffer_queue_remove(q, buf, q->bytes);
+	*data = buf;
+	return bytes;
+}

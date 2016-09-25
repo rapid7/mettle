@@ -363,13 +363,13 @@ int file_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	return 0;
 }
 
-ssize_t file_read(struct channel *c, char *buf, size_t len)
+ssize_t file_read(struct channel *c, void *buf, size_t len)
 {
 	FILE *f = channel_get_ctx(c);
 	return fread(buf, 1, len, f);
 }
 
-ssize_t file_write(struct channel *c, char *buf, size_t len)
+ssize_t file_write(struct channel *c, void *buf, size_t len)
 {
 	FILE *f = channel_get_ctx(c);
 	return fwrite(buf, 1, len, f);

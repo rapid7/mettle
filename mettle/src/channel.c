@@ -132,6 +132,17 @@ int channel_enqueue(struct channel *c, void *buf, size_t buf_len)
 	}
 }
 
+int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *q)
+{
+	void *buf;
+	ssize_t buf_len = buffer_queue_remove_all(q, &buf);
+	if (buf_len <= 0) {
+		return -1;
+	}
+
+	return channel_enqueue(c, buf, buf_len);
+}
+
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len)
 {
 	return buffer_queue_remove(c->queue, buf, buf_len);
@@ -248,9 +259,25 @@ static struct tlv_packet *channel_interact(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 
+	struct channel_callbacks *cbs = channel_get_callbacks(c);
+
 	tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &c->interactive);
 
-	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	tlv_dispatcher_enqueue_response(c->cm->td,
+		tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS));
+
+	char buf[65535];
+	size_t buf_len = 0;
+	do {
+		buf_len = cbs->read_cb(c, buf, sizeof(buf));
+		if (buf_len) {
+			send_write_request(c, buf, buf_len);
+		}
+	} while (buf_len > 0);
+
+	channel_postcb(c);
+
+	return NULL;
 }
 
 static struct tlv_packet *channel_eof(struct tlv_handler_ctx *ctx)
