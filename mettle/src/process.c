@@ -1,16 +1,17 @@
-#include <stdio.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <wordexp.h>
 
 #include "log.h"
 #include "process.h"
@@ -102,11 +103,64 @@ static int switch_user(const char *user)
 	return rc;
 }
 
+char ** argv_split(char *args, char **argv, size_t *argc)
+{
+	char *p, *start_of_word;
+	int c;
+	enum states { DULL, IN_WORD, IN_STRING } state = DULL;
+
+	for (p = args; *p != '\0'; p++) {
+		c = (unsigned char) *p;
+		switch (state) {
+		case DULL:
+			if (isspace(c)) {
+				continue;
+			}
+
+			if (c == '"') {
+				state = IN_STRING;
+				start_of_word = p + 1;
+				continue;
+			}
+			state = IN_WORD;
+			start_of_word = p;
+			continue;
+
+		case IN_STRING:
+			if (c == '"') {
+				*p = 0;
+				argv = realloc(argv, sizeof(char *) * (*argc + 1));
+				argv[(*argc)++] = start_of_word;
+				state = DULL;
+			}
+			continue;
+
+		case IN_WORD:
+			if (isspace(c)) {
+				*p = 0;
+				argv = realloc(argv, sizeof(char *) * (*argc + 1));
+				argv[(*argc)++] = start_of_word;
+				state = DULL;
+			}
+			continue;
+		}
+	}
+
+	if (state != DULL) {
+		argv = realloc(argv, sizeof(char *) * (*argc + 1));
+		argv[(*argc)++] = start_of_word;
+	}
+
+	argv = realloc(argv, sizeof(char *) * (*argc + 2));
+	argv[(*argc)] = NULL;
+
+	return argv;
+}
+
 static void exec_child(struct procmgr *mgr,
     const char *file, struct process_options *opts)
 {
-	int argc = 1;
-	char **argv = malloc(2 * sizeof(char *));
+	const char *process_name = file;
 
 	if (opts) {
 		if (opts->cwd != NULL && chdir(opts->cwd)) {
@@ -119,33 +173,22 @@ static void exec_child(struct procmgr *mgr,
 			environ = opts->env;
 		}
 		if (opts->process_name) {
-			argv[0] = strdup(opts->process_name);
+			process_name = opts->process_name;
 		}
 	}
 
-	if (argv[0] == NULL) {
-		argv[0] = strdup(file);
-	}
-
+	char **argv = NULL;
+	char *args = NULL;
+	size_t argc = 0;
 	if (opts && opts->args) {
-		wordexp_t we = {0};
-		if (wordexp(opts->args, &we, 0) == 0) {
-			for (int i = 0; i < we.we_wordc; i++) {
-				argv = realloc(argv, (argc + 2) * sizeof(char *));
-				if (!argv) {
-					abort();
-				}
-				argv[argc] = strdup(we.we_wordv[i]);
-				if (!argv[argc]) {
-					abort();
-				}
-				argc++;
-			}
-			wordfree(&we);
+		if (asprintf(&args, "%s %s", process_name, opts->args) <= 0) {
+			abort();
 		}
+	} else {
+		args = strdup(process_name);
 	}
 
-	argv[argc] = NULL;
+	argv = argv_split(args, argv, &argc);
 
 	ev_loop_fork(EV_DEFAULT);
 	ev_loop_destroy(EV_DEFAULT_UC);
