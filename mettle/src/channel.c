@@ -256,7 +256,14 @@ static struct tlv_packet *channel_interact(struct tlv_handler_ctx *ctx)
 {
 	struct channel *c = get_channel_by_id(ctx);
 	if (c == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		/*
+		 * We don't care if the caller tells us to stop interacting
+		 * with a non-existent channel.
+		 */
+		bool enable = false;
+		tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &enable);
+		return tlv_packet_response_result(ctx,
+			enable ? TLV_RESULT_FAILURE : TLV_RESULT_SUCCESS);
 	}
 
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
