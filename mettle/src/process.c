@@ -17,6 +17,7 @@
 #include "process.h"
 #include "buffer_queue.h"
 #include "uthash.h"
+#include "util.h"
 
 struct process_queue {
 	struct ev_io w;
@@ -157,11 +158,27 @@ char ** argv_split(char *args, char **argv, size_t *argc)
 	return argv;
 }
 
+static char *shell_path(void)
+{
+	char * shells[] = { "/bin/sh", "/system/bin/sh", "/bin/bash", "/usr/local/bin/bash" };
+	for (int i = 0; i < COUNT_OF(shells); i++) {
+		if (access(shells[i], X_OK) == 0) {
+			return shells[i];
+		}
+	}
+	return NULL;
+}
+
 static void exec_child(struct procmgr *mgr,
     const char *file, struct process_options *opts)
 {
-	const char *process_name = file;
+	const char *sh = shell_path();
+	char *args = NULL;
 
+	ev_loop_fork(EV_DEFAULT);
+	ev_loop_destroy(EV_DEFAULT_UC);
+
+	const char *process_name = file;
 	if (opts) {
 		if (opts->cwd != NULL && chdir(opts->cwd)) {
 			abort();
@@ -177,9 +194,6 @@ static void exec_child(struct procmgr *mgr,
 		}
 	}
 
-	char **argv = NULL;
-	char *args = NULL;
-	size_t argc = 0;
 	if (opts && opts->args) {
 		if (asprintf(&args, "%s %s", process_name, opts->args) <= 0) {
 			abort();
@@ -188,12 +202,46 @@ static void exec_child(struct procmgr *mgr,
 		args = strdup(process_name);
 	}
 
-	argv = argv_split(args, argv, &argc);
+	char **env = NULL;
+	size_t nenv = 0;
+	char *def_env[] = {
+		"PATH=/usr/local/sbin:"
+		       "/usr/local/bin:"
+		       "/usr/sbin:"
+		       "/usr/bin:"
+		       "/sbin:"
+		       "/bin:"
+		       "/usr/games:"
+		       "/usr/local/games:"
+		       "/system/bin:"
+		       "/system/sbin:"
+		       "/system/xbin:",
+		"USERNAME=nobody",
+		"HOME=/",
+		"LANG=en_US",
+		NULL
+	};
 
-	ev_loop_fork(EV_DEFAULT);
-	ev_loop_destroy(EV_DEFAULT_UC);
+	if (getenv("PATH") == NULL) {
+		env = def_env;
+	}
 
-	execvp(file, argv);
+	if (sh) {
+		if (env) {
+			execle(sh, sh, "-c", args, (char *)NULL, env);
+		} else {
+			execl(sh, sh, "-c", args, (char *)NULL);
+		}
+	} else {
+		size_t argc = 0;
+		char **argv = NULL;
+		argv = argv_split(args, argv, &argc);
+		if (env) {
+			execvpe(file, argv, env);
+		} else {
+			execvp(file, argv);
+		}
+	}
 	abort();
 }
 
