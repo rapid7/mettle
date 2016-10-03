@@ -216,9 +216,9 @@ static void exec_child(struct procmgr *mgr,
 		       "/system/bin:"
 		       "/system/sbin:"
 		       "/system/xbin:",
-		"USERNAME=nobody",
+		"USER=nobody",
 		"HOME=/",
-		"LANG=en_US",
+		"LANG=C",
 		NULL
 	};
 
