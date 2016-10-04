@@ -202,45 +202,37 @@ static void exec_child(struct procmgr *mgr,
 		args = strdup(process_name);
 	}
 
-	char **env = NULL;
-	size_t nenv = 0;
-	char *def_env[] = {
-		"PATH=/usr/local/sbin:"
-		       "/usr/local/bin:"
-		       "/usr/sbin:"
-		       "/usr/bin:"
-		       "/sbin:"
-		       "/bin:"
-		       "/usr/games:"
-		       "/usr/local/games:"
-		       "/system/bin:"
-		       "/system/sbin:"
-		       "/system/xbin:",
-		"USER=nobody",
-		"HOME=/",
-		"LANG=C",
-		NULL
-	};
+	setenv("LANG", "C", 0);
 
-	if (getenv("PATH") == NULL) {
-		env = def_env;
+	struct passwd *pwd = getpwuid(geteuid());
+	if (pwd != NULL) {
+		setenv("USER", pwd->pw_name, 0);
+		setenv("HOME", pwd->pw_dir, 0);
+	} else {
+		setenv("USER", "nobody", 0);
+		setenv("HOME", "/", 0);
 	}
 
+	setenv("PATH",
+		"/usr/local/sbin:"
+		"/usr/local/bin:"
+		"/usr/sbin:"
+		"/usr/bin:"
+		"/sbin:"
+		"/bin:"
+		"/usr/games:"
+		"/usr/local/games:"
+		"/system/bin:"
+		"/system/sbin:"
+		"/system/xbin:", 0);
+
 	if (sh) {
-		if (env) {
-			execle(sh, sh, "-c", args, (char *)NULL, env);
-		} else {
-			execl(sh, sh, "-c", args, (char *)NULL);
-		}
+		execl(sh, sh, "-c", args, (char *)NULL);
 	} else {
 		size_t argc = 0;
 		char **argv = NULL;
 		argv = argv_split(args, argv, &argc);
-		if (env) {
-			execvpe(file, argv, env);
-		} else {
-			execvp(file, argv);
-		}
+		execvp(file, argv);
 	}
 	abort();
 }
