@@ -14,16 +14,23 @@
 #include "mettle.h"
 #include "log.h"
 #include "network_client.h"
+#include "process.h"
 #include "tlv.h"
+
+#define EV_LOOP_FLAGS  (EVFLAG_NOENV | EVBACKEND_SELECT | EVFLAG_FORKCHECK)
 
 struct mettle {
 	struct channelmgr *cm;
+	struct procmgr *pm;
+
 	struct network_client *nc;
 	bool first_packet;
 	struct tlv_dispatcher *td;
 
 	sigar_t *sigar;
 	sigar_sys_info_t sysinfo;
+	char *uuid;
+	size_t uuid_len;
 	char fqdn[SIGAR_MAXDOMAINNAMELEN];
 	struct ev_loop *loop;
 	struct ev_timer heartbeat;
@@ -46,19 +53,19 @@ eio_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 	if (eio_poll() == -1) {
 		ev_idle_start(loop, &eio_idle_watcher);
 	}
-	ev_async_start(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_start(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
 eio_want_poll(void)
 {
-	ev_async_send(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_send(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
 eio_done_poll(void)
 {
-	ev_async_stop(ev_default_loop(EVFLAG_NOENV), &eio_async_watcher);
+	ev_async_stop(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
@@ -94,9 +101,29 @@ const char *mettle_get_fqdn(struct mettle *m)
 	return m->fqdn;
 }
 
-const char *mettle_get_uuid(struct mettle *m)
+const char *mettle_get_machine_id(struct mettle *m)
 {
 	return m->sysinfo.uuid;
+}
+
+int mettle_set_uuid(struct mettle *m, char *uuid, size_t len)
+{
+	free(m->uuid);
+	m->uuid_len = 0;
+
+	m->uuid = malloc(len);
+	if (m->uuid == NULL)
+		return -1;
+
+	m->uuid_len = len;
+	memcpy(m->uuid, uuid, len);
+	return 0;
+}
+
+const char *mettle_get_uuid(struct mettle *m, size_t *len)
+{
+	*len = m->uuid_len;
+	return m->uuid;
 }
 
 struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m)
@@ -112,6 +139,11 @@ sigar_t *mettle_get_sigar(struct mettle *m)
 struct channelmgr * mettle_get_channelmgr(struct mettle *m)
 {
 	return m->cm;
+}
+
+struct procmgr * mettle_get_procmgr(struct mettle *m)
+{
+	return m->pm;
 }
 
 void mettle_free(struct mettle *m)
@@ -177,7 +209,7 @@ struct mettle *mettle(void)
 	 * (libev) epoll_wait: Bad file descriptor
 	 * Abort
 	 */
-	m->loop = ev_default_loop(EVFLAG_NOENV | EVBACKEND_SELECT);
+	m->loop = ev_default_loop(EV_LOOP_FLAGS);
 
 	ev_idle_init(&eio_idle_watcher, eio_idle_cb);
 	ev_async_init(&eio_async_watcher, eio_async_cb);
@@ -194,6 +226,8 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
+	m->pm = procmgr_new(m->loop);
+
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
@@ -207,13 +241,10 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
-	m->cm = channelmgr_new();
+	m->cm = channelmgr_new(m->td);
 	if (m->cm == NULL) {
 		goto err;
 	}
-
-	tlv_register_coreapi(m);
-	tlv_register_stdapi(m);
 
 	return m;
 
@@ -224,6 +255,12 @@ err:
 
 int mettle_start(struct mettle *m)
 {
+	tlv_register_coreapi(m);
+
+	tlv_register_channelapi(m);
+
+	tlv_register_stdapi(m);
+
 	network_client_start(m->nc);
 
 	ev_async_start(m->loop, &eio_async_watcher);

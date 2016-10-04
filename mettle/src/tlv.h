@@ -38,6 +38,8 @@ void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t raw_type, size_t *len);
 
 char *tlv_packet_get_str(struct tlv_packet *p, uint32_t value_type);
 
+int tlv_packet_get_bool(struct tlv_packet *p, uint32_t value_type, bool *value);
+
 int tlv_packet_get_u16(struct tlv_packet *p, uint32_t value_type, uint16_t *value);
 
 int tlv_packet_get_u32(struct tlv_packet *p, uint32_t value_type, uint32_t *value);

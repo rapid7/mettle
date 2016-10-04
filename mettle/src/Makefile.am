@@ -11,13 +11,15 @@ libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 
 libmettle_la_SOURCES = mettle.c
+libmettle_la_SOURCES += base64.c
 libmettle_la_SOURCES += buffer_queue.c
 libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += network_client.c
 libmettle_la_SOURCES += tlv.c
-libmettle_la_SOURCES += tlv_coreapi.c
+libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += stdapi/stdapi.c
+libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += util.c
 
 if !HAVE_REALLOCARRAY

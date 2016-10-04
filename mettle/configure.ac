@@ -3,7 +3,7 @@ AC_INIT([mettle], m4_esyscmd([tr -d '\n' < VERSION]))
 AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_MACRO_DIR([m4])
-AM_MAINTAINER_MODE
+AM_MAINTAINER_MODE([enable])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 

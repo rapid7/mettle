@@ -13,37 +13,34 @@
 #include "tlv.h"
 
 struct channel;
-
 struct channelmgr;
+struct tlv_dispatcher;
 
-struct channelmgr * channelmgr_new(void);
+struct channelmgr * channelmgr_new(struct tlv_dispatcher *td);
 
 void channelmgr_free(struct channelmgr *cm);
 
-struct channel * channelmgr_channel_new(struct channelmgr *cm, char
-*channel_type);
+struct channel * channelmgr_channel_new(struct channelmgr *cm,
+    char *channel_type);
 
-void channelmgr_channel_free(struct channelmgr *cm, struct channel *c);
+void channel_free(struct channel *c);
 
 struct channel *channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
 
 struct channel_callbacks {
 	int (*new_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
-	struct tlv_packet * (*new_async_cb)(struct tlv_handler_ctx *tlv_ctx);
 
-	ssize_t (*read_cb)(void *channel_ctx, char *buf, size_t len);
-	struct tlv_packet * (*read_async_cb)(struct tlv_handler_ctx *tlv_ctx, size_t len);
+	ssize_t (*read_cb)(struct channel *c, void *buf, size_t len);
 
-	ssize_t (*write_cb)(void *channel_ctx, char *buf, size_t len);
-	struct tlv_packet * (*write_async_cb)(struct tlv_handler_ctx *tlv_ctx, size_t len);
+	ssize_t (*write_cb)(struct channel *c, void *buf, size_t len);
 
-	bool (*eof_cb)(void *channel_ctx);
+	bool (*eof_cb)(struct channel *c);
 
-	int (*seek_cb)(void *channel_ctx, ssize_t offset, int whence);
+	int (*seek_cb)(struct channel *c, ssize_t offset, int whence);
 
-	ssize_t (*tell_cb)(void *channel_ctx);
+	ssize_t (*tell_cb)(struct channel *c);
 
-	int (*free_cb)(void *channel_ctx);
+	int (*free_cb)(struct channel *c);
 };
 
 int channelmgr_add_channel_type(struct channelmgr *cm,
@@ -58,5 +55,17 @@ void * channel_get_ctx(struct channel *c);
 void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
+
+int channel_enqueue(struct channel *c, void *buf, size_t buf_len);
+
+int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *bq);
+
+ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len);
+
+size_t channel_queue_len(struct channel *c);
+
+void channel_shutdown(struct channel *c);
+
+void tlv_register_channelapi(struct mettle *m);
 
 #endif
