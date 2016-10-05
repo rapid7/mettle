@@ -175,7 +175,7 @@ static void exec_child(struct procmgr *mgr,
     const char *file, struct process_options *opts)
 {
 	const char *sh = shell_path();
-	char *args = NULL;
+	char *args = NULL, *proc = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
 	ev_loop_destroy(EV_DEFAULT_UC);
@@ -195,6 +195,8 @@ static void exec_child(struct procmgr *mgr,
 			process_name = opts->process_name;
 		}
 	}
+
+	proc = strdup(process_name);
 
 	setenv("LANG", "C", 0);
 
@@ -230,17 +232,16 @@ static void exec_child(struct procmgr *mgr,
 		setenv("PATH", def_path, 1);
 	}
 
-	char buf[MAXPATHLEN];
-	if (process_name[0] == '/' && access(process_name, X_OK)) {
-		process_name = basename_r(process_name, buf);
+	if (proc[0] == '/' && access(proc, X_OK)) {
+		proc = basename(proc);
 	}
 
 	if (opts && opts->args) {
-		if (asprintf(&args, "%s %s", process_name, opts->args) <= 0) {
+		if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
 			abort();
 		}
 	} else {
-		args = strdup(process_name);
+		args = proc;
 	}
 
 
