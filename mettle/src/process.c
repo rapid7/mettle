@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -173,7 +175,7 @@ static void exec_child(struct procmgr *mgr,
     const char *file, struct process_options *opts)
 {
 	const char *sh = shell_path();
-	char *args = NULL;
+	char *args = NULL, *proc = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
 	ev_loop_destroy(EV_DEFAULT_UC);
@@ -194,13 +196,7 @@ static void exec_child(struct procmgr *mgr,
 		}
 	}
 
-	if (opts && opts->args) {
-		if (asprintf(&args, "%s %s", process_name, opts->args) <= 0) {
-			abort();
-		}
-	} else {
-		args = strdup(process_name);
-	}
+	proc = strdup(process_name);
 
 	setenv("LANG", "C", 0);
 
@@ -213,18 +209,41 @@ static void exec_child(struct procmgr *mgr,
 		setenv("HOME", "/", 0);
 	}
 
-	setenv("PATH",
-		"/usr/local/sbin:"
-		"/usr/local/bin:"
-		"/usr/sbin:"
-		"/usr/bin:"
-		"/sbin:"
-		"/bin:"
-		"/usr/games:"
-		"/usr/local/games:"
-		"/system/bin:"
-		"/system/sbin:"
-		"/system/xbin:", 0);
+	const char *path = getenv("PATH");
+	const char *def_path = \
+			"/usr/local/sbin:"
+			"/usr/local/bin:"
+			"/usr/sbin:"
+			"/usr/bin:"
+			"/sbin:"
+			"/bin:"
+			"/usr/games:"
+			"/usr/local/games:"
+			"/system/bin:"
+			"/system/sbin:"
+			"/system/xbin";
+
+	if (path != NULL) {
+		char *new_path;
+		if (asprintf(&new_path, "%s:%s", path, def_path)) {
+			setenv("PATH", new_path, 1);
+		}
+	} else {
+		setenv("PATH", def_path, 1);
+	}
+
+	if (proc[0] == '/' && access(proc, X_OK)) {
+		proc = basename(proc);
+	}
+
+	if (opts && opts->args) {
+		if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
+			abort();
+		}
+	} else {
+		args = proc;
+	}
+
 
 	if (sh) {
 		execl(sh, sh, "-c", args, (char *)NULL);
