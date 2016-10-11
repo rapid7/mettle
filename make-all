@@ -2,18 +2,7 @@
 
 set -e
 
-for i in \
-	aarch64-linux-musl \
-	armv5l-linux-musleabi \
-	armv5b-linux-musleabi \
-	i486-linux-musl \
-	x86_64-linux-musl \
-	powerpc-linux-muslsf \
-	powerpc64le-linux-musl \
-	mips-linux-muslsf \
-	mipsel-linux-muslsf \
-	mips64-linux-muslsf \
-	; do
+for i in $(cat ARCHES); do
 	echo Building target $i
 	make TARGET=$i;
 	make TARGET=$i install;

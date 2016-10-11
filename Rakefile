@@ -12,7 +12,13 @@ namespace :mettle do
 
   desc 'Make mettle for all architectures'
   task :build do
-    system('./make-all')
+    File.readlines('ARCHES').each do |tuple|
+      puts "Building target #{tuple}"
+      unless system "make TARGET=#{tuple}"
+        $stderr.puts "Failed to build #{tuple}"
+        exit false
+      end
+    end
   end
 end
 
