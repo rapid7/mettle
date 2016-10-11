@@ -11,6 +11,7 @@
 #include <dnet.h>
 #include <mettle.h>
 #include <sigar.h>
+#include <time.h>
 
 #include "log.h"
 #include "tlv.h"
@@ -82,6 +83,18 @@ struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+struct tlv_packet *sys_config_localtime(struct tlv_handler_ctx *ctx)
+{
+	char dateTime[128] = { 0 };
+	time_t t = time(NULL);
+	struct tm lt = { 0 };
+	localtime_r(&t, &lt);
+	strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	return tlv_packet_add_fmt(p, TLV_TYPE_LOCAL_DATETIME, dateTime);
+}
+
+
 void sys_config_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
@@ -89,4 +102,5 @@ void sys_config_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getenv", sys_config_getenv, m);
 	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid", sys_config_getuid, m);
 	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo", sys_config_sysinfo, m);
+	tlv_dispatcher_add_handler(td, "stdapi_sys_config_localtime", sys_config_localtime, m);
 }
