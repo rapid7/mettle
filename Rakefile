@@ -2,6 +2,7 @@ require 'fileutils'
 require 'bundler/gem_tasks'
 
 task default: 'mettle:build'
+task check: 'mettle:check'
 
 namespace :mettle do
   desc 'Remove all build artifacts and tools'
@@ -12,7 +13,7 @@ namespace :mettle do
 
   desc 'Make mettle for all architectures'
   task :build do
-    File.readlines('ARCHES').each do |tuple|
+    each_arch do |tuple|
       puts "Building target #{tuple}"
       unless system "make TARGET=#{tuple}"
         $stderr.puts "Failed to build #{tuple}"
@@ -20,8 +21,60 @@ namespace :mettle do
       end
     end
   end
+
+  desc 'Sanity check for mettle artifacts'
+  task :check do
+    success = true
+    each_arch do |tuple|
+      file = "build/#{tuple}/bin/mettle"
+
+      unless File.exists? file
+        insane tuple, 'mettle executable does not exist'
+        success = false
+        next
+      end
+      unless File.size(file) < 1024 * 1024
+        insane tuple, 'mettle executable looks too big'
+        success = false
+      end
+      unless File.exists? "#{file}.bin"
+        insane tuple, 'mettle.bin (memory image) does not exist'
+        success = false
+      end
+
+      objdump = "build/tools/musl-cross/bin/#{tuple}-objdump"
+      needed = `#{objdump} -p #{file} | grep NEEDED`.strip
+      addr = `#{objdump} -p #{file} | grep LOAD | head -1`.strip.
+        match(/.* vaddr (0x[0]*) .*/)[0]
+
+      if needed != ""
+        # We need external shared objects
+        insane tuple, 'does not look static'
+        success = false
+      end
+
+      if addr == nil
+        # The first load section has a virtual address other than zero
+        insane tuple, 'does not look PIE'
+        success = false
+      end
+    end
+
+    $stderr.puts 'All binaries look sane' if success
+
+    exit success
+  end
 end
 
+def each_arch(&block)
+  File.readlines('ARCHES').each do |tuple|
+    block.call tuple.strip
+  end
+end
+
+def insane(tuple, why)
+  $stderr.puts "Sanity check failed for #{tuple}: #{why}"
+end
 
 # Override tag_version in bundler-#.#.#/lib/bundler/gem_helper.rb to force signed tags
 module Bundler
