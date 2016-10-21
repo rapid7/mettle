@@ -10,6 +10,8 @@
 #include <mettle.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <dlfcn.h>
+
 
 static void add_method(const char *method, void *arg)
 {
@@ -72,6 +74,31 @@ static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
 	}
 }
 
+static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
+{
+	const char *lib_path = tlv_packet_get_str(ctx->req, TLV_TYPE_LIBRARY_PATH);
+	const char *target_path = tlv_packet_get_str(ctx->req, TLV_TYPE_TARGET_PATH);
+	printf("library %s\n", lib_path);
+	printf("target %s\n", target_path);
+
+	uint32_t flags = 0;
+	if (tlv_packet_get_u32(ctx->req, TLV_TYPE_FLAGS, &flags) == -1) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+	printf("flags %d\n", flags);
+
+	void* handle = dlopen(lib_path, RTLD_LAZY);
+	printf("loading %p\n", handle);
+	if (handle != 0) {
+		/*lib_func init_exploit = dlsym(libexploit, "init_exploit");*/
+		/*if (init_exploit != 0) {*/
+			/*init_exploit();*/
+		/*}*/
+	} else {
+	}
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+}
+
 void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
@@ -80,4 +107,5 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_machine_id", core_machine_id, m);
 	tlv_dispatcher_add_handler(td, "core_uuid", core_uuid, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
+	tlv_dispatcher_add_handler(td, "core_loadlib", core_loadlib, m);
 }
