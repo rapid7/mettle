@@ -121,7 +121,7 @@ int main(int argc, char * argv[])
 	/*
 	 * Disable SIGPIPE process aborts.
 	 */
-	sigignore(SIGPIPE);
+	signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 * Allocate the main dispatcher
