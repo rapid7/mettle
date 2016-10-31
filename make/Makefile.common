@@ -1,6 +1,5 @@
 ROOT=$(shell pwd)
 MAKE_INSTALL:=$(MAKE) install
-MAKE:=$(MAKE) -j4
 BUILDS=$(ROOT)/build
 
 TARGET:=native

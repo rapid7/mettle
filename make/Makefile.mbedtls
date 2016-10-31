@@ -15,10 +15,10 @@ $(BUILD)/lib/libmbedtls.a: build/tools
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls
 	@echo "Building mbedtls for $(TARGET)"
 	@cd $(BUILD)/mbedtls; \
-		$(ENV) $(MBEDTLS_ENV) make $(LOGBUILD) ; \
+		$(ENV) $(MBEDTLS_ENV) $(MAKE) $(LOGBUILD) ; \
 		cp -r library/*.a $(BUILD)/lib ; \
 		cp -r include/mbedtls $(BUILD)/include
-		
+
 	#$(MBEDTLS_ENV) $(MAKE_INSTALL) DESTDIR=$(BUILD) $(LOGBUILD)
 
 mbedtls: $(BUILD)/lib/libmbedtls.a

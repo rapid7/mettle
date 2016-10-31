@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -15,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "argv_split.h"
 #include "log.h"
 #include "process.h"
 #include "buffer_queue.h"
@@ -104,60 +104,6 @@ static int switch_user(const char *user)
 
 	free(buf);
 	return rc;
-}
-
-char ** argv_split(char *args, char **argv, size_t *argc)
-{
-	char *p, *start_of_word;
-	int c;
-	enum states { DULL, IN_WORD, IN_STRING } state = DULL;
-
-	for (p = args; *p != '\0'; p++) {
-		c = (unsigned char) *p;
-		switch (state) {
-		case DULL:
-			if (isspace(c)) {
-				continue;
-			}
-
-			if (c == '"') {
-				state = IN_STRING;
-				start_of_word = p + 1;
-				continue;
-			}
-			state = IN_WORD;
-			start_of_word = p;
-			continue;
-
-		case IN_STRING:
-			if (c == '"') {
-				*p = 0;
-				argv = realloc(argv, sizeof(char *) * (*argc + 1));
-				argv[(*argc)++] = start_of_word;
-				state = DULL;
-			}
-			continue;
-
-		case IN_WORD:
-			if (isspace(c)) {
-				*p = 0;
-				argv = realloc(argv, sizeof(char *) * (*argc + 1));
-				argv[(*argc)++] = start_of_word;
-				state = DULL;
-			}
-			continue;
-		}
-	}
-
-	if (state != DULL) {
-		argv = realloc(argv, sizeof(char *) * (*argc + 1));
-		argv[(*argc)++] = start_of_word;
-	}
-
-	argv = realloc(argv, sizeof(char *) * (*argc + 2));
-	argv[(*argc)] = NULL;
-
-	return argv;
 }
 
 static char *shell_path(void)

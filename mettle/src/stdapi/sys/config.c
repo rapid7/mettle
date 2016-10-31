@@ -91,7 +91,7 @@ struct tlv_packet *sys_config_localtime(struct tlv_handler_ctx *ctx)
 	localtime_r(&t, &lt);
 	strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	return tlv_packet_add_fmt(p, TLV_TYPE_LOCAL_DATETIME, dateTime);
+	return tlv_packet_add_str(p, TLV_TYPE_LOCAL_DATETIME, dateTime);
 }
 
 

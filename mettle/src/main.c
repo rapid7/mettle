@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <wordexp.h>
 
+#include "argv_split.h"
 #include "base64.h"
 #include "log.h"
 #include "mettle.h"
@@ -103,16 +103,15 @@ int parse_default_args(int argc, char * const argv[], struct mettle *m)
 		"                                                               ";
 
 	if (strncasecmp(default_opts, "default_opts", strlen("default_opts"))) {
-		wordexp_t we = {0};
-		if (wordexp(argv[0], &we, 0) == 0 &&
-		    wordexp(default_opts, &we, WRDE_APPEND) == 0) {
-			for (int i = 0; i < we.we_wordc; i++)
-				log_info("%s %d", we.we_wordv[i], i);
-			parse_cmdline(we.we_wordc, we.we_wordv, m);
-			wordfree(&we);
+		size_t argc = 0;
+		char **argv = NULL;
+		argv = argv_split(default_opts, argv, &argc);
+		if (argv) {
+			parse_cmdline(argc, argv, m);
+			return 0;
 		}
-		return 0;
 	}
+
 	return -1;
 }
 
@@ -121,7 +120,7 @@ int main(int argc, char * argv[])
 	/*
 	 * Disable SIGPIPE process aborts.
 	 */
-	sigignore(SIGPIPE);
+	signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 * Allocate the main dispatcher
