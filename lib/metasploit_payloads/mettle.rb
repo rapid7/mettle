@@ -57,6 +57,8 @@ module MetasploitPayloads
         'd'
       when :log_file
         'o'
+      else
+        fail RuntimeError, "unknown mettle option #{opt}", caller
       end
     end
 
@@ -91,6 +93,8 @@ module MetasploitPayloads
             'mettle.bin'
           when :exec
             'mettle'
+          else
+            fail RuntimeError, "unknown mettle format #{format}", caller
           end
       file_path = path("#{triple}", 'bin', file)
       if file_path.nil?
