@@ -13,6 +13,12 @@ To build the gem (currently requires linux):
 rake build
 ```
 
+To check the resulting binaries:
+
+```
+rake check
+```
+
 To completely reset your dev environment and delete all binary artifacts:
 
 ```
@@ -22,9 +28,9 @@ rake mettle:ultraclean
 Gem API
 -------
 
-The gem provides one function for accessing binary payloads:
+To generate a payload with Mettle:
 ```ruby
-MetasploitPayloads::Mettle.read(platform_triple, artifact)
+mettle = MetasploitPayloads::Mettle.new(platform_triple, config={})
 ```
 
 The available platform triples are:
@@ -39,9 +45,25 @@ The available platform triples are:
 * `mipsel-linux-muslsf`
 * `mips64-linux-muslsf`
 
-The available artifacts are:
-* `mettle` - a standalone executable that take command-line arguments (see `mettle -h`)
-* `mettle.bin` - a process image that must be started with a custom stack (see `doc/stack_requirements.md`)
+Available config options are:
+* `:url` - the url to connect back to
+* `:uuid` - the UUID to identify the payload
+* `:debug` - to turn on debug messages
+* `:log_file` - the file to send debug messages to instead of `stderr`
+
+Config options can also be set with:
+```ruby
+mettle.config[:key] = val
+```
+
+To get a binary with installed options call:
+```ruby
+mettle.to_binary(format=:process_image)
+```
+
+The formats are:
+* `:exec` - a standalone executable that can take command-line arguments (see `mettle -h`) or use pre-set ones
+* `:process_image` - a process image that must be started with a custom stack (see `doc/stack_requirements.md`)
 
 
 Using with Metasploit

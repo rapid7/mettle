@@ -8,7 +8,66 @@ end
 # This module dispenses Mettle payload binary files
 #
 module MetasploitPayloads
-  module Mettle
+  class Mettle
+
+    #
+    # Config is a hash. Valid keys are:
+    #  :uri to connect to
+    #  :uuid of the payload
+    #  :debug to enable
+    #  :log_file to log to places other than stderr
+    #
+    attr_accessor :config
+
+    def initialize(triple, config={})
+      @platform = triple.clone
+      @config = config.clone
+    end
+
+    #
+    # Available formats are :process_image and :exec
+    #
+    def to_binary(format=:process_image)
+      bin = self.class.read(@platform, format)
+      params = generate_argv
+      add_args(bin, params)
+    end
+
+    private
+
+    def generate_argv
+      cmd_line = 'mettle '
+      @config.each do |opt, val|
+        cmd_line << "-#{short_opt(opt)} \"#{val}\" "
+      end
+      if cmd_line.length > 264
+        fail RuntimeError, 'mettle argument list too big', caller
+      end
+
+      cmd_line + "\x00" * (264 - cmd_line.length)
+    end
+
+    def short_opt(opt)
+      case opt
+      when :uri
+        'u'
+      when :uuid
+        'U'
+      when :debug
+        'd'
+      when :log_file
+        'o'
+      end
+    end
+
+    def add_args(bin, params)
+      if params[8] != "\x00"
+        bin.sub('DEFAULT_OPTS' +  ' ' * 252, params)
+      else
+        bin
+      end
+    end
+
     def self.readable_path(gem_path, msf_path)
       # Try the MSF path first to see if the file exists, allowing the MSF data
       # folder to override what is in the gem. This is very helpful for
@@ -25,7 +84,14 @@ module MetasploitPayloads
     #
     # Get the contents of any file packaged in this gem by local path and name.
     #
-    def self.read(triple, file)
+    def self.read(triple, format)
+      file =
+          case format
+          when :process_image
+            'mettle.bin'
+          when :exec
+            'mettle'
+          end
       file_path = path("#{triple}", 'bin', file)
       if file_path.nil?
         full_path = ::File.join([triple, file])
@@ -35,14 +101,12 @@ module MetasploitPayloads
       ::File.binread(file_path)
     end
 
-    private
-
     #
     # Get the full path to any file packaged in this gem by local path and name.
     #
     def self.path(*path_parts)
       gem_path = expand(data_directory, ::File.join(path_parts))
-	  msf_path = 'thisisnotthefileyouarelookingfor'
+      msf_path = 'thisisnotthefileyouarelookingfor'
       if metasploit_installed?
         msf_path = expand(Msf::Config.data_directory, ::File.join('mettle', path_parts))
       end
