@@ -1,5 +1,5 @@
 BUILD_HOST=linux
-TOOLCHAIN_VERSION=3
+TOOLCHAIN_VERSION=4
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring musl,$(TARGET)))
         CC=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-gcc
@@ -51,4 +51,4 @@ ifneq "$(TARGET)" "native"
 endif
 
 build/tools: $(TOOLS_DEPS)
-	mkdir -p build/tools	
+	mkdir -p build/tools
