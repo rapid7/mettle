@@ -21,6 +21,7 @@
 #include "tlv.h"
 #include "uthash.h"
 #include "utlist.h"
+#include "mettle.h"
 
 struct tlv_xor_header {
 	uint32_t xor_key;
@@ -338,6 +339,15 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
 			tlv_packet_len(ctx->req) + 32);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
+
+	// UUIDs need to be part of every response now.
+	size_t uuid_len = 0;
+	struct mettle* m = ctx->arg;
+	const char* uuid = mettle_get_uuid(m, &uuid_len);
+	if (uuid && uuid_len) {
+		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
+	}
+
 	if (ctx->channel_id) {
 		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
 	}
