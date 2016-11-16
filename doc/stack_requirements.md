@@ -9,7 +9,7 @@ Also note that we do not obey the SysV ABI since we have a file descriptor as
 ARGV[1] instead of a `char *`.
 
 ```
-low                      (each cell is one long)
+low                    (each cell is sizeof(void *))
 sp % 16 == 0     +---------------------------------------+
                  |              ARGC = X                 |
                  |---------------------------------------|
