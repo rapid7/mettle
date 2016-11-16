@@ -8,3 +8,4 @@ powerpc64le-linux-musl
 mips-linux-muslsf
 mipsel-linux-muslsf
 mips64-linux-muslsf
+s390x-linux-musl
