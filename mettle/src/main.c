@@ -13,7 +13,6 @@
 #include <unistd.h>
 
 #include "argv_split.h"
-#include "base64.h"
 #include "log.h"
 #include "mettle.h"
 
@@ -38,17 +37,6 @@ static void start_logger(const char *out)
 	}
 	log_init_file(l);
 	log_init_flush_thread();
-}
-
-int mettle_set_uuid_base64(struct mettle *m, char *uuid_b64)
-{
-	char *uuid = calloc(1, strlen(uuid_b64));
-	if (uuid == NULL)
-		return -1;
-	int len = base64decode(uuid, uuid_b64, strlen(uuid_b64));
-	mettle_set_uuid(m, uuid, len);
-	free(uuid);
-	return 0;
 }
 
 static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
