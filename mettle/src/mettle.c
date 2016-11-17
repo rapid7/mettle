@@ -11,6 +11,7 @@
 #include <eio.h>
 #include <sigar.h>
 
+#include "base64.h"
 #include "mettle.h"
 #include "log.h"
 #include "network_client.h"
@@ -29,8 +30,6 @@ struct mettle {
 
 	sigar_t *sigar;
 	sigar_sys_info_t sysinfo;
-	char *uuid;
-	size_t uuid_len;
 	char fqdn[SIGAR_MAXDOMAINNAMELEN];
 	struct ev_loop *loop;
 	struct ev_timer heartbeat;
@@ -106,24 +105,15 @@ const char *mettle_get_machine_id(struct mettle *m)
 	return m->sysinfo.uuid;
 }
 
-int mettle_set_uuid(struct mettle *m, char *uuid, size_t len)
+int mettle_set_uuid_base64(struct mettle *m, char *uuid_b64)
 {
-	free(m->uuid);
-	m->uuid_len = 0;
-
-	m->uuid = malloc(len);
-	if (m->uuid == NULL)
+	char *uuid = calloc(1, strlen(uuid_b64));
+	if (uuid == NULL)
 		return -1;
-
-	m->uuid_len = len;
-	memcpy(m->uuid, uuid, len);
+	int uuid_len = base64decode(uuid, uuid_b64, strlen(uuid_b64));
+	tlv_dispatcher_set_uuid(m->td, uuid, uuid_len);
+	free(uuid);
 	return 0;
-}
-
-const char *mettle_get_uuid(struct mettle *m, size_t *len)
-{
-	*len = m->uuid_len;
-	return m->uuid;
 }
 
 struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m)

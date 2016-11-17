@@ -132,6 +132,10 @@ void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		const char *extension,
 		void (*cb)(const char *method, void *arg), void *arg);
 
+const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len);
+
+int tlv_dispatcher_set_uuid(struct tlv_dispatcher *td, char *uuid, size_t len);
+
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 
 struct mettle;

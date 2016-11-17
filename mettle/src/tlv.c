@@ -340,10 +340,9 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 			tlv_packet_len(ctx->req) + 32);
 	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
 
-	// UUIDs need to be part of every response now.
 	size_t uuid_len = 0;
-	struct mettle* m = ctx->arg;
-	const char* uuid = mettle_get_uuid(m, &uuid_len);
+	struct tlv_dispatcher *td = ctx->td;
+	const char* uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
 	if (uuid && uuid_len) {
 		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
 	}
@@ -380,6 +379,9 @@ struct tlv_dispatcher {
 	struct tlv_response *responses;
 	tlv_response_cb response_cb;
 	void *response_cb_arg;
+
+	char *uuid;
+	size_t uuid_len;
 };
 
 int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p)
@@ -608,6 +610,26 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	}
 
 	return p;
+}
+
+int tlv_dispatcher_set_uuid(struct tlv_dispatcher *td, char *uuid, size_t len)
+{
+	free(td->uuid);
+	td->uuid_len = 0;
+
+	td->uuid = malloc(len);
+	if (td->uuid == NULL)
+		return -1;
+
+	td->uuid_len = len;
+	memcpy(td->uuid, uuid, len);
+	return 0;
+}
+
+const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len)
+{
+	*len = td->uuid_len;
+	return td->uuid;
 }
 
 void tlv_dispatcher_free(struct tlv_dispatcher *td)

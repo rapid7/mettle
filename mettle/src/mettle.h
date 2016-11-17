@@ -21,9 +21,7 @@ const char *mettle_get_fqdn(struct mettle *m);
 
 const char *mettle_get_machine_id(struct mettle *m);
 
-const char *mettle_get_uuid(struct mettle *m, size_t *len);
-
-int mettle_set_uuid(struct mettle *m, char *uuid, size_t len);
+int mettle_set_uuid_base64(struct mettle *m, char *uuid_b64);
 
 sigar_t *mettle_get_sigar(struct mettle *m);
 
