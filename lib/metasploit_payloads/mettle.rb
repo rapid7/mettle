@@ -1,5 +1,7 @@
 # -*- coding:binary -*-
 
+require 'base64'
+
 unless defined? MetasploitPayloads::Mettle::VERSION
   require 'metasploit_payloads/mettle/version'
 end
@@ -38,13 +40,21 @@ module MetasploitPayloads
     def generate_argv
       cmd_line = 'mettle '
       @config.each do |opt, val|
-        cmd_line << "-#{short_opt(opt)} \"#{val}\" "
+        cmd_line << "-#{short_opt(opt)} \"#{encode_val(opt, val)}\" "
       end
       if cmd_line.length > 264
         fail RuntimeError, 'mettle argument list too big', caller
       end
 
       cmd_line + "\x00" * (264 - cmd_line.length)
+    end
+
+    def encode_val(opt, val)
+      if opt == :uuid
+        Base64::encode64(val.to_raw)
+      else
+        val
+      end
     end
 
     def short_opt(opt)
