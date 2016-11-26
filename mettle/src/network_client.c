@@ -183,10 +183,10 @@ int init_server(struct network_client_server *srv, const char *uri)
 		while ((service = strsep(&service_tmp, ",")) != NULL) {
 			if (add_server_service(srv, service) != 0) {
 				free(services_tmp);
-				log_error("fail");
 				goto out;
 			}
 		}
+		free(services_tmp);
 	} else {
 		log_error("%s service unspecified", proto);
 		goto out;
@@ -319,22 +319,28 @@ size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
 	ssize_t off = 0, rc;
-	if (nc->state == network_client_connected) {
-		switch (get_curr_server(nc)->proto) {
-		case network_client_proto_udp:
-			return send(nc->sock, buf, buflen, 0);
-		case network_client_proto_tcp:
-			do {
-				rc = send(nc->sock, buf + off, buflen - off, 0);
-				if (rc > 0)
-					off += rc;
-			} while (rc > 0 || (rc < 0 && (errno == EAGAIN || errno == EINTR)));
-			break;
-
-		case network_client_proto_tls:
-			return buffer_queue_add(nc->tx_queue, buf, buflen);
-		}
+	ssize_t sent_bytes = 0;
+	if (nc->state != network_client_connected) {
+		return -1;
 	}
+
+	switch (get_curr_server(nc)->proto) {
+	case network_client_proto_udp:
+		return send(nc->sock, buf, buflen, 0);
+	case network_client_proto_tcp:
+		do {
+			rc = send(nc->sock, buf + off, buflen - off, 0);
+			if (rc > 0) {
+				off += rc;
+				sent_bytes += rc;
+			}
+		} while (rc > 0 || (rc < 0 && (errno == EAGAIN || errno == EINTR)));
+		return sent_bytes;
+
+	case network_client_proto_tls:
+		return buffer_queue_add(nc->tx_queue, buf, buflen);
+	}
+
 	return -1;
 }
 
@@ -570,6 +576,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 int network_client_stop(struct network_client *nc)
 {
 	ev_timer_stop(nc->loop, &nc->connect_timer);
+	ev_io_stop(nc->loop, &nc->data_ev);
 	return 0;
 }
 
@@ -577,6 +584,7 @@ void network_client_free(struct network_client *nc)
 {
 	if (nc) {
 		network_client_stop(nc);
+		network_client_close(nc);
 		network_client_remove_servers(nc);
 		buffer_queue_free(nc->rx_queue);
 		buffer_queue_free(nc->tx_queue);

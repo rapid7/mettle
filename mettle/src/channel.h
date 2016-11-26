@@ -25,7 +25,9 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm,
 
 void channel_free(struct channel *c);
 
-struct channel *channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
+struct channel * channelmgr_channel_by_id(struct channelmgr *cm, uint32_t id);
+
+struct channel * tlv_handler_ctx_channel_by_id(struct tlv_handler_ctx *ctx);
 
 struct channel_callbacks {
 	int (*new_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
@@ -55,6 +57,8 @@ void * channel_get_ctx(struct channel *c);
 void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
+
+void channel_set_interactive(struct channel *c, bool enable);
 
 int channel_enqueue(struct channel *c, void *buf, size_t buf_len);
 
