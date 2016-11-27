@@ -26,7 +26,6 @@ static void network_channel_read_cb(struct network_client *nc, void *arg)
 	struct channel *c = arg;
 	size_t len = network_client_bytes_available(nc);
 	void *buf = malloc(len);
-	log_debug("got %zu bytes", len);
 	if (buf) {
 		network_client_read(nc, buf, len);
 		channel_enqueue(c, buf, len);
@@ -95,19 +94,19 @@ static int tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	return _network_client_new(ctx, c, "tcp");
 }
 
-ssize_t tcp_client_read(struct channel *c, void *buf, size_t len)
+static ssize_t tcp_client_read(struct channel *c, void *buf, size_t len)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	return network_client_read(nc, buf, len);
 }
 
-ssize_t tcp_client_write(struct channel *c, void *buf, size_t len)
+static ssize_t tcp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	return network_client_write(nc, buf, len);
 }
 
-int tcp_client_free(struct channel *c)
+static int tcp_client_free(struct channel *c)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	if (nc) {
@@ -132,11 +131,6 @@ static struct tlv_packet *tcp_shutdown(struct tlv_handler_ctx *ctx)
 
 	log_info("shutting down connection for %s", reasons[how]);
 
-	/*
-	tcp_client_free(c);
-	channel_free(c);
-	*/
-
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
@@ -145,26 +139,26 @@ static int udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	return _network_client_new(ctx, c, "udp");
 }
 
-ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
+static ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	return network_client_read(nc, buf, len);
 }
 
-ssize_t udp_client_write(struct channel *c, void *buf, size_t len)
+static ssize_t udp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	return network_client_write(nc, buf, len);
 }
 
-int udp_client_free(struct channel *c)
+static int udp_client_free(struct channel *c)
 {
 	struct network_client *nc = channel_get_ctx(c);
 	network_client_free(nc);
 	return 0;
 }
 
-void net_channel_register_handlers(struct mettle *m)
+void net_client_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct channelmgr *cm = mettle_get_channelmgr(m);
