@@ -7,15 +7,13 @@
 #ifndef _NETWORK_CLIENT_H_
 #define _NETWORK_CLIENT_H_
 
-#include <ev.h>
-
-#include "buffer_queue.h"
+struct buffer_queue;
 
 struct network_client;
 
 struct network_client * network_client_new(struct ev_loop *loop);
 
-int network_client_add_server(struct network_client *nc, const char *uri);
+int network_client_add_uri(struct network_client *nc, const char *uri);
 
 int network_client_add_tcp_sock(struct network_client *nc, int sock);
 
@@ -24,13 +22,16 @@ int network_client_start(struct network_client *nc);
 typedef void (*network_client_cb_t)(struct network_client *nc, void *arg);
 
 void network_client_set_read_cb(struct network_client *nc,
-		network_client_cb_t cb, void *arg);
+	network_client_cb_t cb, void *arg);
 
 void network_client_set_connect_cb(struct network_client *nc,
-		network_client_cb_t cb, void *arg);
+	network_client_cb_t cb, void *arg);
+
+void network_client_set_error_cb(struct network_client *nc,
+	network_client_cb_t cb, void *arg);
 
 void network_client_set_close_cb(struct network_client *nc,
-		network_client_cb_t cb, void *arg);
+	network_client_cb_t cb, void *arg);
 
 struct buffer_queue * network_client_rx_queue(struct network_client *nc);
 

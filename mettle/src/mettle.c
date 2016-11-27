@@ -82,7 +82,7 @@ int start_heartbeat(struct mettle *m)
 
 int mettle_add_server_uri(struct mettle *m, const char *uri)
 {
-	return network_client_add_server(m->nc, uri);
+	return network_client_add_uri(m->nc, uri);
 }
 
 int mettle_add_tcp_sock(struct mettle *m, int fd)
@@ -223,7 +223,6 @@ struct mettle *mettle(void)
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
 
 	network_client_set_connect_cb(m->nc, on_network_connect, m);
-
 	network_client_set_read_cb(m->nc, on_network_read, m);
 
 	m->td = tlv_dispatcher_new(on_tlv_response, m);

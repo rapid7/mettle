@@ -67,7 +67,7 @@ static int _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, c
 		goto err;
 	}
 
-	if (network_client_add_server(nc, uri) == -1) {
+	if (network_client_add_uri(nc, uri) == -1) {
 		log_debug("could not add server for uri %s", uri);
 		goto err;
 	}

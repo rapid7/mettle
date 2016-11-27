@@ -13,6 +13,7 @@ libmettle_la_LIBADD += -lsigar
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += argv_split.c
 libmettle_la_SOURCES += base64.c
+libmettle_la_SOURCES += bufferev.c
 libmettle_la_SOURCES += buffer_queue.c
 libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += log.c
