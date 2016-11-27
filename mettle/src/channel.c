@@ -55,6 +55,7 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 	struct channel_type *ct = channelmgr_type_by_name(cm, channel_type);
 	if (ct == NULL) {
 		log_info("could not find handlers for channel type %s", channel_type);
+		return NULL;
 	}
 
 	struct channel *c = calloc(1, sizeof(*c));
