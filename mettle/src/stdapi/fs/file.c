@@ -225,6 +225,61 @@ struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
 	return NULL;
 }
 
+static void
+fs_file_copy_async(struct eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct tlv_packet *p;
+	int rc = TLV_RESULT_SUCCESS;
+	const char *src = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_NAME);
+	const char *dst = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+
+	if (src == NULL || dst == NULL) {
+		rc = EINVAL;
+		goto out;
+	}
+
+	FILE* f1 = fopen(src, "rb");
+	if (f1 == NULL) {
+		rc = EINVAL;
+		goto out;
+	}
+
+	FILE* f2 = fopen(dst, "wb");
+	if (f2 == NULL) {
+		fclose(f1);
+		rc = EINVAL;
+		goto out;
+	}
+
+	char buffer[4096];
+	size_t n;
+	while ((n = fread(buffer, sizeof(char), sizeof(buffer), f1)) > 0)
+	{
+		if (fwrite(buffer, sizeof(char), n, f2) != n) {
+			fclose(f1);
+			fclose(f2);
+			rc = EINVAL;
+			goto out;
+		}
+	}
+
+	fclose(f1);
+	fclose(f2);
+
+out:
+	p = tlv_packet_response_result(ctx, rc);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *fs_file_copy(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	eio_custom(fs_file_copy_async, 0, NULL, ctx);
+	return NULL;
+}
+
 struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
 {
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
@@ -408,6 +463,7 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_file", fs_delete_file, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_expand_path", fs_expand_path, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_file_copy", fs_file_copy, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_mkdir", fs_mkdir, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_dir", fs_rmdir, m);
