@@ -61,7 +61,7 @@ struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx)
 
 	return tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
 			"uid=%d, gid=%d, euid=%d, egid=%d",
-			getuid(), geteuid(), getgid(), getegid());
+			getuid(), getgid(), geteuid(), getegid());
 }
 
 struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
