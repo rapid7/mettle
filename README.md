@@ -46,7 +46,7 @@ The available platform triples are:
 * `mips64-linux-muslsf`
 
 Available config options are:
-* `:url` - the url to connect back to
+* `:uri` - the uri to connect back to
 * `:uuid` - the UUID to identify the payload
 * `:debug` - to turn on debug messages
 * `:log_file` - the file to send debug messages to instead of `stderr`
