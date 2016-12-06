@@ -44,6 +44,7 @@ The available platform triples are:
 * `mips-linux-muslsf`
 * `mipsel-linux-muslsf`
 * `mips64-linux-muslsf`
+* `s390x-linux-musl`
 
 Available config options are:
 * `:uri` - the uri to connect back to
