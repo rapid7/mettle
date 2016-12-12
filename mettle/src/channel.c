@@ -451,7 +451,7 @@ static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
 
 	ssize_t bytes_written = cbs->write_cb(c, buf, len);
 	struct tlv_packet *p;
-	if (bytes_written > 0) {
+	if (len == 0 || bytes_written > 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 		p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, bytes_written);
 	} else {

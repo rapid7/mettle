@@ -199,7 +199,7 @@ int sys_process_free(struct channel *c)
 static void process_channel_exit_cb(struct process *p, int exit_status, void *arg)
 {
 	struct channel *c = arg;
-	channel_set_ctx(c, NULL);
+	channel_send_close_request(c);
 }
 
 static void process_channel_read_cb(struct buffer_queue *queue, void *arg)
