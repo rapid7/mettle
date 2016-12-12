@@ -41,7 +41,6 @@ musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz:
 
 $(ROOT)/build/tools/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@echo "Unpacking toolchain"
-	@mkdir -p build/tools
 	@rm -fr build/tools/musl-cross
 	@mkdir -p build/tools/musl-cross
 	@cd build/tools && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
