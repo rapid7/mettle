@@ -236,10 +236,11 @@ int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai)
 
 int bufferev_connect_tcp_sock(struct bufferev *be, int sock)
 {
-	be->proto = network_proto_tcp;
+	be->sock = sock;
 
 	make_socket_nonblocking(be->sock);
-	be->sock = sock;
+
+	be->proto = network_proto_tcp;
 
 	ev_io_init(&be->data_ev, on_read, be->sock, EV_READ);
 	be->data_ev.data = be;
