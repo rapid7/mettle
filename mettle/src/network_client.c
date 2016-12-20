@@ -408,7 +408,7 @@ on_resolve(struct eio_req *req)
 		nc->be = bufferev_new(nc->loop);
 		set_bufferev_cbs(nc);
 
-		if (bufferev_connect_addrinfo(nc->be, p) == 0) {
+		if (bufferev_connect_addrinfo(nc->be, p, 1.0) == 0) {
 			return 0;
 		} else {
 			bufferev_free(nc->be);

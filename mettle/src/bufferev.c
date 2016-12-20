@@ -31,11 +31,12 @@
 #include "util.h"
 
 struct bufferev {
+	struct ev_timer connect_timer;
 	struct ev_loop *loop;
 
 	char *uri;
 	enum network_proto proto;
-	int sock;
+	int sock, connected;
 	struct ev_io data_ev;
 
 	struct addrinfo *addrinfo;
@@ -184,12 +185,38 @@ void on_read(struct ev_loop *loop, struct ev_io *w, int events)
 	}
 }
 
+static void close_sock(struct bufferev *be)
+{
+	if (be->sock >= 0) {
+		close(be->sock);
+		be->sock = -1;
+	}
+}
+
+static void
+on_connect_timeout(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+	struct bufferev *be = (struct bufferev *)w;
+
+	ev_timer_stop(be->loop, &be->connect_timer);
+
+	if (!be->connected) {
+		close_sock(be);
+		ev_io_stop(be->loop, &be->data_ev);
+
+		if (be->error_cb) {
+			be->error_cb(be, be->error_cb_arg);
+		}
+	}
+}
+
 static void
 on_connect(struct ev_loop *loop, struct ev_io *w, int events)
 {
 	struct bufferev *be = w->data;
 
 	ev_io_stop(be->loop, &be->data_ev);
+	ev_timer_stop(be->loop, &be->connect_timer);
 
 	int status;
 	socklen_t len = sizeof(status);
@@ -208,9 +235,10 @@ on_connect(struct ev_loop *loop, struct ev_io *w, int events)
 	ev_io_init(&be->data_ev, on_read, be->sock, EV_READ);
 	be->data_ev.data = be;
 	ev_io_start(be->loop, &be->data_ev);
+	be->connected = 1;
 }
 
-int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai)
+int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai, float timeout_s)
 {
 	be->sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	if (be->sock < 0) {
@@ -233,8 +261,11 @@ int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai)
 		ev_io_init(&be->data_ev, on_connect, be->sock, EV_WRITE);
 		be->data_ev.data = be;
 		ev_io_start(be->loop, &be->data_ev);
+
+		ev_timer_init(&be->connect_timer, on_connect_timeout, timeout_s, 0);
+		ev_timer_start(be->loop, &be->connect_timer);
 	} else {
-		close(be->sock);
+		close_sock(be);
 		if (be->error_cb) {
 			be->error_cb(be, be->error_cb_arg);
 		}
@@ -267,6 +298,7 @@ void bufferev_free(struct bufferev *be)
 		ev_io_stop(be->loop, &be->data_ev);
 		buffer_queue_free(be->rx_queue);
 		buffer_queue_free(be->tx_queue);
+		close_sock(be);
 		free(be);
 	}
 }
