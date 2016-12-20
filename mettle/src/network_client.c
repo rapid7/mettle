@@ -58,6 +58,8 @@ struct network_client {
 		network_client_connected,
 	} state;
 
+	int max_retries, retries;
+
 	network_client_cb_t connect_cb;
 	void *connect_cb_arg;
 	network_client_cb_t read_cb;
@@ -342,10 +344,15 @@ static void on_error(struct bufferev *be, void *arg)
 		log_info("failed to connect to '%s://%s:%s'",
 				network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
 		set_closed(nc);
-	}
 
-	if (nc->error_cb) {
-		nc->error_cb(nc, nc->error_cb_arg);
+		if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
+			ev_timer_stop(nc->loop, &nc->connect_timer);
+			if (nc->error_cb) {
+				nc->error_cb(nc, nc->error_cb_arg);
+			}
+		} else {
+			nc->retries++;
+		}
 	}
 }
 
@@ -507,6 +514,10 @@ int network_client_start(struct network_client *nc)
 	return 0;
 }
 
+void network_client_set_retries(struct network_client *nc, int retries)
+{
+	nc->max_retries = retries;
+}
 
 void network_client_free(struct network_client *nc)
 {
@@ -528,6 +539,7 @@ struct network_client * network_client_new(struct ev_loop *loop)
 	if (nc) {
 		nc->loop = loop;
 		nc->state = network_client_closed;
+		nc->max_retries = -1;
 	}
 	return nc;
 }

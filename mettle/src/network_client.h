@@ -33,6 +33,8 @@ void network_client_set_error_cb(struct network_client *nc,
 void network_client_set_close_cb(struct network_client *nc,
 	network_client_cb_t cb, void *arg);
 
+void network_client_set_retries(struct network_client *nc, int retries);
+
 struct buffer_queue * network_client_rx_queue(struct network_client *nc);
 
 size_t network_client_peek(struct network_client *nc, void *buf, size_t buflen);

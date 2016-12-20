@@ -214,6 +214,9 @@ int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai)
 {
 	be->sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	if (be->sock < 0) {
+		if (be->error_cb) {
+			be->error_cb(be, be->error_cb_arg);
+		}
 		return -1;
 	}
 
@@ -230,6 +233,12 @@ int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai)
 		ev_io_init(&be->data_ev, on_connect, be->sock, EV_WRITE);
 		be->data_ev.data = be;
 		ev_io_start(be->loop, &be->data_ev);
+	} else {
+		close(be->sock);
+		if (be->error_cb) {
+			be->error_cb(be, be->error_cb_arg);
+		}
+		return -1;
 	}
 	return 0;
 }

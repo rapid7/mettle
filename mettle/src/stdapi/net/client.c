@@ -19,6 +19,7 @@ static void network_channel_close_cb(struct network_client *nc, void *arg)
 {
 	struct channel *c = arg;
 	channel_set_ctx(c, NULL);
+	channel_send_close_request(c);
 }
 
 static void network_channel_read_cb(struct network_client *nc, void *arg)
@@ -31,6 +32,23 @@ static void network_channel_read_cb(struct network_client *nc, void *arg)
 		channel_enqueue(c, buf, len);
 		free(buf);
 	}
+}
+
+static void network_channel_error_cb(struct network_client *nc, void *arg)
+{
+	struct tlv_handler_ctx *ctx = arg;
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	channel_shutdown(ctx->channel);
+	tlv_handler_ctx_free(ctx);
+}
+
+static void network_channel_connect_cb(struct network_client *nc, void *arg)
+{
+	struct tlv_handler_ctx *ctx = arg;
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
 }
 
 static int _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *proto)
@@ -51,7 +69,7 @@ static int _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, c
 		goto err;
 	}
 
-	if (src_host && src_port) {
+	if (src_host && src_port != -1) {
 		log_debug("src_host %s, src_port %u", src_host, src_port);
 	}
 
@@ -75,8 +93,13 @@ static int _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, c
 
 	channel_set_ctx(c, nc);
 	channel_set_interactive(c, true);
+
 	network_client_set_read_cb(nc, network_channel_read_cb, c);
 	network_client_set_close_cb(nc, network_channel_close_cb, c);
+	network_client_set_connect_cb(nc, network_channel_connect_cb, ctx);
+	network_client_set_error_cb(nc, network_channel_error_cb, ctx);
+	network_client_set_retries(nc, 0);
+
 	network_client_start(nc);
 
 	return 0;
@@ -164,7 +187,7 @@ void net_client_register_handlers(struct mettle *m)
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 
 	struct channel_callbacks tcp_client_cbs = {
-		.new_cb = tcp_client_new,
+		.new_async_cb = tcp_client_new,
 		.read_cb = tcp_client_read,
 		.write_cb = tcp_client_write,
 		.free_cb = tcp_client_free,

@@ -220,7 +220,6 @@ struct tlv_packet *fs_file_move(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, EINVAL);
 	}
 
-	struct mettle *m = ctx->arg;
 	eio_rename(src, dst, 0, fs_cb, ctx);
 	return NULL;
 }

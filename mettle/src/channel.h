@@ -32,6 +32,8 @@ struct channel * tlv_handler_ctx_channel_by_id(struct tlv_handler_ctx *ctx);
 struct channel_callbacks {
 	int (*new_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
 
+	int (*new_async_cb)(struct tlv_handler_ctx *tlv_ctx, struct channel *c);
+
 	ssize_t (*read_cb)(struct channel *c, void *buf, size_t len);
 
 	ssize_t (*write_cb)(struct channel *c, void *buf, size_t len);

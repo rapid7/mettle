@@ -1,6 +1,7 @@
 #include <errno.h>
 
 #include "channel.h"
+#include "eio.h"
 #include "log.h"
 #include "mettle.h"
 #include "tlv.h"
@@ -210,29 +211,47 @@ static struct tlv_packet *channel_open(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	struct channelmgr *cm = mettle_get_channelmgr(m);
+	int rc = TLV_RESULT_FAILURE;
 
 	char *channel_type = tlv_packet_get_str(ctx->req, TLV_TYPE_CHANNEL_TYPE);
 	if (channel_type == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	}
 
 	struct channel *c = channelmgr_channel_new(cm, channel_type);
 	if (c == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	}
 	ctx->channel = c;
 	ctx->channel_id = channel_get_id(c);
 
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
-	struct tlv_packet *p;
+	/*
+	 * If there is an async new callback, only handle direct failures, success
+	 * handling is the responsibility of the callback.
+	 */
+	if (cbs->new_async_cb) {
+		if (cbs->new_async_cb(ctx, c) == -1) {
+			channel_free(c);
+			goto out;
+		} else {
+			return NULL;
+		}
+	}
+
+	/*
+	 * If there is a sync callback, handle it directly.
+	 */
 	if (cbs->new_cb && cbs->new_cb(ctx, c) == -1) {
 		channel_free(c);
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	} else {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		rc = TLV_RESULT_SUCCESS;
 	}
-	return p;
+
+out:
+	return tlv_packet_response_result(ctx, rc);
 }
 
 struct channel * tlv_handler_ctx_channel_by_id(struct tlv_handler_ctx *ctx)

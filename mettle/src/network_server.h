@@ -8,14 +8,18 @@
 
 #include <ev.h>
 
-#include "buffer_queue.h"
+#include "bufferev.h"
 
 struct network_server;
 
-struct network_server * network_server_new(struct ev_loop *loop);
+struct network_server * network_server_new(struct ev_loop *loop,
+		const char *host, uint16_t port,
+		void (* connect_cb)(struct bufferev *be, void *arg),
+		void (* read_cb)(struct bufferev *be, void *arg),
+		void (* close_cb)(struct network_server *ne));
 
-int network_server_start(struct network_server *nc);
+int network_server_start(struct network_server *ns);
 
-void network_server_free(struct network_server *nc);
+void network_server_free(struct network_server *ns);
 
 #endif

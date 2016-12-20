@@ -242,24 +242,31 @@ void get_netstat_async(struct eio_req *req)
 			remote_addr.addr_ip = connection->remote_address.addr.in;
 		} else if (connection->local_address.family == SIGAR_AF_INET6) {
 			local_addr.addr_type = remote_addr.addr_type = ADDR_TYPE_IP6;
-			memcpy(&local_addr.addr_ip6, &connection->local_address.addr.in6, sizeof(local_addr.addr_ip6));
-			memcpy(&remote_addr.addr_ip6, &connection->remote_address.addr.in6, sizeof(remote_addr.addr_ip6));
+			memcpy(&local_addr.addr_ip6, &connection->local_address.addr.in6,
+					sizeof(local_addr.addr_ip6));
+			memcpy(&remote_addr.addr_ip6, &connection->remote_address.addr.in6,
+					sizeof(remote_addr.addr_ip6));
 		}
+
 		if (local_addr.addr_type) {
 			p = tlv_packet_add_addr(p, TLV_TYPE_LOCAL_HOST_RAW, 0, &local_addr);
 			p = tlv_packet_add_addr(p, TLV_TYPE_PEER_HOST_RAW, 0, &remote_addr);
 		}
+
 		p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, connection->local_port);
 		p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, connection->remote_port);
+
 		if (connection->type == SIGAR_NETCONN_TCP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "tcp");
 			if (connection->state && connection->state < COUNT_OF(tcp_connection_states)) {
-				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, tcp_connection_states[connection->state]);
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING,
+						tcp_connection_states[connection->state]);
 			}
 		} else if (connection->type == SIGAR_NETCONN_UDP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "udp");
 			if (connection->state && connection->state < COUNT_OF(udp_connection_states)) {
-				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, udp_connection_states[connection->state]);
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING,
+						udp_connection_states[connection->state]);
 			}
 		}
 		p = tlv_packet_add_u32(p, TLV_TYPE_PID, connection->uid);
