@@ -39,8 +39,6 @@ struct bufferev {
 	int sock, connected;
 	struct ev_io data_ev;
 
-	struct addrinfo *addrinfo;
-
 	struct buffer_queue *tx_queue;
 	struct buffer_queue *rx_queue;
 

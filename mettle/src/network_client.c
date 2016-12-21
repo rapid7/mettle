@@ -262,11 +262,6 @@ static void set_closed(struct network_client *nc)
 {
 	nc->state = network_client_closed;
 
-	if (nc->addrinfo) {
-		freeaddrinfo(nc->addrinfo);
-		nc->addrinfo = NULL;
-	}
-
 	if (nc->be) {
 		bufferev_free(nc->be);
 		nc->be = NULL;
@@ -381,13 +376,13 @@ on_resolve(struct eio_req *req)
 	struct network_client *nc = req->data;
 	char ipstr[INET6_ADDRSTRLEN];
 	struct network_client_server *srv = get_curr_server(nc);
+	int rc = 0;
 
 	if (req->result != 0) {
 		log_info("could not resolve '%s://%s:%s': %s",
 			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc),
 			gai_strerror(req->result));
-		set_closed(nc);
-		return -1;
+		goto err;
 	}
 
 	for (struct addrinfo *p = nc->addrinfo; p; p = p->ai_next) {
@@ -409,15 +404,23 @@ on_resolve(struct eio_req *req)
 		set_bufferev_cbs(nc);
 
 		if (bufferev_connect_addrinfo(nc->be, p, 1.0) == 0) {
-			return 0;
+			goto out;
 		} else {
 			bufferev_free(nc->be);
 			nc->be = NULL;
 		}
 	}
 
+err:
 	set_closed(nc);
-	return 0;
+	rc = -1;
+
+out:
+	if (nc->addrinfo) {
+		freeaddrinfo(nc->addrinfo);
+		nc->addrinfo = NULL;
+	}
+	return rc;
 }
 
 int network_client_add_tcp_sock(struct network_client *nc, int sock)
