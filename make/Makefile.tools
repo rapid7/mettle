@@ -22,7 +22,7 @@ ELF2BIN=build/tools/elf2bin
 
 $(ELF2BIN): util/elf2bin.c
 	@mkdir -p build/tools
-	cc -g -o $@ $<
+	@cc -g -o $@ $<
 
 INSTALL=install
 export PATH:=$(ROOT)/build/tools/musl-cross/bin:$(PATH)
@@ -39,16 +39,16 @@ musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz:
 	@echo "Downloading toolchain"
 	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 
-$(ROOT)/build/tools/musl-cross/gcc.info: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
+$(ROOT)/build/tools/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@echo "Unpacking toolchain"
 	@rm -fr build/tools/musl-cross
 	@mkdir -p build/tools/musl-cross
 	@cd build/tools && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
+	@touch build/tools/musl-cross/.unpacked
 
 TOOLS_DEPS=
 ifneq "$(TARGET)" "native"
-  TOOLS_DEPS=$(ROOT)/build/tools/musl-cross/gcc.info $(ELF2BIN)
+  TOOLS_DEPS=$(ROOT)/build/tools/musl-cross/.unpacked $(ELF2BIN)
 endif
 
 build/tools: $(TOOLS_DEPS)
-	mkdir -p build/tools
