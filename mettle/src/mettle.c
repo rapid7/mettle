@@ -70,7 +70,7 @@ eio_done_poll(void)
 static void
 heartbeat_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 {
-	log_info("Heartbeat");
+	//log_info("Heartbeat");
 }
 
 int start_heartbeat(struct mettle *m)

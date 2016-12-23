@@ -37,6 +37,8 @@ static void network_channel_read_cb(struct network_client *nc, void *arg)
 static void network_channel_error_cb(struct network_client *nc, void *arg)
 {
 	struct tlv_handler_ctx *ctx = arg;
+	log_info("sending failure result for request %s", ctx->id);
+	ctx->channel_id = 0;
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 	channel_shutdown(ctx->channel);

@@ -74,6 +74,8 @@ size_t channel_queue_len(struct channel *c);
 
 void channel_shutdown(struct channel *c);
 
+void channel_opened(struct channel *c);
+
 void tlv_register_channelapi(struct mettle *m);
 
 #endif

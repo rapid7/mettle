@@ -305,7 +305,8 @@ void network_client_set_close_cb(struct network_client *nc,
 	nc->close_cb_arg = arg;
 }
 
-void client_connected(struct network_client *nc)
+static void
+client_connected(struct network_client *nc)
 {
 	nc->state = network_client_connected;
 	struct network_client_server *srv = get_curr_server(nc);
@@ -376,7 +377,6 @@ on_resolve(struct eio_req *req)
 	struct network_client *nc = req->data;
 	char ipstr[INET6_ADDRSTRLEN];
 	struct network_client_server *srv = get_curr_server(nc);
-	int rc = 0;
 
 	if (req->result != 0) {
 		log_info("could not resolve '%s://%s:%s': %s",
@@ -412,15 +412,12 @@ on_resolve(struct eio_req *req)
 	}
 
 err:
-	set_closed(nc);
-	rc = -1;
+	nc->state = network_client_closed;
 
 out:
-	if (nc->addrinfo) {
-		freeaddrinfo(nc->addrinfo);
-		nc->addrinfo = NULL;
-	}
-	return rc;
+	freeaddrinfo(nc->addrinfo);
+	nc->addrinfo = NULL;
+	return 0;
 }
 
 int network_client_add_tcp_sock(struct network_client *nc, int sock)

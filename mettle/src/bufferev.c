@@ -160,7 +160,8 @@ ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 	return -1;
 }
 
-void on_read(struct ev_loop *loop, struct ev_io *w, int events)
+static void
+on_read(struct ev_loop *loop, struct ev_io *w, int events)
 {
 	struct bufferev *be = w->data;
 
@@ -183,7 +184,8 @@ void on_read(struct ev_loop *loop, struct ev_io *w, int events)
 	}
 }
 
-static void close_sock(struct bufferev *be)
+static void
+close_sock(struct bufferev *be)
 {
 	if (be->sock >= 0) {
 		close(be->sock);

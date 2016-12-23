@@ -16,6 +16,7 @@ struct channel {
 	struct buffer_queue *queue;
 	bool interactive;
 	bool shutting_down;
+	bool started;
 };
 
 struct channel_type {
@@ -106,7 +107,16 @@ void channel_set_ctx(struct channel *c, void *ctx)
 
 void channel_shutdown(struct channel *c)
 {
-	c->shutting_down = true;
+	if (c->started) {
+		c->shutting_down = true;
+	} else {
+		channel_free(c);
+	}
+}
+
+void channel_opened(struct channel *c)
+{
+	c->started = true;
 }
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c)
@@ -247,6 +257,7 @@ static struct tlv_packet *channel_open(struct tlv_handler_ctx *ctx)
 		channel_free(c);
 		goto out;
 	} else {
+		c->started = true;
 		rc = TLV_RESULT_SUCCESS;
 	}
 
