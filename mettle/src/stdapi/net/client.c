@@ -50,6 +50,7 @@ static void network_channel_connect_cb(struct network_client *nc, void *arg)
 	struct tlv_handler_ctx *ctx = arg;
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	tlv_dispatcher_enqueue_response(ctx->td, p);
+	channel_opened(ctx->channel);
 	tlv_handler_ctx_free(ctx);
 }
 
