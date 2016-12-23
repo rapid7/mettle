@@ -11,6 +11,7 @@
 #endif
 #include <endian.h>
 
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -376,8 +377,10 @@ struct tlv_response {
 
 struct tlv_dispatcher {
 	struct tlv_handler *handlers;
-	struct tlv_response *responses;
 	tlv_response_cb response_cb;
+
+	pthread_mutex_t mutex;
+	struct tlv_response *responses;
 	void *response_cb_arg;
 
 	char *uuid;
@@ -396,7 +399,10 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 	}
 
 	r->p = p;
+
+	pthread_mutex_lock(&td->mutex);
 	LL_APPEND(td->responses, r);
+	pthread_mutex_unlock(&td->mutex);
 
 	if (td->response_cb) {
 		td->response_cb(td, td->response_cb_arg);
@@ -413,7 +419,10 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 	*len = 0;
 
 	if (r) {
+		pthread_mutex_lock(&td->mutex);
 		LL_DELETE(td->responses, r);
+		pthread_mutex_unlock(&td->mutex);
+
 		p = r->p;
 		free(r);
 
@@ -440,6 +449,7 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
 {
 	struct tlv_dispatcher *td = calloc(1, sizeof(*td));
 	if (td) {
+		pthread_mutex_init(&td->mutex, NULL);
 		td->response_cb = cb;
 		td->response_cb_arg = cb_arg;
 	}
