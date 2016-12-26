@@ -16,6 +16,7 @@ struct network_client_channel {
 	struct channel *channel;
 	struct network_client *nc;
 	struct tlv_handler_ctx *tlv_ctx;
+	uint32_t retries;
 };
 
 static void
@@ -75,7 +76,8 @@ void network_channel_event_cb(struct bufferev *be, int event, void *arg)
 
 static struct network_client_channel*
 network_client_channel_alloc(struct tlv_handler_ctx *tlv_ctx, struct channel *c,
-		struct ev_loop *loop, const char *proto, const char *dst_host, uint16_t dst_port)
+		struct ev_loop *loop, uint32_t retries,
+		const char *proto, const char *dst_host, uint16_t dst_port)
 {
 	struct network_client_channel *ncc = calloc(1, sizeof(*ncc));
 	if (ncc == NULL) {
@@ -101,7 +103,7 @@ network_client_channel_alloc(struct tlv_handler_ctx *tlv_ctx, struct channel *c,
 
 	network_client_setcbs(ncc->nc, network_channel_read_cb, NULL,
 			network_channel_event_cb, ncc);
-	network_client_set_retries(ncc->nc, 0);
+	network_client_set_retries(ncc->nc, ncc->retries);
 	network_client_start(ncc->nc);
 
 	return ncc;
@@ -120,6 +122,9 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PEER_PORT, &dst_port);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_HOST, &src_port);
 
+	uint32_t retries = 0;
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_CONNECT_RETRIES, &retries);
+
 	if (dst_host == NULL || dst_port == -1) {
 		log_debug("dst_host %s, dst_port %u", dst_host, dst_port);
 		return -1;
@@ -130,8 +135,8 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 	}
 
 	struct network_client_channel *ncc =
-		network_client_channel_alloc(ctx, c,
-				mettle_get_loop(m), proto, dst_host, dst_port);
+		network_client_channel_alloc(ctx, c, mettle_get_loop(m),
+				retries, proto, dst_host, dst_port);
 	if (ncc == NULL) {
 		goto err;
 	}
