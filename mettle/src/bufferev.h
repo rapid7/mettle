@@ -26,8 +26,8 @@ struct bufferev * bufferev_new(struct ev_loop *loop);
 
 int bufferev_connect_tcp_sock(struct bufferev *be, int sock);
 
-int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai,
-	float timeout_s);
+int bufferev_connect_addrinfo(struct bufferev *be,
+	struct addrinfo *src_addr, struct addrinfo *dst_addr, float timeout_s);
 
 #define BEV_READING   0x01  // error encountered while reading
 #define BEV_WRITING   0x02  // error encountered while writing

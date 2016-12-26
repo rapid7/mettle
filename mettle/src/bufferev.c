@@ -218,9 +218,10 @@ on_connect(struct ev_loop *loop, struct ev_io *w, int events)
 	be->connected = 1;
 }
 
-int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai, float timeout_s)
+int bufferev_connect_addrinfo(struct bufferev *be,
+	struct addrinfo *src, struct addrinfo *dst, float timeout_s)
 {
-	be->sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+	be->sock = socket(dst->ai_family, dst->ai_socktype, dst->ai_protocol);
 	if (be->sock < 0) {
 		if (be->event_cb) {
 			be->event_cb(be, BEV_ERROR, be->cb_arg);
@@ -230,13 +231,16 @@ int bufferev_connect_addrinfo(struct bufferev *be, struct addrinfo *ai, float ti
 
 	make_socket_nonblocking(be->sock);
 
-	if (ai->ai_protocol == IPPROTO_UDP) {
+	if (dst->ai_protocol == IPPROTO_UDP) {
 		be->proto = network_proto_udp;
 	} else {
 		be->proto = network_proto_tcp;
 	}
+	if (src) {
+		bind(be->sock, src->ai_addr, src->ai_addrlen);
+	}
 
-	int rc = connect(be->sock, ai->ai_addr, ai->ai_addrlen);
+	int rc = connect(be->sock, dst->ai_addr, dst->ai_addrlen);
 	if (rc == 0 || errno == EINPROGRESS) {
 		ev_io_init(&be->data_ev, on_connect, be->sock, EV_WRITE);
 		be->data_ev.data = be;

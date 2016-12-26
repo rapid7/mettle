@@ -49,7 +49,7 @@ struct network_client {
 	uint64_t connect_time_s;
 
 	struct bufferev *be;
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo, *dst;
 
 	enum {
 		network_client_closed,
@@ -321,53 +321,62 @@ static void on_event(struct bufferev *be, int event, void *arg)
 	}
 }
 
+static void
+log_addrinfo(const char *msg, struct addrinfo *ai)
+{
+	char host[INET6_ADDRSTRLEN] = { 0 };
+	uint16_t port = 0;
+	if (ai->ai_family == AF_INET) {
+		struct sockaddr_in *s = (struct sockaddr_in *)ai->ai_addr;
+		port = ntohs(s->sin_port);
+		inet_ntop(AF_INET, &s->sin_addr, host, INET6_ADDRSTRLEN);
+	} else if (ai->ai_family == AF_INET6) {
+		struct sockaddr_in6 *s = (struct sockaddr_in6 *)ai->ai_addr;
+		port = ntohs(s->sin6_port);
+		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
+	}
+	log_info("%s %s:%d", msg, host, port);
+}
+
 static int
 on_resolve(struct eio_req *req)
 {
 	struct network_client *nc = req->data;
-	char ipstr[INET6_ADDRSTRLEN];
 	struct network_client_server *srv = get_curr_server(nc);
 
 	if (req->result != 0) {
 		log_info("could not resolve '%s://%s:%s': %s",
 			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc),
 			gai_strerror(req->result));
-		goto err;
+		nc->state = network_client_closed;
+		return 0;
 	}
 
-	for (struct addrinfo *p = nc->addrinfo; p; p = p->ai_next) {
-		void *addr;
+	if (nc->dst == NULL) {
+		nc->dst = nc->addrinfo;
+	}
 
-		if (p->ai_family == AF_INET) {
-			struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-			addr = &ipv4->sin_addr;
-		} else {
-			struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
-			addr = &ipv6->sin6_addr;
-		}
-
-		inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+	while (nc->dst) {
+		log_addrinfo("connecting to", nc->dst);
 
 		nc->state = network_client_connecting;
-
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
 			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
-			if (bufferev_connect_addrinfo(nc->be, p, 1.0) == 0) {
-				goto out;
-			} else {
-				bufferev_free(nc->be);
-				nc->be = NULL;
+			if (bufferev_connect_addrinfo(nc->be, NULL, nc->dst, 1.0) == 0) {
+				nc->dst = nc->dst->ai_next;
+				break;
 			}
+			bufferev_free(nc->be);
+			nc->be = NULL;
 		}
+		nc->dst = nc->dst->ai_next;
 	}
 
-err:
-	nc->state = network_client_closed;
-
-out:
-	freeaddrinfo(nc->addrinfo);
-	nc->addrinfo = NULL;
+	if (nc->dst == NULL) {
+		freeaddrinfo(nc->addrinfo);
+		nc->addrinfo = NULL;
+	}
 	return 0;
 }
 
@@ -376,7 +385,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	log_info("Adding opened socket %d", sock);
 	nc->servers = reallocarray(nc->servers, nc->num_servers + 1,
 			sizeof(struct network_client_server));
-	if (nc->servers == NULL) {
+	if (nc->addrinfo) {
 		return -1;
 	}
 
@@ -424,6 +433,10 @@ static void
 resolve(struct eio_req *req)
 {
 	struct network_client *nc = req->data;
+	if (nc->dst) {
+		return;
+	}
+
 	struct network_client_server *srv = get_curr_server(nc);
 	const char *service = get_curr_service(nc);
 

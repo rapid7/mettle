@@ -115,14 +115,14 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 	const char *src_host, *dst_host;
 	uint32_t src_port = -1, dst_port = -1;
 	struct mettle *m = ctx->arg;
+	uint32_t retries = 0;
 
 	dst_host = tlv_packet_get_str(ctx->req, TLV_TYPE_PEER_HOST);
-	src_host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
-
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PEER_PORT, &dst_port);
+
+	src_host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_HOST, &src_port);
 
-	uint32_t retries = 0;
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_CONNECT_RETRIES, &retries);
 
 	if (dst_host == NULL || dst_port == -1) {
