@@ -7,6 +7,8 @@
 #ifndef _NETWORK_CLIENT_H_
 #define _NETWORK_CLIENT_H_
 
+#include "bufferev.h"
+
 struct buffer_queue;
 
 struct network_client;
@@ -19,29 +21,15 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock);
 
 int network_client_start(struct network_client *nc);
 
-typedef void (*network_client_cb_t)(struct network_client *nc, void *arg);
-
-void network_client_set_read_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg);
-
-void network_client_set_connect_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg);
-
-void network_client_set_error_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg);
-
-void network_client_set_close_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg);
+void network_client_setcbs(struct network_client *be,
+	bufferev_data_cb read_cb,
+	bufferev_data_cb write_cb,
+	bufferev_event_cb event_cb,
+	void *cb_arg);
 
 void network_client_set_retries(struct network_client *nc, int retries);
 
-struct buffer_queue * network_client_rx_queue(struct network_client *nc);
-
-size_t network_client_peek(struct network_client *nc, void *buf, size_t buflen);
-
-size_t network_client_read(struct network_client *nc, void *buf, size_t buflen);
-
-size_t network_client_bytes_available(struct network_client *nc);
+ssize_t network_client_read(struct network_client *nc, void *buf, size_t buflen);
 
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen);
 

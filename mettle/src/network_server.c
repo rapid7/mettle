@@ -19,6 +19,7 @@
 #include <netdb.h>
 #endif
 
+#include <errno.h>
 #include "bufferev.h"
 #include "log.h"
 #include "network_server.h"
@@ -29,18 +30,50 @@ struct network_server {
 	int listener;
 	struct ev_io connect_event;
 	struct sockaddr_in6 sin;
+
+	char *host;
+	uint16_t port;
+
+	bufferev_data_cb read_cb;
+	bufferev_data_cb write_cb;
+	bufferev_event_cb event_cb;
+	void *cb_arg;
 };
 
-void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
+void connect_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 {
-	log_debug("got a connection");
+	struct network_server *ns = w->data;
+	struct sockaddr_storage sockaddr;
+	socklen_t slen;
+	int fd = accept(ns->listener, (struct sockaddr *)&sockaddr, &slen);
+	if (fd < 0) {
+		log_error("could not accept: %s", strerror(errno));
+	} else if (fd > FD_SETSIZE) {
+		close(fd);
+	} else {
+		make_socket_nonblocking(fd);
+		struct bufferev *be = bufferev_new(loop);
+		if (be) {
+			bufferev_setcbs(be, ns->read_cb, ns->write_cb, ns->event_cb, ns->cb_arg);
+			bufferev_connect_tcp_sock(be, fd);
+		}
+	}
+}
+
+void network_server_setcbs(struct network_server *ns,
+	bufferev_data_cb read_cb,
+	bufferev_data_cb write_cb,
+	bufferev_event_cb event_cb,
+	void *cb_arg)
+{
+    ns->read_cb = read_cb;
+    ns->write_cb = write_cb;
+    ns->event_cb = event_cb;
+    ns->cb_arg = cb_arg;
 }
 
 struct network_server * network_server_new(struct ev_loop *loop,
-		const char *host, uint16_t port,
-		void (* connect_cb)(struct bufferev *be, void *arg),
-		void (* read_cb)(struct bufferev *be, void *arg),
-		void (* close_cb)(struct network_server *ne))
+		const char *host, uint16_t port)
 {
 	struct network_server *ns = calloc(1, sizeof(*ns));
 	if (ns == NULL) {
@@ -49,12 +82,15 @@ struct network_server * network_server_new(struct ev_loop *loop,
 
 	ns->sin.sin6_family = AF_INET6;
 	ns->sin.sin6_port = htons((uint16_t)port);
+	ns->port = port;
 
 	if (host == NULL) {
 		ns->sin.sin6_addr = in6addr_any;
+		ns->host = strdup("0.0.0.0");
 	} else {
 		// TODO bind to the specified host instead
 		ns->sin.sin6_addr = in6addr_any;
+		ns->host = strdup(host);
 	}
 
 	ns->listener = socket(AF_INET6, SOCK_STREAM, 0);
@@ -87,7 +123,8 @@ struct network_server * network_server_new(struct ev_loop *loop,
 		goto err;
 	}
 
-	ev_io_init(&ns->connect_event, accept_cb, ns->listener, EV_READ);
+	ev_io_init(&ns->connect_event, connect_cb, ns->listener, EV_READ);
+	ns->connect_event.data = ns;
 	ev_io_start(loop, &ns->connect_event);
 
 	return ns;
@@ -96,7 +133,15 @@ err:
 	return NULL;
 }
 
-int network_server_start(struct network_server *ns);
+const char *network_server_get_host(struct network_server *ns)
+{
+	return ns->host;
+}
+
+uint16_t network_server_get_port(struct network_server *ns)
+{
+	return ns->port;
+}
 
 void network_server_free(struct network_server *ns)
 {
@@ -104,6 +149,7 @@ void network_server_free(struct network_server *ns)
 		if (ns->listener) {
 			close(ns->listener);
 		}
+		free(ns->host);
 		free(ns);
 	}
 }

@@ -32,7 +32,7 @@ static void start_logger(const char *out)
 {
 	FILE *l = stderr;
 	if (out) {
-	      FILE *f = fopen(out, "a");
+	      FILE *f = fopen(out, "w");
 	      if (f) l = f;
 	}
 	log_init_file(l);

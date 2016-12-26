@@ -60,14 +60,10 @@ struct network_client {
 
 	int max_retries, retries;
 
-	network_client_cb_t connect_cb;
-	void *connect_cb_arg;
-	network_client_cb_t read_cb;
-	void *read_cb_arg;
-	network_client_cb_t error_cb;
-	void *error_cb_arg;
-	network_client_cb_t close_cb;
-	void *close_cb_arg;
+	bufferev_data_cb read_cb;
+	bufferev_data_cb write_cb;
+	bufferev_event_cb event_cb;
+	void *cb_arg;
 };
 
 void server_free(struct network_client_server *srv)
@@ -233,24 +229,9 @@ choose_next_server(struct network_client *nc)
 	return get_curr_server(nc);
 }
 
-struct buffer_queue * network_client_rx_queue(struct network_client *nc)
-{
-	return bufferev_rx_queue(nc->be);
-}
-
-size_t network_client_peek(struct network_client *nc, void *buf, size_t buflen)
-{
-	return nc->be ? bufferev_peek(nc->be, buf, buflen) : 0;
-}
-
-size_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
+ssize_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 {
 	return nc->be ? bufferev_read(nc->be, buf, buflen) : 0;
-}
-
-size_t network_client_bytes_available(struct network_client *nc)
-{
-	return nc->be ? bufferev_bytes_available(nc->be) : 0;
 }
 
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen)
@@ -277,32 +258,16 @@ int network_client_close(struct network_client *nc)
 	return 0;
 }
 
-void network_client_set_read_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg)
+void network_client_setcbs(struct network_client *nc,
+	bufferev_data_cb read_cb,
+	bufferev_data_cb write_cb,
+	bufferev_event_cb event_cb,
+	void *cb_arg)
 {
-	nc->read_cb = cb;
-	nc->read_cb_arg = arg;
-}
-
-void network_client_set_connect_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg)
-{
-	nc->connect_cb = cb;
-	nc->connect_cb_arg = arg;
-}
-
-void network_client_set_error_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg)
-{
-	nc->error_cb = cb;
-	nc->error_cb_arg = arg;
-}
-
-void network_client_set_close_cb(struct network_client *nc,
-	network_client_cb_t cb, void *arg)
-{
-	nc->close_cb = cb;
-	nc->close_cb_arg = arg;
+    nc->read_cb = read_cb;
+    nc->write_cb = write_cb;
+    nc->event_cb = event_cb;
+    nc->cb_arg = cb_arg;
 }
 
 static void
@@ -314,60 +279,45 @@ client_connected(struct network_client *nc)
 		network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
 }
 
-static void on_connect(struct bufferev *be, void *arg)
-{
-	struct network_client *nc = arg;
-	client_connected(nc);
-	if (nc->connect_cb) {
-		nc->connect_cb(nc, nc->connect_cb_arg);
-	}
-}
-
 static void on_read(struct bufferev *be, void *arg)
 {
 	struct network_client *nc = arg;
+
 	if (nc->read_cb) {
-		nc->read_cb(nc, nc->read_cb_arg);
+		nc->read_cb(be, nc->cb_arg);
 	}
 }
 
-static void on_error(struct bufferev *be, void *arg)
+static void on_event(struct bufferev *be, int event, void *arg)
 {
 	struct network_client *nc = arg;
 
-	if (nc->state == network_client_connecting) {
-		struct network_client_server *srv = get_curr_server(nc);
-		log_info("failed to connect to '%s://%s:%s'",
-				network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
-		set_closed(nc);
-
-		if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
-			ev_timer_stop(nc->loop, &nc->connect_timer);
-			if (nc->error_cb) {
-				nc->error_cb(nc, nc->error_cb_arg);
-			}
-		} else {
-			nc->retries++;
+	if (event & BEV_CONNECTED) {
+		client_connected(nc);
+		if (nc->event_cb) {
+			nc->event_cb(be, event, nc->cb_arg);
 		}
-	}
-}
+	} else if (event & BEV_EOF) {
+		set_closed(nc);
+		if (nc->event_cb) {
+			nc->event_cb(be, event, nc->cb_arg);
+		}
+	} else if (event & BEV_ERROR) {
+		if (nc->state == network_client_connecting) {
+			struct network_client_server *srv = get_curr_server(nc);
+			log_info("failed to connect to '%s://%s:%s'",
+					network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+			set_closed(nc);
 
-static void on_close(struct bufferev *be, void *arg)
-{
-	struct network_client *nc = arg;
-	set_closed(nc);
-	if (nc->close_cb) {
-		nc->close_cb(nc, nc->close_cb_arg);
-	}
-}
-
-static void set_bufferev_cbs(struct network_client *nc)
-{
-	if (nc->be) {
-		bufferev_set_read_cb(nc->be, on_read, nc);
-		bufferev_set_connect_cb(nc->be, on_connect, nc);
-		bufferev_set_error_cb(nc->be, on_error, nc);
-		bufferev_set_close_cb(nc->be, on_close, nc);
+			if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
+				ev_timer_stop(nc->loop, &nc->connect_timer);
+				if (nc->event_cb) {
+					nc->event_cb(be, event, nc->cb_arg);
+				}
+			} else {
+				nc->retries++;
+			}
+		}
 	}
 }
 
@@ -401,13 +351,14 @@ on_resolve(struct eio_req *req)
 		nc->state = network_client_connecting;
 
 		nc->be = bufferev_new(nc->loop);
-		set_bufferev_cbs(nc);
-
-		if (bufferev_connect_addrinfo(nc->be, p, 1.0) == 0) {
-			goto out;
-		} else {
-			bufferev_free(nc->be);
-			nc->be = NULL;
+		if (nc->be) {
+			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			if (bufferev_connect_addrinfo(nc->be, p, 1.0) == 0) {
+				goto out;
+			} else {
+				bufferev_free(nc->be);
+				nc->be = NULL;
+			}
 		}
 	}
 
@@ -459,9 +410,11 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 
 	if (nc->be == NULL) {
 		nc->be = bufferev_new(nc->loop);
-		set_bufferev_cbs(nc);
-		bufferev_connect_tcp_sock(nc->be, sock);
-		client_connected(nc);
+		if (nc->be) {
+			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			bufferev_connect_tcp_sock(nc->be, sock);
+			client_connected(nc);
+		}
 	}
 
 	return 0;

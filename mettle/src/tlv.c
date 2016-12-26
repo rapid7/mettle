@@ -339,14 +339,9 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
 			tlv_packet_len(ctx->req) + 32);
-	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
 
-	size_t uuid_len = 0;
-	struct tlv_dispatcher *td = ctx->td;
-	const char* uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
-	if (uuid && uuid_len) {
-		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
-	}
+	p = tlv_packet_add_uuid(p, ctx->td);
+	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
 
 	if (ctx->channel_id) {
 		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
@@ -386,6 +381,16 @@ struct tlv_dispatcher {
 	char *uuid;
 	size_t uuid_len;
 };
+
+struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
+{
+	size_t uuid_len = 0;
+	const char* uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
+	if (uuid && uuid_len) {
+		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
+	}
+	return p;
+}
 
 int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p)
 {

@@ -90,6 +90,8 @@ void tlv_packet_free(struct tlv_packet *p);
  * TLV Handler
  */
 struct channel;
+struct tlv_dispatcher;
+
 struct tlv_handler_ctx {
 	const char *method;
 	const char *id;
@@ -106,6 +108,8 @@ void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx);
 
 struct tlv_packet * tlv_packet_add_result(struct tlv_packet *p, int rc);
 
+struct tlv_packet * tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td);
+
 struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx);
 
 struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int rc);
@@ -114,8 +118,6 @@ struct tlv_packet * tlv_packet_response_result(struct tlv_handler_ctx *ctx, int 
  * TLV Dispatcher
  */
 typedef void (*tlv_response_cb)(struct tlv_dispatcher *td, void *arg);
-
-struct tlv_dispatcher;
 
 struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg);
 

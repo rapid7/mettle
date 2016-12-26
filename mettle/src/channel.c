@@ -128,11 +128,7 @@ static struct tlv_packet * new_request(struct channel *c, const char *method, si
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, len + 64);
 	if (p) {
-		size_t uuid_len = 0;
-		const char* uuid = tlv_dispatcher_get_uuid(c->cm->td, &uuid_len);
-		if (uuid && uuid_len) {
-			p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
-		}
+		p = tlv_packet_add_uuid(p, c->cm->td);
 		p = tlv_packet_add_fmt(p, TLV_TYPE_METHOD, "core_channel_%s", method);
 		p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID,
 				"channel-req-%d", channel_get_id(c));
@@ -146,8 +142,6 @@ static int send_write_request(struct channel *c, void *buf, size_t buf_len)
 	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
-	log_debug("sending write request on channel %u for %zu bytes",
-			channel_get_id(c), buf_len);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
 
@@ -491,6 +485,11 @@ static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
 	channel_postcb(c);
 
 	return p;
+}
+
+struct channelmgr *channel_get_channelmgr(struct channel *c)
+{
+	return c->cm;
 }
 
 void tlv_register_channelapi(struct mettle *m)
