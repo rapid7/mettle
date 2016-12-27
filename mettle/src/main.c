@@ -54,6 +54,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	const char *short_options = "hu:U:do:";
 	const char *out = NULL;
 	bool debug = false;
+	int log_level = 0;
 
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
@@ -65,6 +66,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 			break;
 		case 'd':
 			debug = true;
+			log_set_level(++log_level);
 			break;
 		case 'o':
 			out = optarg;

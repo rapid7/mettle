@@ -27,14 +27,22 @@
  */
 #define LOG_BUFFER_FLUSH_SIZE (0.8 * LOG_BUFFER_SIZE)
 
+extern int _zlog_level;
+static inline void
+log_set_level(int level)
+{
+	_zlog_level = level;
+}
+
 /*
  * Public API
  */
 #ifdef LOG_DISABLE_LOG
 
-#define log_debug(format, ...)
 #define log_error(format, ...)
 #define log_info(format, ...)
+#define log_info_hex(buf, len)
+#define log_debug(format, ...)
 
 #define log_hex(buf, len)
 #define log_init(log_file)
@@ -45,14 +53,14 @@
 
 #else
 
-#define log_debug(format, ...) \
-	zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
 #define log_error(format, ...) \
-	zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+	if (_zlog_level >= 0) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+#define log_debug(format, ...) \
+	if (_zlog_level >= 1) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
 #define log_info(format, ...) \
-	zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
-#define log_hex(buf, len) \
-	zlog_hex(ZLOG_LOC, buf, len)
+	if (_zlog_level >= 2) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+#define log_info_hex(buf, len) \
+	if (_zlog_level >= 2) zlog_hex(ZLOG_LOC, buf, len)
 
 #define log_init(log_file) zlog_init(log_file)
 #define log_init_file(file_hdl) zlog_init_file(file_hdl)

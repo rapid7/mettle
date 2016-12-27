@@ -18,12 +18,13 @@
 
 #include "log.h"
 
-FILE *zlog_fout = NULL;
+static FILE *zlog_fout = NULL;
 
-char _zlog_buffer[LOG_BUFFER_SIZE][LOG_BUFFER_STR_MAX_LEN];
-int _zlog_buffer_size = 0;
+static char _zlog_buffer[LOG_BUFFER_SIZE][LOG_BUFFER_STR_MAX_LEN];
+static int _zlog_buffer_size = 0;
+int _zlog_level = 0;
 
-pthread_mutex_t _zlog_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t _zlog_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline void _zlog_buffer_lock()
 {
@@ -181,7 +182,7 @@ void zlog(char *filename, int line, char const *fmt, ...)
 /*
  * hex dump from http://sws.dett.de/mini/hexdump-c/
  */
-void zlog_hex(char *filename, int line, const void *buf, size_t len)
+void zlog_info_hex(char *filename, int line, const void *buf, size_t len)
 {
 	const unsigned char *p = buf;
 	unsigned char c;
