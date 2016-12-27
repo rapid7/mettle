@@ -307,6 +307,23 @@ static void on_read(struct bufferev *be, void *arg)
 	}
 }
 
+static void connection_failed(struct network_client *nc)
+{
+	struct network_client_server *srv = get_curr_server(nc);
+	log_info("failed to connect to '%s://%s:%s'",
+			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+	set_closed(nc);
+
+	if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
+		ev_timer_stop(nc->loop, &nc->connect_timer);
+		if (nc->event_cb) {
+			nc->event_cb(NULL, BEV_ERROR, nc->cb_arg);
+		}
+	} else {
+		nc->retries++;
+	}
+}
+
 static void on_event(struct bufferev *be, int event, void *arg)
 {
 	struct network_client *nc = arg;
@@ -323,19 +340,7 @@ static void on_event(struct bufferev *be, int event, void *arg)
 		}
 	} else if (event & BEV_ERROR) {
 		if (nc->state == network_client_connecting) {
-			struct network_client_server *srv = get_curr_server(nc);
-			log_info("failed to connect to '%s://%s:%s'",
-					network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
-			set_closed(nc);
-
-			if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
-				ev_timer_stop(nc->loop, &nc->connect_timer);
-				if (nc->event_cb) {
-					nc->event_cb(be, event, nc->cb_arg);
-				}
-			} else {
-				nc->retries++;
-			}
+			connection_failed(nc);
 		}
 	}
 }
@@ -375,6 +380,7 @@ on_resolve(struct eio_req *req)
 		nc->dst = nc->addrinfo;
 	}
 
+	bool failed = true;
 	while (nc->dst) {
 		log_addrinfo("connecting to", nc->dst);
 
@@ -384,6 +390,7 @@ on_resolve(struct eio_req *req)
 			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
 			if (bufferev_connect_addrinfo(nc->be, nc->src, nc->dst, 1.0) == 0) {
 				nc->dst = nc->dst->ai_next;
+				failed = false;
 				break;
 			}
 			bufferev_free(nc->be);
@@ -395,6 +402,9 @@ on_resolve(struct eio_req *req)
 	if (nc->dst == NULL) {
 		freeaddrinfo(nc->addrinfo);
 		nc->addrinfo = NULL;
+	}
+	if (failed) {
+		connection_failed(nc);
 	}
 	return 0;
 }

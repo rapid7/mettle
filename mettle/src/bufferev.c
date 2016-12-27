@@ -223,9 +223,6 @@ int bufferev_connect_addrinfo(struct bufferev *be,
 {
 	be->sock = socket(dst->ai_family, dst->ai_socktype, dst->ai_protocol);
 	if (be->sock < 0) {
-		if (be->event_cb) {
-			be->event_cb(be, BEV_ERROR, be->cb_arg);
-		}
 		return -1;
 	}
 
@@ -250,9 +247,6 @@ int bufferev_connect_addrinfo(struct bufferev *be,
 		ev_timer_start(be->loop, &be->connect_timer);
 	} else {
 		close_sock(be);
-		if (be->event_cb) {
-			be->event_cb(be, BEV_ERROR, be->cb_arg);
-		}
 		return -1;
 	}
 	return 0;
