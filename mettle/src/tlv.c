@@ -528,11 +528,11 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	struct tlv_packet *response = NULL;
 	struct tlv_handler *handler = find_handler(td, ctx->method);
 	if (handler == NULL) {
-		log_info("no handler found for method: '%s'", ctx->method);
+		log_error("no handler found for method: '%s'", ctx->method);
 		response = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	} else {
-		log_debug("processing method: '%s' id: '%s'", ctx->method, ctx->id);
+		log_info("processing method: '%s' id: '%s'", ctx->method, ctx->id);
 		ctx->arg = handler->arg;
 		response = handler->cb(ctx);
 	}
