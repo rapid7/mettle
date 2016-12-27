@@ -50,6 +50,9 @@ struct network_client {
 
 	struct bufferev *be;
 	struct addrinfo *addrinfo, *dst;
+	struct addrinfo *src;
+	char *src_addr;
+	uint16_t src_port;
 
 	enum {
 		network_client_closed,
@@ -65,6 +68,22 @@ struct network_client {
 	bufferev_event_cb event_cb;
 	void *cb_arg;
 };
+
+void network_client_set_src(struct network_client *nc, const char *addr, uint16_t port)
+{
+	if (nc->src_addr) {
+		free(nc->src_addr);
+		nc->src_addr = NULL;
+	}
+	if (addr && strcmp(addr, "0.0.0.0")) {
+		nc->src_addr = strdup(addr);
+	}
+	if (nc->src) {
+		freeaddrinfo(nc->src);
+		nc->src = NULL;
+	}
+	nc->src_port = port;
+}
 
 void server_free(struct network_client_server *srv)
 {
@@ -363,7 +382,7 @@ on_resolve(struct eio_req *req)
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
 			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
-			if (bufferev_connect_addrinfo(nc->be, NULL, nc->dst, 1.0) == 0) {
+			if (bufferev_connect_addrinfo(nc->be, nc->src, nc->dst, 1.0) == 0) {
 				nc->dst = nc->dst->ai_next;
 				break;
 			}
@@ -458,6 +477,15 @@ resolve(struct eio_req *req)
 
 	nc->state = network_client_resolving;
 	req->result = getaddrinfo(srv->host, service, &hints, &nc->addrinfo);
+
+	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
+		char *port = NULL;
+		if (nc->src_port > 0 && nc->src_port <= UINT16_MAX) {
+			asprintf(&port, "%u", nc->src_port);
+		}
+		getaddrinfo(nc->src_addr, port, &hints, &nc->src);
+		free(port);
+	}
 }
 
 static void
@@ -495,6 +523,13 @@ void network_client_free(struct network_client *nc)
 		ev_timer_stop(nc->loop, &nc->connect_timer);
 		network_client_close(nc);
 		network_client_remove_servers(nc);
+		free(nc->src_addr);
+		if (nc->src) {
+			freeaddrinfo(nc->src);
+		}
+		if (nc->addrinfo) {
+			freeaddrinfo(nc->addrinfo);
+		}
 		free(nc);
 	}
 }

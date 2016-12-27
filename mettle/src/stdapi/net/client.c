@@ -74,48 +74,14 @@ void network_channel_event_cb(struct bufferev *be, int event, void *arg)
 	}
 }
 
-static struct network_client_channel*
-network_client_channel_alloc(struct tlv_handler_ctx *tlv_ctx, struct channel *c,
-		struct ev_loop *loop, uint32_t retries,
-		const char *proto, const char *dst_host, uint16_t dst_port)
-{
-	struct network_client_channel *ncc = calloc(1, sizeof(*ncc));
-	if (ncc == NULL) {
-		return NULL;
-	}
-
-	ncc->tlv_ctx = tlv_ctx;
-	ncc->channel = c;
-
-	ncc->nc = network_client_new(loop);
-	if (ncc->nc == NULL) {
-		network_client_channel_free(ncc);
-		return NULL;
-	}
-
-	char *uri = NULL;
-	if (asprintf(&uri, "%s://%s:%u", proto, dst_host, dst_port) == -1 ||
-	        network_client_add_uri(ncc->nc, uri) == -1) {
-		network_client_channel_free(ncc);
-		return NULL;
-	}
-	free(uri);
-
-	network_client_setcbs(ncc->nc, network_channel_read_cb, NULL,
-			network_channel_event_cb, ncc);
-	network_client_set_retries(ncc->nc, ncc->retries);
-	network_client_start(ncc->nc);
-
-	return ncc;
-}
-
 static int
 _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *proto)
 {
 	const char *src_host, *dst_host;
-	uint32_t src_port = -1, dst_port = -1;
+	uint32_t src_port = 0, dst_port = 0;
 	struct mettle *m = ctx->arg;
 	uint32_t retries = 0;
+	char *uri = NULL;
 
 	dst_host = tlv_packet_get_str(ctx->req, TLV_TYPE_PEER_HOST);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PEER_PORT, &dst_port);
@@ -125,28 +91,40 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_CONNECT_RETRIES, &retries);
 
-	if (dst_host == NULL || dst_port == -1) {
-		log_debug("dst_host %s, dst_port %u", dst_host, dst_port);
-		return -1;
-	}
-
-	if (src_host && src_port != -1) {
-		log_debug("src_host %s, src_port %u", src_host, src_port);
-	}
-
-	struct network_client_channel *ncc =
-		network_client_channel_alloc(ctx, c, mettle_get_loop(m),
-				retries, proto, dst_host, dst_port);
+	struct network_client_channel *ncc = calloc(1, sizeof(*ncc));
 	if (ncc == NULL) {
 		goto err;
 	}
 
+	ncc->tlv_ctx = ctx;
+	ncc->channel = c;
+
+	ncc->nc = network_client_new(mettle_get_loop(m));
+	if (ncc->nc == NULL) {
+		goto err;
+	}
+
+	if (asprintf(&uri, "%s://%s:%u", proto, dst_host, dst_port) == -1 ||
+	        network_client_add_uri(ncc->nc, uri) == -1) {
+		goto err;
+	}
+
+	network_client_setcbs(ncc->nc, network_channel_read_cb, NULL,
+			network_channel_event_cb, ncc);
+	if (src_host || src_port) {
+		network_client_set_src(ncc->nc, src_host, src_port);
+	}
+	network_client_set_retries(ncc->nc, ncc->retries);
+	network_client_start(ncc->nc);
+
 	channel_set_ctx(c, ncc);
 	channel_set_interactive(c, true);
+	free(uri);
 
 	return 0;
 
 err:
+	free(uri);
 	network_client_channel_free(ncc);
 	return -1;
 

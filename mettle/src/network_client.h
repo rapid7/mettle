@@ -15,6 +15,8 @@ struct network_client;
 
 struct network_client * network_client_new(struct ev_loop *loop);
 
+void network_client_set_src(struct network_client *nc, const char *addr, uint16_t port);
+
 int network_client_add_uri(struct network_client *nc, const char *uri);
 
 int network_client_add_tcp_sock(struct network_client *nc, int sock);
