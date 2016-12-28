@@ -95,9 +95,16 @@ static bool is_link_local_route(const struct addr *a)
 		a->addr_ip6.data[1] == 0x80;
 }
 
+static bool is_autoconf_route(const struct addr *a, uint32_t metric)
+{
+	return a->addr_type == ADDR_TYPE_IP6 && metric == 0;
+}
+
 static int add_route_info(const struct route_entry *entry, void *arg)
 {
-	if (entry->metric > 0 && entry->metric < 256 && !is_link_local_route(&entry->route_dst)) {
+	if (entry->metric < 256 &&
+			!is_autoconf_route(&entry->route_dst, entry->metric) &&
+			!is_link_local_route(&entry->route_dst)) {
 		struct tlv_packet **parent = arg;
 		struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETWORK_ROUTE, 0);
 		p = tlv_packet_add_addr(p, TLV_TYPE_SUBNET, TLV_TYPE_NETMASK, 0, &entry->route_dst);
