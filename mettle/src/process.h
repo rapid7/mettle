@@ -51,6 +51,16 @@ ssize_t process_read(struct process *p, void *buf, size_t nbyte);
 int process_kill(struct process* process);
 
 /*
+ * Returns the managed process for a given PID
+ */
+struct process * process_by_pid(struct procmgr *mgr, pid_t pid);
+
+/*
+ * Kill the managed process for a given PID
+ */
+int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
+
+/*
  * Returns the PID of the given process
  */
 pid_t process_get_pid(struct process *p);

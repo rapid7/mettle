@@ -105,15 +105,19 @@ sys_process_attach(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
-/*
- * close a process handle if the OS is Windows-based and the pid provided is
- * not the meterpreter pid if the OS is not windows-based, (?) No equivalent
- * sigar method
- */
 struct tlv_packet *
 sys_process_close(struct tlv_handler_ctx *ctx)
 {
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	struct mettle *m = ctx->arg;
+	struct procmgr *pm = mettle_get_procmgr(m);
+
+	uint64_t pid;
+	if (tlv_packet_get_u64(ctx->req, TLV_TYPE_HANDLE, &pid)) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+	int rc = process_kill_by_pid(pm, pid);
+	return tlv_packet_response_result(ctx,
+			rc == 0 ? TLV_RESULT_SUCCESS : TLV_RESULT_FAILURE);
 }
 
 struct tlv_packet *
@@ -189,8 +193,8 @@ ssize_t sys_process_write(struct channel *c, void *buf, size_t len)
 
 int sys_process_free(struct channel *c)
 {
-	struct process *p = channel_get_ctx(c);
-	return process_kill(p);
+	struct process *proc = channel_get_ctx(c);
+	return process_kill(proc);
 }
 
 /*
@@ -257,9 +261,12 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		    process_channel_read_cb,
 		    process_channel_exit_cb, c);
 	}
-	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-}
 
+	struct tlv_packet *resp = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	resp = tlv_packet_add_u32(resp, TLV_TYPE_PID, process_get_pid(p));
+	resp = tlv_packet_add_u64(resp, TLV_TYPE_PROCESS_HANDLE, process_get_pid(p));
+	return resp;
+}
 
 void sys_process_register_handlers(struct mettle *m)
 {
