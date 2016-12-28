@@ -298,7 +298,8 @@ static void bitmask128(uint32_t bits, uint32_t mask[4])
 }
 
 struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
-	uint32_t addr_tlv, uint32_t mask_tlv, const struct addr *a)
+	uint32_t addr_tlv, uint32_t mask_tlv, uint32_t intf_index,
+	const struct addr *a)
 {
 	if (a->addr_type == ADDR_TYPE_IP) {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, IP_ADDR_LEN);
@@ -312,7 +313,15 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 			uint32_t mask[4];
 			bitmask128(a->addr_bits, mask);
 			p = tlv_packet_add_raw(p, mask_tlv, mask, IP6_ADDR_LEN);
-			// p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, val, );
+
+			/*
+			 * Emit the IP6 scope on link-local addresses
+			 */
+			if (intf_index && a->addr_ip6.data[0] == 0xfe &&
+					a->addr_ip6.data[1] == 0x80) {
+				p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, &intf_index,
+						sizeof(intf_index));
+			}
 		}
 	} else {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, ETH_ADDR_LEN);

@@ -53,7 +53,7 @@ void resolve_host_async(struct eio_req *req)
 						&((struct sockaddr_in6 *)(resolved_host->ai_addr))->sin6_addr, \
 						IP6_ADDR_LEN);
 			}
-			p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, &addr_host);
+			p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, 0, &addr_host);
 			p = tlv_packet_add_u32(p, TLV_TYPE_ADDR_TYPE, addr_type);
 
 			// XXX: C meterpreter has comment about this free possibliy causing segfaults on Linux

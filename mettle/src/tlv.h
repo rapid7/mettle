@@ -82,7 +82,8 @@ struct tlv_packet * tlv_packet_add_bool(struct tlv_packet *p,
 		uint32_t type, bool val);
 
 struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
-	uint32_t addr_tlv, uint32_t mask_tlv, const struct addr *a);
+	uint32_t addr_tlv, uint32_t mask_tlv, uint32_t intf_index,
+	const struct addr *a);
 
 void tlv_packet_free(struct tlv_packet *p);
 
