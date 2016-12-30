@@ -39,6 +39,13 @@ static char * flags2string(u_short flags)
     return buf;
 }
 
+static void log_addr(const char *name, const struct addr *a)
+{
+	char buf[128];
+	addr_ntop(a, buf, 128);
+	log_info("%s: %s", name, buf);
+}
+
 static int add_intf_info(const struct intf_entry *entry, void *arg)
 {
 	struct tlv_packet **parent = arg;
@@ -49,17 +56,22 @@ static int add_intf_info(const struct intf_entry *entry, void *arg)
 	p = tlv_packet_add_u32(p, TLV_TYPE_INTERFACE_INDEX, entry->intf_index);
 	p = tlv_packet_add_str(p, TLV_TYPE_INTERFACE_FLAGS,
 			flags2string(entry->intf_flags));
-	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0,
+	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, 0,
 			&entry->intf_link_addr);
-	p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
-			&entry->intf_addr);
 
-	// TODO (possibly): add scope per addr for IPv6 addrs
-	//	Maybe make it part of tlv_packet_add_addr?
-	//	Casual glance, looks like dnet doesn't return scope...
-	for (int i = 0; i < entry->intf_alias_num; i++) {
+	/*
+	 * Only emit address entries if the interface has an address
+	 */
+	if (entry->intf_addr.addr_type != ADDR_TYPE_NONE) {
 		p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
-				&entry->intf_alias_addrs[i]);
+				 entry->intf_index, &entry->intf_addr);
+		log_addr(entry->intf_name, &entry->intf_addr);
+
+		for (int i = 0; i < entry->intf_alias_num; i++) {
+			p = tlv_packet_add_addr(p, TLV_TYPE_IP, TLV_TYPE_NETMASK,
+					entry->intf_index, &entry->intf_alias_addrs[i]);
+			log_addr(entry->intf_name, &entry->intf_alias_addrs[i]);
+		}
 	}
 
 	*parent = tlv_packet_add_child(*parent, p);
@@ -76,15 +88,31 @@ struct tlv_packet *net_config_get_interfaces(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+static bool is_link_local_route(const struct addr *a)
+{
+	return a->addr_type == ADDR_TYPE_IP6 &&
+		a->addr_ip6.data[0] == 0xfe &&
+		a->addr_ip6.data[1] == 0x80;
+}
+
+static bool is_autoconf_route(const struct addr *a, uint32_t metric)
+{
+	return a->addr_type == ADDR_TYPE_IP6 && metric == 0;
+}
+
 static int add_route_info(const struct route_entry *entry, void *arg)
 {
-	struct tlv_packet **parent = arg;
-	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETWORK_ROUTE, 0);
-	p = tlv_packet_add_addr(p, TLV_TYPE_SUBNET, TLV_TYPE_NETMASK, &entry->route_dst);
-	p = tlv_packet_add_addr(p, TLV_TYPE_GATEWAY, 0, &entry->route_gw);
-	p = tlv_packet_add_u32(p, TLV_TYPE_ROUTE_METRIC, entry->metric);
-	p = tlv_packet_add_str(p, TLV_TYPE_STRING, entry->intf_name);
-	*parent = tlv_packet_add_child(*parent, p);
+	if (entry->metric < 256 &&
+			!is_autoconf_route(&entry->route_dst, entry->metric) &&
+			!is_link_local_route(&entry->route_dst)) {
+		struct tlv_packet **parent = arg;
+		struct tlv_packet *p = tlv_packet_new(TLV_TYPE_NETWORK_ROUTE, 0);
+		p = tlv_packet_add_addr(p, TLV_TYPE_SUBNET, TLV_TYPE_NETMASK, 0, &entry->route_dst);
+		p = tlv_packet_add_addr(p, TLV_TYPE_GATEWAY, 0, 0, &entry->route_gw);
+		p = tlv_packet_add_u32(p, TLV_TYPE_ROUTE_METRIC, entry->metric);
+		p = tlv_packet_add_str(p, TLV_TYPE_STRING, entry->intf_name);
+		*parent = tlv_packet_add_child(*parent, p);
+	}
 	return 0;
 }
 
@@ -101,8 +129,8 @@ static int add_arp_info(const struct arp_entry *entry, void *arg)
 {
 	struct tlv_packet **parent = arg;
 	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_ARP_ENTRY, 0);
-	p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, &entry->arp_pa);
-	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, &entry->arp_ha);
+	p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, 0, &entry->arp_pa);
+	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, 0, &entry->arp_ha);
 	// TODO unsure how to get the device/interface name via dnet...
 	//p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, entry->intf_name);
 	*parent = tlv_packet_add_child(*parent, p);
@@ -242,24 +270,31 @@ void get_netstat_async(struct eio_req *req)
 			remote_addr.addr_ip = connection->remote_address.addr.in;
 		} else if (connection->local_address.family == SIGAR_AF_INET6) {
 			local_addr.addr_type = remote_addr.addr_type = ADDR_TYPE_IP6;
-			memcpy(&local_addr.addr_ip6, &connection->local_address.addr.in6, sizeof(local_addr.addr_ip6));
-			memcpy(&remote_addr.addr_ip6, &connection->remote_address.addr.in6, sizeof(remote_addr.addr_ip6));
+			memcpy(&local_addr.addr_ip6, &connection->local_address.addr.in6,
+					sizeof(local_addr.addr_ip6));
+			memcpy(&remote_addr.addr_ip6, &connection->remote_address.addr.in6,
+					sizeof(remote_addr.addr_ip6));
 		}
+
 		if (local_addr.addr_type) {
-			p = tlv_packet_add_addr(p, TLV_TYPE_LOCAL_HOST_RAW, 0, &local_addr);
-			p = tlv_packet_add_addr(p, TLV_TYPE_PEER_HOST_RAW, 0, &remote_addr);
+			p = tlv_packet_add_addr(p, TLV_TYPE_LOCAL_HOST_RAW, 0, 0, &local_addr);
+			p = tlv_packet_add_addr(p, TLV_TYPE_PEER_HOST_RAW, 0, 0, &remote_addr);
 		}
+
 		p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, connection->local_port);
 		p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, connection->remote_port);
+
 		if (connection->type == SIGAR_NETCONN_TCP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "tcp");
 			if (connection->state && connection->state < COUNT_OF(tcp_connection_states)) {
-				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, tcp_connection_states[connection->state]);
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING,
+						tcp_connection_states[connection->state]);
 			}
 		} else if (connection->type == SIGAR_NETCONN_UDP) {
 			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, "udp");
 			if (connection->state && connection->state < COUNT_OF(udp_connection_states)) {
-				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING, udp_connection_states[connection->state]);
+				p = tlv_packet_add_str(p, TLV_TYPE_SUBNET_STRING,
+						udp_connection_states[connection->state]);
 			}
 		}
 		p = tlv_packet_add_u32(p, TLV_TYPE_PID, connection->uid);

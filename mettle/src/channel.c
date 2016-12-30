@@ -1,6 +1,7 @@
 #include <errno.h>
 
 #include "channel.h"
+#include "eio.h"
 #include "log.h"
 #include "mettle.h"
 #include "tlv.h"
@@ -15,6 +16,7 @@ struct channel {
 	struct buffer_queue *queue;
 	bool interactive;
 	bool shutting_down;
+	bool started;
 };
 
 struct channel_type {
@@ -55,6 +57,7 @@ struct channel * channelmgr_channel_new(struct channelmgr *cm, char *channel_typ
 	struct channel_type *ct = channelmgr_type_by_name(cm, channel_type);
 	if (ct == NULL) {
 		log_info("could not find handlers for channel type %s", channel_type);
+		return NULL;
 	}
 
 	struct channel *c = calloc(1, sizeof(*c));
@@ -104,7 +107,16 @@ void channel_set_ctx(struct channel *c, void *ctx)
 
 void channel_shutdown(struct channel *c)
 {
-	c->shutting_down = true;
+	if (c->started) {
+		c->shutting_down = true;
+	} else {
+		channel_free(c);
+	}
+}
+
+void channel_opened(struct channel *c)
+{
+	c->started = true;
 }
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c)
@@ -112,12 +124,22 @@ struct channel_callbacks * channel_get_callbacks(struct channel *c)
 	return &c->type->cbs;
 }
 
+static struct tlv_packet * new_request(struct channel *c, const char *method, size_t len)
+{
+	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, len + 64);
+	if (p) {
+		p = tlv_packet_add_uuid(p, c->cm->td);
+		p = tlv_packet_add_fmt(p, TLV_TYPE_METHOD, "core_channel_%s", method);
+		p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID,
+				"channel-req-%d", channel_get_id(c));
+		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+	}
+	return p;
+}
+
 static int send_write_request(struct channel *c, void *buf, size_t buf_len)
 {
-	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, buf_len + 64);
-	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_write");
-	p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID, "channel-req-%d", channel_get_id(c));
-	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
@@ -155,10 +177,7 @@ size_t channel_queue_len(struct channel *c)
 
 int channel_send_close_request(struct channel *c)
 {
-	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, 64);
-	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, "core_channel_close");
-	p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID, "channel-req-%d", channel_get_id(c));
-	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+	struct tlv_packet *p = new_request(c, "close", 0);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
 
@@ -196,32 +215,51 @@ static struct tlv_packet *channel_open(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	struct channelmgr *cm = mettle_get_channelmgr(m);
+	int rc = TLV_RESULT_FAILURE;
 
 	char *channel_type = tlv_packet_get_str(ctx->req, TLV_TYPE_CHANNEL_TYPE);
 	if (channel_type == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	}
 
 	struct channel *c = channelmgr_channel_new(cm, channel_type);
 	if (c == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	}
 	ctx->channel = c;
 	ctx->channel_id = channel_get_id(c);
 
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
-	struct tlv_packet *p;
+	/*
+	 * If there is an async new callback, only handle direct failures, success
+	 * handling is the responsibility of the callback.
+	 */
+	if (cbs->new_async_cb) {
+		if (cbs->new_async_cb(ctx, c) == -1) {
+			channel_free(c);
+			goto out;
+		} else {
+			return NULL;
+		}
+	}
+
+	/*
+	 * If there is a sync callback, handle it directly.
+	 */
 	if (cbs->new_cb && cbs->new_cb(ctx, c) == -1) {
 		channel_free(c);
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
 	} else {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		c->started = true;
+		rc = TLV_RESULT_SUCCESS;
 	}
-	return p;
+
+out:
+	return tlv_packet_response_result(ctx, rc);
 }
 
-static struct channel * get_channel_by_id(struct tlv_handler_ctx *ctx)
+struct channel * tlv_handler_ctx_channel_by_id(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	struct channelmgr *cm = mettle_get_channelmgr(m);
@@ -235,7 +273,7 @@ static struct channel * get_channel_by_id(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_close(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -252,35 +290,43 @@ static struct tlv_packet *channel_close(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+void channel_set_interactive(struct channel *c, bool enable)
+{
+	if (enable) {
+		struct channel_callbacks *cbs = channel_get_callbacks(c);
+		char buf[65535];
+		size_t buf_len = 0;
+		do {
+			buf_len = cbs->read_cb(c, buf, sizeof(buf));
+			if (buf_len) {
+				send_write_request(c, buf, buf_len);
+			}
+		} while (buf_len > 0);
+	}
+
+	c->interactive = enable;
+}
+
+
 static struct tlv_packet *channel_interact(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	bool enable = false;
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &enable);
+
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		/*
 		 * We don't care if the caller tells us to stop interacting
 		 * with a non-existent channel.
 		 */
-		bool enable = false;
-		tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &enable);
 		return tlv_packet_response_result(ctx,
 			enable ? TLV_RESULT_FAILURE : TLV_RESULT_SUCCESS);
 	}
 
-	struct channel_callbacks *cbs = channel_get_callbacks(c);
-
-	tlv_packet_get_bool(ctx->req, TLV_TYPE_BOOL, &c->interactive);
+	channel_set_interactive(c, enable);
 
 	tlv_dispatcher_enqueue_response(c->cm->td,
 		tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS));
-
-	char buf[65535];
-	size_t buf_len = 0;
-	do {
-		buf_len = cbs->read_cb(c, buf, sizeof(buf));
-		if (buf_len) {
-			send_write_request(c, buf, buf_len);
-		}
-	} while (buf_len > 0);
 
 	channel_postcb(c);
 
@@ -289,7 +335,7 @@ static struct tlv_packet *channel_interact(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_eof(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -311,7 +357,7 @@ static struct tlv_packet *channel_eof(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_seek(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -340,7 +386,7 @@ static struct tlv_packet *channel_seek(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_tell(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -367,7 +413,7 @@ static struct tlv_packet *channel_tell(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_read(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -405,7 +451,7 @@ static struct tlv_packet *channel_read(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
 {
-	struct channel *c = get_channel_by_id(ctx);
+	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
@@ -429,7 +475,7 @@ static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
 
 	ssize_t bytes_written = cbs->write_cb(c, buf, len);
 	struct tlv_packet *p;
-	if (bytes_written > 0) {
+	if (len == 0 || bytes_written > 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 		p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, bytes_written);
 	} else {
@@ -439,6 +485,11 @@ static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
 	channel_postcb(c);
 
 	return p;
+}
+
+struct channelmgr *channel_get_channelmgr(struct channel *c)
+{
+	return c->cm;
 }
 
 void tlv_register_channelapi(struct mettle *m)

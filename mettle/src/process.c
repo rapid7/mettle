@@ -370,6 +370,19 @@ int process_kill(struct process* process)
 	return -1;
 }
 
+struct process * process_by_pid(struct procmgr *mgr, pid_t pid)
+{
+	struct process *p;
+	HASH_FIND_INT(mgr->processes, &pid, p);
+	return p;
+}
+
+int process_kill_by_pid(struct procmgr *mgr, pid_t pid)
+{
+	struct process *p = process_by_pid(mgr, pid);
+	return process_kill(p);
+}
+
 ssize_t process_read(struct process *process, void *buf, size_t buf_len)
 {
 	if (process == NULL) {

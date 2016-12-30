@@ -82,7 +82,7 @@ int start_heartbeat(struct mettle *m)
 
 int mettle_add_server_uri(struct mettle *m, const char *uri)
 {
-	return network_client_add_server(m->nc, uri);
+	return network_client_add_uri(m->nc, uri);
 }
 
 int mettle_add_tcp_sock(struct mettle *m, int fd)
@@ -158,16 +158,18 @@ static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 	}
 }
 
-static void on_network_connect(struct network_client *nc, void *arg)
+static void on_network_event(struct bufferev *be, int event, void *arg)
 {
 	struct mettle *m = arg;
-	m->first_packet = true;
+	if (event & BEV_CONNECTED) {
+		m->first_packet = true;
+	}
 }
 
-static void on_network_read(struct network_client *nc, void *arg)
+static void on_network_read(struct bufferev *be, void *arg)
 {
 	struct mettle *m = arg;
-	struct buffer_queue *q = network_client_rx_queue(nc);
+	struct buffer_queue *q = bufferev_rx_queue(be);
 	struct tlv_packet *request;
 
 	if (m->first_packet) {
@@ -222,9 +224,7 @@ struct mettle *mettle(void)
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
 
-	network_client_set_connect_cb(m->nc, on_network_connect, m);
-
-	network_client_set_read_cb(m->nc, on_network_read, m);
+	network_client_setcbs(m->nc, on_network_read, NULL, on_network_event, m);
 
 	m->td = tlv_dispatcher_new(on_tlv_response, m);
 	if (m->td == NULL) {

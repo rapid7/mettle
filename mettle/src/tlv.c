@@ -11,6 +11,7 @@
 #endif
 #include <endian.h>
 
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -297,7 +298,8 @@ static void bitmask128(uint32_t bits, uint32_t mask[4])
 }
 
 struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
-	uint32_t addr_tlv, uint32_t mask_tlv, const struct addr *a)
+	uint32_t addr_tlv, uint32_t mask_tlv, uint32_t intf_index,
+	const struct addr *a)
 {
 	if (a->addr_type == ADDR_TYPE_IP) {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, IP_ADDR_LEN);
@@ -311,7 +313,15 @@ struct tlv_packet * tlv_packet_add_addr(struct tlv_packet *p,
 			uint32_t mask[4];
 			bitmask128(a->addr_bits, mask);
 			p = tlv_packet_add_raw(p, mask_tlv, mask, IP6_ADDR_LEN);
-			// p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, val, );
+
+			/*
+			 * Emit the IP6 scope on link-local addresses
+			 */
+			if (intf_index && a->addr_ip6.data[0] == 0xfe &&
+					a->addr_ip6.data[1] == 0x80) {
+				p = tlv_packet_add_raw(p, TLV_TYPE_IP6_SCOPE, &intf_index,
+						sizeof(intf_index));
+			}
 		}
 	} else {
 		p = tlv_packet_add_raw(p, addr_tlv, a->addr_data8, ETH_ADDR_LEN);
@@ -338,14 +348,9 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_RESPONSE,
 			tlv_packet_len(ctx->req) + 32);
-	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
 
-	size_t uuid_len = 0;
-	struct tlv_dispatcher *td = ctx->td;
-	const char* uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
-	if (uuid && uuid_len) {
-		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
-	}
+	p = tlv_packet_add_uuid(p, ctx->td);
+	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
 
 	if (ctx->channel_id) {
 		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
@@ -376,13 +381,25 @@ struct tlv_response {
 
 struct tlv_dispatcher {
 	struct tlv_handler *handlers;
-	struct tlv_response *responses;
 	tlv_response_cb response_cb;
+
+	pthread_mutex_t mutex;
+	struct tlv_response *responses;
 	void *response_cb_arg;
 
 	char *uuid;
 	size_t uuid_len;
 };
+
+struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
+{
+	size_t uuid_len = 0;
+	const char* uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
+	if (uuid && uuid_len) {
+		p = tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
+	}
+	return p;
+}
 
 int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p)
 {
@@ -396,7 +413,10 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 	}
 
 	r->p = p;
+
+	pthread_mutex_lock(&td->mutex);
 	LL_APPEND(td->responses, r);
+	pthread_mutex_unlock(&td->mutex);
 
 	if (td->response_cb) {
 		td->response_cb(td, td->response_cb_arg);
@@ -413,7 +433,10 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 	*len = 0;
 
 	if (r) {
+		pthread_mutex_lock(&td->mutex);
 		LL_DELETE(td->responses, r);
+		pthread_mutex_unlock(&td->mutex);
+
 		p = r->p;
 		free(r);
 
@@ -440,6 +463,7 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
 {
 	struct tlv_dispatcher *td = calloc(1, sizeof(*td));
 	if (td) {
+		pthread_mutex_init(&td->mutex, NULL);
 		td->response_cb = cb;
 		td->response_cb_arg = cb_arg;
 	}
@@ -513,11 +537,11 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	struct tlv_packet *response = NULL;
 	struct tlv_handler *handler = find_handler(td, ctx->method);
 	if (handler == NULL) {
-		log_info("no handler found for method: '%s'", ctx->method);
+		log_error("no handler found for method: '%s'", ctx->method);
 		response = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	} else {
-		log_debug("processing method: '%s' id: '%s'", ctx->method, ctx->id);
+		log_info("processing method: '%s' id: '%s'", ctx->method, ctx->id);
 		ctx->arg = handler->arg;
 		response = handler->cb(ctx);
 	}
