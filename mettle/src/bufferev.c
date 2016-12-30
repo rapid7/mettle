@@ -146,20 +146,37 @@ on_read(struct ev_loop *loop, struct ev_io *w, int events)
 	struct bufferev *be = w->data;
 
 	ssize_t bytes_read = 0;
-	char buf[4096];
+	char buf[1024 * 16];
 	ssize_t rc;
 	while ((rc = recv(be->sock, buf, sizeof(buf), 0)) > 0) {
 		bytes_read += rc;
 		buffer_queue_add(be->rx_queue, buf, rc);
+	}
+	int my_errno = errno;
+
+	if (bytes_read > 0) {
 		if (be->read_cb) {
 			be->read_cb(be, be->cb_arg);
 		}
 	}
 
-	if (bytes_read <= 0) {
-		ev_io_stop(be->loop, &be->data_ev);
-		if (be->event_cb) {
-			be->event_cb(be, BEV_EOF, be->cb_arg);
+	/*
+	 * The socket shutdown as expected
+	 */
+	if (my_errno != EAGAIN && my_errno != EWOULDBLOCK) {
+		if (rc == 0) {
+			ev_io_stop(be->loop, &be->data_ev);
+			if (be->event_cb) {
+				be->event_cb(be, BEV_EOF, be->cb_arg);
+			}
+		/*
+		 * An error occurred
+		 */
+		} else if (rc == -1) {
+			ev_io_stop(be->loop, &be->data_ev);
+			if (be->event_cb) {
+				be->event_cb(be, BEV_EOF | BEV_ERROR, be->cb_arg);
+			}
 		}
 	}
 }
