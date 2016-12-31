@@ -12,7 +12,7 @@
 #include "tlv.h"
 #include "util.h"
 
-struct network_client_channel {
+struct tcp_client_channel {
 	struct channel *channel;
 	struct network_client *nc;
 	struct tlv_handler_ctx *tlv_ctx;
@@ -20,7 +20,7 @@ struct network_client_channel {
 };
 
 static void
-network_client_channel_free(struct network_client_channel *nc)
+tcp_client_channel_free(struct tcp_client_channel *nc)
 {
 	if (nc) {
 		if (nc->nc) {
@@ -30,36 +30,36 @@ network_client_channel_free(struct network_client_channel *nc)
 	}
 }
 
-void network_channel_read_cb(struct bufferev *be, void *arg)
+void tcp_client_channel_read_cb(struct bufferev *be, void *arg)
 {
-	struct network_client_channel *ncc = arg;
+	struct tcp_client_channel *tcc = arg;
 	size_t len = bufferev_bytes_available(be);
 	void *buf = malloc(len);
 	if (buf) {
 		bufferev_read(be, buf, len);
-		channel_enqueue(ncc->channel, buf, len);
+		channel_enqueue(tcc->channel, buf, len);
 		free(buf);
 	}
 }
 
-void network_channel_event_cb(struct bufferev *be, int event, void *arg)
+void tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 {
-	struct network_client_channel *ncc = arg;
-	struct tlv_handler_ctx *tlv_ctx = ncc->tlv_ctx;
-	ncc->tlv_ctx = NULL;
+	struct tcp_client_channel *tcc = arg;
+	struct tlv_handler_ctx *tlv_ctx = tcc->tlv_ctx;
+	tcc->tlv_ctx = NULL;
 
 	if (tlv_ctx) {
 		struct tlv_packet *p = NULL;
 
 		if (event & BEV_CONNECTED) {
 			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_SUCCESS);
-			channel_opened(ncc->channel);
+			channel_opened(tcc->channel);
 
 		} else if (event & BEV_ERROR) {
 			tlv_ctx->channel_id = 0;
 			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_FAILURE);
-			channel_shutdown(ncc->channel);
-			network_client_channel_free(ncc);
+			channel_shutdown(tcc->channel);
+			tcp_client_channel_free(tcc);
 		}
 
 		tlv_dispatcher_enqueue_response(tlv_ctx->td, p);
@@ -67,15 +67,14 @@ void network_channel_event_cb(struct bufferev *be, int event, void *arg)
 
 	} else {
 		if (event & (BEV_EOF | BEV_ERROR)) {
-			channel_set_ctx(ncc->channel, NULL);
-			channel_send_close_request(ncc->channel);
-			network_client_channel_free(ncc);
+			channel_set_ctx(tcc->channel, NULL);
+			channel_send_close_request(tcc->channel);
+			tcp_client_channel_free(tcc);
 		}
 	}
 }
 
-static int
-_network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *proto)
+static int tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
 	const char *src_host, *dst_host;
 	uint32_t src_port = 0, dst_port = 0;
@@ -91,33 +90,34 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_CONNECT_RETRIES, &retries);
 
-	struct network_client_channel *ncc = calloc(1, sizeof(*ncc));
-	if (ncc == NULL) {
+	struct tcp_client_channel *tcc = calloc(1, sizeof(*tcc));
+	if (tcc == NULL) {
 		goto err;
 	}
 
-	ncc->tlv_ctx = ctx;
-	ncc->channel = c;
+	tcc->tlv_ctx = ctx;
+	tcc->channel = c;
 
-	ncc->nc = network_client_new(mettle_get_loop(m));
-	if (ncc->nc == NULL) {
+	tcc->nc = network_client_new(mettle_get_loop(m));
+	if (tcc->nc == NULL) {
 		goto err;
 	}
 
-	if (asprintf(&uri, "%s://%s:%u", proto, dst_host, dst_port) == -1 ||
-	        network_client_add_uri(ncc->nc, uri) == -1) {
+	if (asprintf(&uri, "tcp://%s:%u", dst_host, dst_port) == -1 ||
+	        network_client_add_uri(tcc->nc, uri) == -1) {
 		goto err;
 	}
 
-	network_client_setcbs(ncc->nc, network_channel_read_cb, NULL,
-			network_channel_event_cb, ncc);
+	network_client_setcbs(tcc->nc,
+			tcp_client_channel_read_cb, NULL,
+			tcp_client_channel_event_cb, tcc);
 	if (src_host || src_port) {
-		network_client_set_src(ncc->nc, src_host, src_port);
+		network_client_set_src(tcc->nc, src_host, src_port);
 	}
-	network_client_set_retries(ncc->nc, ncc->retries);
-	network_client_start(ncc->nc);
+	network_client_set_retries(tcc->nc, tcc->retries);
+	network_client_start(tcc->nc);
 
-	channel_set_ctx(c, ncc);
+	channel_set_ctx(c, tcc);
 	channel_set_interactive(c, true);
 	free(uri);
 
@@ -125,34 +125,28 @@ _network_client_new(struct tlv_handler_ctx *ctx, struct channel *c, const char *
 
 err:
 	free(uri);
-	network_client_channel_free(ncc);
+	tcp_client_channel_free(tcc);
 	return -1;
-
-}
-
-static int tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
-{
-	return _network_client_new(ctx, c, "tcp");
 }
 
 static ssize_t tcp_client_read(struct channel *c, void *buf, size_t len)
 {
-	struct network_client_channel *ncc = channel_get_ctx(c);
-	return network_client_read(ncc->nc, buf, len);
+	struct tcp_client_channel *tcc = channel_get_ctx(c);
+	return network_client_read(tcc->nc, buf, len);
 }
 
 static ssize_t tcp_client_write(struct channel *c, void *buf, size_t len)
 {
-	struct network_client_channel *ncc = channel_get_ctx(c);
-	return network_client_write(ncc->nc, buf, len);
+	struct tcp_client_channel *tcc = channel_get_ctx(c);
+	return network_client_write(tcc->nc, buf, len);
 }
 
 static int tcp_client_free(struct channel *c)
 {
-	struct network_client_channel *ncc = channel_get_ctx(c);
-	if (ncc) {
+	struct tcp_client_channel *tcc = channel_get_ctx(c);
+	if (tcc) {
 		channel_set_ctx(c, NULL);
-		network_client_channel_free(ncc);
+		tcp_client_channel_free(tcc);
 	}
 	return 0;
 }
@@ -177,7 +171,8 @@ static struct tlv_packet *tcp_shutdown(struct tlv_handler_ctx *ctx)
 
 static int udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
-	return _network_client_new(ctx, c, "udp");
+	log_debug("opened a udp socket");
+	return 0;
 }
 
 static ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
