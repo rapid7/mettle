@@ -33,13 +33,7 @@ tcp_client_channel_free(struct tcp_client_channel *nc)
 void tcp_client_channel_read_cb(struct bufferev *be, void *arg)
 {
 	struct tcp_client_channel *tcc = arg;
-	size_t len = bufferev_bytes_available(be);
-	void *buf = malloc(len);
-	if (buf) {
-		bufferev_read(be, buf, len);
-		channel_enqueue(tcc->channel, buf, len);
-		free(buf);
-	}
+	channel_enqueue_buffer_queue(tcc->channel, bufferev_rx_queue(be));
 }
 
 void tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
