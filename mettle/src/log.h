@@ -40,11 +40,12 @@ log_set_level(int level)
 #ifdef LOG_DISABLE_LOG
 
 #define log_error(format, ...)
+#define log_error_hex(buf, len)
 #define log_info(format, ...)
 #define log_info_hex(buf, len)
 #define log_debug(format, ...)
+#define log_debug_hex(buf, len)
 
-#define log_hex(buf, len)
 #define log_init(log_file)
 #define log_init_file(file_hdl)
 #define log_init_flush_thread
@@ -55,8 +56,12 @@ log_set_level(int level)
 
 #define log_error(format, ...) \
 	if (_zlog_level >= 0) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+#define log_error_hex(buf, len) \
+	if (_zlog_level >= 0) zlog_hex(ZLOG_LOC, buf, len)
 #define log_debug(format, ...) \
 	if (_zlog_level >= 1) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
+#define log_debug_hex(buf, len) \
+	if (_zlog_level >= 1) zlog_hex(ZLOG_LOC, buf, len)
 #define log_info(format, ...) \
 	if (_zlog_level >= 2) zlog_time(ZLOG_LOC, format "\n", ##__VA_ARGS__)
 #define log_info_hex(buf, len) \
