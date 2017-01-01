@@ -33,6 +33,8 @@ void network_client_set_retries(struct network_client *nc, int retries);
 
 ssize_t network_client_read(struct network_client *nc, void *buf, size_t buflen);
 
+void * network_client_read_msg(struct network_client *nc, size_t *buflen);
+
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen);
 
 int network_client_close(struct network_client *nc);
