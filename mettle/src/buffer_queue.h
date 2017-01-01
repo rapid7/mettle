@@ -29,6 +29,10 @@ size_t buffer_queue_drain(struct buffer_queue *q, size_t len);
 
 void buffer_queue_drain_all(struct buffer_queue *q);
 
+void * buffer_queue_peek_msg(struct buffer_queue *q, size_t *len);
+
+void * buffer_queue_remove_msg(struct buffer_queue *q, size_t *len);
+
 ssize_t buffer_queue_remove_all(struct buffer_queue *q, void **data);
 
 #endif
