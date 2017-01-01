@@ -20,13 +20,13 @@ struct tcp_client_channel {
 };
 
 static void
-tcp_client_channel_free(struct tcp_client_channel *nc)
+tcp_client_channel_free(struct tcp_client_channel *tcc)
 {
-	if (nc) {
-		if (nc->nc) {
-			network_client_free(nc->nc);
+	if (tcc) {
+		if (tcc->nc) {
+			network_client_free(tcc->nc);
 		}
-		free(nc);
+		free(tcc);
 	}
 }
 
@@ -163,28 +163,153 @@ static struct tlv_packet *tcp_shutdown(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
+struct udp_client_channel {
+	struct channel *channel;
+	struct network_client *nc;
+	struct tlv_handler_ctx *tlv_ctx;
+};
+
+static void
+udp_client_channel_free(struct udp_client_channel *ucc)
+{
+	if (ucc) {
+		if (ucc->nc) {
+			network_client_free(ucc->nc);
+		}
+		free(ucc);
+	}
+}
+
+void udp_client_channel_read_cb(struct bufferev *be, void *arg)
+{
+	struct udp_client_channel *ucc = arg;
+	size_t len;
+	struct bufferev_udp_msg *msg;
+	while ((msg = bufferev_read_msg(be, &len))) {
+		uint16_t peer_port = 0;
+		char * peer_host = bufferev_get_udp_msg_peer_addr(msg, &peer_port);
+
+		if (peer_host) {
+			struct tlv_packet *p = tlv_packet_new(0, 32);
+			p = tlv_packet_add_str(p, TLV_TYPE_PEER_HOST, peer_host);
+			p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, peer_port);
+
+			log_debug("hmm: %s:%d", peer_host, peer_port);
+
+			channel_enqueue_ex(ucc->channel, msg->buf, msg->buf_len, p);
+		}
+		free(peer_host);
+	}
+}
+
+void udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
+{
+	struct udp_client_channel *tcc = arg;
+	struct tlv_handler_ctx *tlv_ctx = tcc->tlv_ctx;
+	tcc->tlv_ctx = NULL;
+
+	if (tlv_ctx) {
+		struct tlv_packet *p = NULL;
+
+		if (event & BEV_CONNECTED) {
+			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_SUCCESS);
+			channel_opened(tcc->channel);
+
+		} else if (event & BEV_ERROR) {
+			tlv_ctx->channel_id = 0;
+			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_FAILURE);
+			channel_shutdown(tcc->channel);
+			udp_client_channel_free(tcc);
+		}
+
+		tlv_dispatcher_enqueue_response(tlv_ctx->td, p);
+		tlv_handler_ctx_free(tlv_ctx);
+
+	} else {
+		if (event & (BEV_EOF | BEV_ERROR)) {
+			channel_set_ctx(tcc->channel, NULL);
+			channel_send_close_request(tcc->channel);
+			udp_client_channel_free(tcc);
+		}
+	}
+}
+
 static int udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
-	log_debug("opened a udp socket");
+	const char *src_host, *dst_host;
+	uint32_t src_port = 0, dst_port = 0;
+	struct mettle *m = ctx->arg;
+	char *uri = NULL;
+
+	dst_host = tlv_packet_get_str(ctx->req, TLV_TYPE_PEER_HOST);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_PEER_PORT, &dst_port);
+
+	src_host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_HOST, &src_port);
+
+	struct udp_client_channel *uc = calloc(1, sizeof(*uc));
+	if (uc == NULL) {
+		goto err;
+	}
+
+	uc->tlv_ctx = ctx;
+	uc->channel = c;
+
+	uc->nc = network_client_new(mettle_get_loop(m));
+	if (uc->nc == NULL) {
+		goto err;
+	}
+
+	if (asprintf(&uri, "udp://%s:%u", dst_host, dst_port) == -1 ||
+	        network_client_add_uri(uc->nc, uri) == -1) {
+		goto err;
+	}
+
+	network_client_setcbs(uc->nc,
+			udp_client_channel_read_cb, NULL,
+			udp_client_channel_event_cb, uc);
+	if (src_host || src_port) {
+		network_client_set_src(uc->nc, src_host, src_port);
+	}
+	network_client_set_retries(uc->nc, 0);
+	network_client_start(uc->nc);
+
+	channel_set_ctx(c, uc);
+	channel_set_interactive(c, true);
+	free(uri);
+
+	return 0;
+
+err:
+	free(uri);
+	udp_client_channel_free(uc);
+	return -1;
 	return 0;
 }
 
 static ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
 {
-	struct network_client *nc = channel_get_ctx(c);
-	return network_client_read(nc, buf, len);
+	struct udp_client_channel *ucc = channel_get_ctx(c);
+	size_t msg_len;
+	void *msg_buf = network_client_read_msg(ucc->nc, &msg_len);
+	memcpy(buf, msg_buf, TYPESAFE_MIN(len, msg_len));
+	return msg_len;
 }
 
 static ssize_t udp_client_write(struct channel *c, void *buf, size_t len)
 {
-	struct network_client *nc = channel_get_ctx(c);
-	return network_client_write(nc, buf, len);
+	struct udp_client_channel *ucc = channel_get_ctx(c);
+	return network_client_write(ucc->nc, buf,
+			TYPESAFE_MIN(len, IP_LEN_MAX - IP_HDR_LEN - UDP_HDR_LEN));
 }
 
 static int udp_client_free(struct channel *c)
 {
-	struct network_client *nc = channel_get_ctx(c);
-	network_client_free(nc);
+	struct udp_client_channel *ucc = channel_get_ctx(c);
+	if (ucc) {
+		channel_set_ctx(c, NULL);
+		udp_client_channel_free(ucc);
+	}
 	return 0;
 }
 
@@ -203,7 +328,7 @@ void net_client_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_net_socket_tcp_shutdown", tcp_shutdown, m);
 
 	struct channel_callbacks udp_client_cbs = {
-		.new_cb = udp_client_new,
+		.new_async_cb = udp_client_new,
 		.read_cb = udp_client_read,
 		.write_cb = udp_client_write,
 		.free_cb = udp_client_free,
