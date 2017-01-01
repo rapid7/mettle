@@ -7,6 +7,7 @@
 #define _BUFFEREV_H_
 
 #include <ev.h>
+#include <sys/types.h>
 
 #include "buffer_queue.h"
 
@@ -50,6 +51,19 @@ struct buffer_queue * bufferev_rx_queue(struct bufferev *be);
 size_t bufferev_peek(struct bufferev *be, void *buf, size_t buflen);
 
 size_t bufferev_read(struct bufferev *be, void *buf, size_t buflen);
+
+struct bufferev_udp_msg {
+	socklen_t src_len;
+	ssize_t buf_len;
+	struct sockaddr_storage src;
+	char buf[];
+};
+
+char * bufferev_get_udp_msg_peer_addr(struct bufferev_udp_msg *msg, uint16_t *port);
+
+void *bufferev_read_msg(struct bufferev *be, size_t *len);
+
+void *bufferev_peek_msg(struct bufferev *be, size_t *len);
 
 size_t bufferev_bytes_available(struct bufferev *be);
 

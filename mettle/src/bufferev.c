@@ -39,6 +39,9 @@ struct bufferev {
 	int sock, connected;
 	struct ev_io data_ev;
 
+	struct sockaddr_storage dst_addr;
+	socklen_t dst_len;
+
 	struct buffer_queue *tx_queue;
 	struct buffer_queue *rx_queue;
 
@@ -89,10 +92,10 @@ void bufferev_setcbs(struct bufferev *be,
 	bufferev_event_cb event_cb,
 	void *cb_arg)
 {
-    be->read_cb = read_cb;
-    be->write_cb = write_cb;
-    be->event_cb = event_cb;
-    be->cb_arg = cb_arg;
+	be->read_cb = read_cb;
+	be->write_cb = write_cb;
+	be->event_cb = event_cb;
+	be->cb_arg = cb_arg;
 }
 
 struct buffer_queue * bufferev_rx_queue(struct bufferev *be)
@@ -115,6 +118,16 @@ size_t bufferev_read(struct bufferev *be, void *buf, size_t buflen)
 	return buffer_queue_remove(be->rx_queue, buf, buflen);
 }
 
+void *bufferev_read_msg(struct bufferev *be, size_t *len)
+{
+	return buffer_queue_remove_msg(be->rx_queue, len);
+}
+
+void *bufferev_peek_msg(struct bufferev *be, size_t *len)
+{
+	return buffer_queue_peek_msg(be->rx_queue, len);
+}
+
 ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 {
 	ssize_t off = 0, rc;
@@ -122,7 +135,7 @@ ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 
 	switch (be->proto) {
 	case network_proto_udp:
-		return send(be->sock, buf, buflen, 0);
+		return sendto(be->sock, buf, buflen, 0, (struct sockaddr *)&(be->dst_addr), be->dst_len);
 	case network_proto_tcp:
 		do {
 			rc = send(be->sock, buf + off, buflen - off, 0);
@@ -140,13 +153,10 @@ ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 	return -1;
 }
 
-static void
-on_read(struct ev_loop *loop, struct ev_io *w, int events)
+static void on_read_tcp(struct bufferev *be)
 {
-	struct bufferev *be = w->data;
-
-	ssize_t bytes_read = 0;
-	char buf[1024 * 16];
+	size_t bytes_read = 0;
+	char buf[65535];
 	ssize_t rc;
 	while ((rc = recv(be->sock, buf, sizeof(buf), 0)) > 0) {
 		bytes_read += rc;
@@ -163,21 +173,59 @@ on_read(struct ev_loop *loop, struct ev_io *w, int events)
 	/*
 	 * The socket shutdown as expected
 	 */
-	if (my_errno != EAGAIN && my_errno != EWOULDBLOCK) {
-		if (rc == 0) {
-			ev_io_stop(be->loop, &be->data_ev);
-			if (be->event_cb) {
-				be->event_cb(be, BEV_EOF, be->cb_arg);
-			}
+	if (rc == 0) {
+		ev_io_stop(be->loop, &be->data_ev);
+		if (be->event_cb) {
+			be->event_cb(be, BEV_EOF, be->cb_arg);
+		}
+	} else if (rc == -1 && my_errno != EAGAIN && my_errno != EWOULDBLOCK) {
 		/*
 		 * An error occurred
 		 */
-		} else if (rc == -1) {
-			ev_io_stop(be->loop, &be->data_ev);
-			if (be->event_cb) {
-				be->event_cb(be, BEV_EOF | BEV_ERROR, be->cb_arg);
-			}
+		ev_io_stop(be->loop, &be->data_ev);
+		if (be->event_cb) {
+			be->event_cb(be, BEV_EOF | BEV_ERROR, be->cb_arg);
 		}
+	}
+}
+
+static void on_read_udp(struct bufferev *be)
+{
+
+	size_t bytes_read = 0;
+	struct bufferev_udp_msg *msg = calloc(1, sizeof(*msg) + 65535);
+
+	do {
+		msg->src_len = sizeof(msg->src),
+		msg->buf_len = recvfrom(be->sock, msg->buf, 65535, 0,
+					(struct sockaddr *)&msg->src, &msg->src_len);
+		if (msg->buf_len > 0) {
+			bytes_read += msg->buf_len;
+			buffer_queue_add(be->rx_queue, msg, sizeof(*msg) + msg->buf_len);
+		}
+	} while (msg->buf_len > 0);
+
+	if (bytes_read > 0) {
+		if (be->read_cb) {
+			be->read_cb(be, be->cb_arg);
+		}
+	}
+}
+
+static void
+on_read(struct ev_loop *loop, struct ev_io *w, int events)
+{
+	struct bufferev *be = w->data;
+
+	switch (be->proto) {
+	case network_proto_tcp:
+		on_read_tcp(be);
+		break;
+	case network_proto_udp:
+		on_read_udp(be);
+		break;
+	case network_proto_tls:
+		break;
 	}
 }
 
@@ -247,12 +295,38 @@ int bufferev_connect_addrinfo(struct bufferev *be,
 
 	if (dst->ai_protocol == IPPROTO_UDP) {
 		be->proto = network_proto_udp;
+		be->dst_len = dst->ai_addrlen;
+		memcpy(&be->dst_addr, dst->ai_addr, dst->ai_addrlen);
+
+		struct sockaddr *udp_src;
+		socklen_t udp_src_len;
+		struct sockaddr_in any_src = {
+			.sin_family = AF_INET,
+			.sin_port = htons(0),
+			.sin_addr.s_addr = INADDR_ANY
+		};
+
+		if (src) {
+			udp_src = src->ai_addr;
+			udp_src_len = src->ai_addrlen;
+		} else {
+			udp_src = (struct sockaddr *)(&any_src);
+			udp_src_len = sizeof any_src;
+		}
+
+		if (bind(be->sock, udp_src, udp_src_len) != 0) {
+			log_debug("could not bind: %s", strerror(errno));
+		}
+
 	} else {
 		be->proto = network_proto_tcp;
+		if (src) {
+			if (bind(be->sock, src->ai_addr, src->ai_addrlen) != 0) {
+				log_debug("could not bind: %s", strerror(errno));
+			}
+		}
 	}
-	if (src) {
-		bind(be->sock, src->ai_addr, src->ai_addrlen);
-	}
+
 
 	int rc = connect(be->sock, dst->ai_addr, dst->ai_addrlen);
 	if (rc == 0 || errno == EINPROGRESS) {
@@ -294,16 +368,21 @@ parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
 	char host[INET6_ADDRSTRLEN] = { 0 };
 
 	if (addr->ss_family == AF_INET) {
-		struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+		struct sockaddr_in *s = (struct sockaddr_in *)addr;
 		*port = ntohs(s->sin_port);
 		inet_ntop(AF_INET, &s->sin_addr, host, INET6_ADDRSTRLEN);
 	} else if (addr->ss_family == AF_INET6) {
-		struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+		struct sockaddr_in6 *s = (struct sockaddr_in6 *)addr;
 		*port = ntohs(s->sin6_port);
 		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
 	}
 
 	return strdup(host);
+}
+
+char * bufferev_get_udp_msg_peer_addr(struct bufferev_udp_msg *msg, uint16_t *port)
+{
+	return parse_sockaddr(&msg->src, port);
 }
 
 char * bufferev_get_local_addr(struct bufferev *be, uint16_t *port)
