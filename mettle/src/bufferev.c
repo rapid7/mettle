@@ -39,9 +39,6 @@ struct bufferev {
 	int sock, connected;
 	struct ev_io data_ev;
 
-	struct sockaddr_storage dst_addr;
-	socklen_t dst_len;
-
 	struct buffer_queue *tx_queue;
 	struct buffer_queue *rx_queue;
 
@@ -135,7 +132,7 @@ ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 
 	switch (be->proto) {
 	case network_proto_udp:
-		return sendto(be->sock, buf, buflen, 0, (struct sockaddr *)&(be->dst_addr), be->dst_len);
+		return send(be->sock, buf, buflen, 0);
 	case network_proto_tcp:
 		do {
 			rc = send(be->sock, buf + off, buflen - off, 0);
@@ -144,7 +141,7 @@ ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
 				sent_bytes += rc;
 			}
 		} while (rc > 0 || (rc < 0 && (errno == EAGAIN || errno == EINTR)));
-		return sent_bytes;
+		return sent_bytes ? sent_bytes : rc;
 
 	case network_proto_tls:
 		return buffer_queue_add(be->tx_queue, buf, buflen);
@@ -295,8 +292,6 @@ int bufferev_connect_addrinfo(struct bufferev *be,
 
 	if (dst->ai_protocol == IPPROTO_UDP) {
 		be->proto = network_proto_udp;
-		be->dst_len = dst->ai_addrlen;
-		memcpy(&be->dst_addr, dst->ai_addr, dst->ai_addrlen);
 
 		struct sockaddr *udp_src;
 		socklen_t udp_src_len;
