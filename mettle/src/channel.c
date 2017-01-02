@@ -171,7 +171,9 @@ int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *q)
 		return -1;
 	}
 
-	return channel_enqueue(c, buf, buf_len);
+	int rc = channel_enqueue(c, buf, buf_len);
+	free(buf);
+	return rc;
 }
 
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len)
