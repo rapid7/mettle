@@ -497,7 +497,7 @@ resolve(struct eio_req *req)
 
 	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
 		char *port = NULL;
-		if (nc->src_port > 0 && nc->src_port <= UINT16_MAX) {
+		if (nc->src_port > 0) {
 			asprintf(&port, "%u", nc->src_port);
 		}
 		getaddrinfo(nc->src_addr, port, &hints, &nc->src);
