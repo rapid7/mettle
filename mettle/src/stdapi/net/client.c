@@ -193,9 +193,6 @@ void udp_client_channel_read_cb(struct bufferev *be, void *arg)
 			struct tlv_packet *p = tlv_packet_new(0, 32);
 			p = tlv_packet_add_str(p, TLV_TYPE_PEER_HOST, peer_host);
 			p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, peer_port);
-
-			log_debug("hmm: %s:%d", peer_host, peer_port);
-
 			channel_enqueue_ex(ucc->channel, msg->buf, msg->buf_len, p);
 		}
 		free(peer_host);
