@@ -145,6 +145,15 @@ static int send_write_request(struct channel *c, void *buf, size_t buf_len)
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
 
+int channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct tlv_packet *extra)
+{
+	struct tlv_packet *p = new_request(c, "write", buf_len);
+	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
+	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
+	p = tlv_packet_merge_child(p, extra);
+	return tlv_dispatcher_enqueue_response(c->cm->td, p);
+}
+
 int channel_enqueue(struct channel *c, void *buf, size_t buf_len)
 {
 	if (c->interactive) {
@@ -162,7 +171,9 @@ int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *q)
 		return -1;
 	}
 
-	return channel_enqueue(c, buf, buf_len);
+	int rc = channel_enqueue(c, buf, buf_len);
+	free(buf);
+	return rc;
 }
 
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len)

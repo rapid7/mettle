@@ -253,6 +253,11 @@ ssize_t network_client_read(struct network_client *nc, void *buf, size_t buflen)
 	return nc->be ? bufferev_read(nc->be, buf, buflen) : 0;
 }
 
+void * network_client_read_msg(struct network_client *nc, size_t *buflen)
+{
+	return nc->be ? bufferev_read_msg(nc->be, buflen) : NULL;
+}
+
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen)
 {
 	return nc->be ? bufferev_write(nc->be, buf, buflen) : 0;
@@ -294,7 +299,7 @@ client_connected(struct network_client *nc)
 {
 	nc->state = network_client_connected;
 	struct network_client_server *srv = get_curr_server(nc);
-	log_info("connected to '%s://%s:%s'",
+	log_info("connected to %s://%s:%s",
 		network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
 }
 
@@ -350,6 +355,7 @@ log_addrinfo(const char *msg, struct addrinfo *ai)
 {
 	char host[INET6_ADDRSTRLEN] = { 0 };
 	uint16_t port = 0;
+	const char *proto = ai->ai_protocol == IPPROTO_UDP ? "udp" : "tcp";
 	if (ai->ai_family == AF_INET) {
 		struct sockaddr_in *s = (struct sockaddr_in *)ai->ai_addr;
 		port = ntohs(s->sin_port);
@@ -359,7 +365,7 @@ log_addrinfo(const char *msg, struct addrinfo *ai)
 		port = ntohs(s->sin6_port);
 		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
 	}
-	log_info("%s %s:%d", msg, host, port);
+	log_info("%s %s://%s:%d", msg, proto, host, port);
 }
 
 static int
@@ -403,6 +409,7 @@ on_resolve(struct eio_req *req)
 		freeaddrinfo(nc->addrinfo);
 		nc->addrinfo = NULL;
 	}
+
 	if (failed) {
 		connection_failed(nc);
 	}
@@ -490,7 +497,7 @@ resolve(struct eio_req *req)
 
 	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
 		char *port = NULL;
-		if (nc->src_port > 0 && nc->src_port <= UINT16_MAX) {
+		if (nc->src_port > 0) {
 			asprintf(&port, "%u", nc->src_port);
 		}
 		getaddrinfo(nc->src_addr, port, &hints, &nc->src);

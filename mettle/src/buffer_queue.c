@@ -14,7 +14,7 @@ struct buffer_queue {
 	struct buffer {
 		size_t offset, len;
 		struct buffer *next;
-		char data[];
+		char *data;
 	} *head;
 	size_t bytes;
 };
@@ -24,12 +24,20 @@ struct buffer_queue * buffer_queue_new(void)
 	return calloc(1, sizeof(struct buffer_queue));
 }
 
+static void free_buf(struct buffer *buf)
+{
+	if (buf) {
+		free(buf->data);
+		free(buf);
+	}
+}
+
 void buffer_queue_drain_all(struct buffer_queue *q)
 {
 	struct buffer *buf, *tmp;
 	LL_FOREACH_SAFE(q->head, buf, tmp) {
 		LL_DELETE(q->head, buf);
-		free(buf);
+		free_buf(buf);
 	}
 	q->bytes = 0;
 }
@@ -48,8 +56,13 @@ size_t buffer_queue_len(struct buffer_queue *q)
 
 int buffer_queue_add(struct buffer_queue *q, void *data, size_t len)
 {
-	struct buffer *buf = calloc(1, sizeof(*buf) + len);
+	struct buffer *buf = calloc(1, sizeof(*buf));
 	if (buf == NULL) {
+		return -1;
+	}
+	buf->data = malloc(len);
+	if (buf->data == NULL) {
+		free_buf(buf);
 		return -1;
 	}
 
@@ -65,6 +78,30 @@ int buffer_queue_add(struct buffer_queue *q, void *data, size_t len)
 int buffer_queue_add_str(struct buffer_queue *q, char *str)
 {
 	return buffer_queue_add(q, str, strlen(str));
+}
+
+void * buffer_queue_peek_msg(struct buffer_queue *q, size_t *len)
+{
+	void *data = NULL;
+	if (q->head) {
+		struct buffer *buf = q->head;
+		data = buf->data;
+		*len = buf->len;
+	}
+	return data;
+}
+
+void * buffer_queue_remove_msg(struct buffer_queue *q, size_t *len)
+{
+	void *data = NULL;
+	if (q->head) {
+		struct buffer *buf = q->head;
+		LL_DELETE(q->head, buf);
+		data = buf->data;
+		*len = buf->len;
+		free(buf);
+	}
+	return data;
 }
 
 size_t buffer_queue_copy(struct buffer_queue *q, void *data, size_t len)
@@ -95,7 +132,7 @@ size_t buffer_queue_drain(struct buffer_queue *q, size_t len)
 		buf->offset += bytes;
 		if (buf->offset == buf->len) {
 			LL_DELETE(q->head, buf);
-			free(buf);
+			free_buf(buf);
 		}
 		drained += bytes;
 		if (len <= 0) {
@@ -118,7 +155,7 @@ size_t buffer_queue_remove(struct buffer_queue *q, void *data, size_t len)
 		buf->offset += bytes;
 		if (buf->offset == buf->len) {
 			LL_DELETE(q->head, buf);
-			free(buf);
+			free_buf(buf);
 		}
 		removed += bytes;
 		if (len <= 0) {

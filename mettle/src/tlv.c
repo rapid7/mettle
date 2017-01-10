@@ -200,8 +200,8 @@ int tlv_packet_get_u64(struct tlv_packet *p, uint32_t value_type, uint64_t *valu
 	return 0;
 }
 
-struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
-		const void *val, size_t len)
+static struct tlv_packet *
+tlv_packet_add_child_raw(struct tlv_packet *p, const void *val, size_t len)
 {
 	int packet_len = tlv_packet_len(p);
 	int new_len = packet_len + len;
@@ -213,10 +213,18 @@ struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
 	return p;
 }
 
-struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
-		struct tlv_packet *child)
+struct tlv_packet *
+tlv_packet_add_child(struct tlv_packet *p, struct tlv_packet *child)
 {
 	p = tlv_packet_add_child_raw(p, child, tlv_packet_len(child));
+	tlv_packet_free(child);
+	return p;
+}
+
+struct tlv_packet *
+tlv_packet_merge_child(struct tlv_packet *p, struct tlv_packet *child)
+{
+	p = tlv_packet_add_child_raw(p, child->buf, tlv_packet_len(child) - sizeof(child->h));
 	tlv_packet_free(child);
 	return p;
 }

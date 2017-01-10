@@ -28,13 +28,7 @@ struct tcp_server_conn
 static void conn_read_cb(struct bufferev *be, void *arg)
 {
 	struct tcp_server_conn *conn = arg;
-	size_t len = bufferev_bytes_available(be);
-	void *buf = malloc(len);
-	if (buf) {
-		bufferev_read(be, buf, len);
-		channel_enqueue(conn->channel, buf, len);
-		free(buf);
-	}
+	channel_enqueue_buffer_queue(conn->channel, bufferev_rx_queue(be));
 }
 
 static void conn_event_cb(struct bufferev *be, int event, void *arg)

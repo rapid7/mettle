@@ -182,7 +182,7 @@ void zlog(char *filename, int line, char const *fmt, ...)
 /*
  * hex dump from http://sws.dett.de/mini/hexdump-c/
  */
-void zlog_info_hex(char *filename, int line, const void *buf, size_t len)
+void zlog_hex(char *filename, int line, const void *buf, size_t len)
 {
 	const unsigned char *p = buf;
 	unsigned char c;

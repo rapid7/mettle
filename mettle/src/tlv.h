@@ -56,10 +56,10 @@ void *tlv_packet_iterate(struct tlv_iterator *i, size_t *len);
 
 char *tlv_packet_iterate_str(struct tlv_iterator *i);
 
-struct tlv_packet * tlv_packet_add_child_raw(struct tlv_packet *p,
-		const void *val, size_t len);
-
 struct tlv_packet * tlv_packet_add_child(struct tlv_packet *p,
+		struct tlv_packet *child);
+
+struct tlv_packet * tlv_packet_merge_child(struct tlv_packet *p,
 		struct tlv_packet *child);
 
 struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p,
