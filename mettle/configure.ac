@@ -15,18 +15,24 @@ LT_INIT
 
 case $host_os in
 	*linux*)
-		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_GNU_SOURCE -D_XOPEN_SOURCE=700"
+		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
+		;;
+	*mingw*)
+		HOST_OS=win
+		CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE -D_POSIX -D_POSIX_SOURCE -D__USE_MINGW_ANSI_STDIO"
+		CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_POSIX_THREAD_SAFE_FUNCTIONS"
+		CPPFLAGS="$CPPFLAGS -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0501"
+		CFLAGS="$CFLAGS -static-libgcc"
+		LDFLAGS="$LDFLAGS -static-libgcc"
+		AC_SUBST([PLATFORM_LDADD], ['-lws2_32 -lwinpthread -static --static'])
 		;;
 esac
 
-AC_CHECK_FUNCS([reallocarray strlcat strlcpy strtonum])
-
-AM_CONDITIONAL([HAVE_REALLOCARRAY], [test "x$ac_cv_func_reallocarray" = xyes])
-AM_CONDITIONAL([HAVE_STRLCAT], [test "x$ac_cv_func_strlcat" = xyes])
-AM_CONDITIONAL([HAVE_STRLCPY], [test "x$ac_cv_func_strlcpy" = xyes])
-AM_CONDITIONAL([HAVE_STRTONUM], [test "x$ac_cv_func_strtonum" = xyes])
+AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
 
 CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
+
+CHECK_LIBC_COMPAT
 
 AC_CONFIG_FILES([
 	Makefile
