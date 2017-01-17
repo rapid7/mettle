@@ -53,9 +53,11 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 		.gid = htole16(s->st_gid),
 		.rdev = htole32(s->st_rdev),
 		.size = htole32(s->st_size),
+#ifndef _WIN32
 		.mtime = htole64(s->st_mtim.tv_sec),
 		.atime = htole64(s->st_atim.tv_sec),
 		.ctime = htole64(s->st_ctim.tv_sec),
+#endif
 	};
 
 	return tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, &ms, sizeof(ms));
@@ -86,7 +88,9 @@ fs_ls_cb(eio_req *req)
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, fq_path);
 			struct stat buf;
 			if (stat(fq_path, &buf) == 0) {
+#ifndef _WIN32
 				p = add_stat(p, &buf);
+#endif
 			}
 		}
 	}
