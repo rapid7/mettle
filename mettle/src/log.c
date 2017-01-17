@@ -136,15 +136,14 @@ void zlog_finish()
 	zlog_fout = stdout;
 }
 
-void zlog_time(char *filename, int line, char const *fmt, ...)
+void zlog_time(const char *filename, int line, char const *fmt, ...)
 {
+	va_list va;
+	char *buffer = NULL;
 	char timebuf[64];
 	char usecbuf[16];
 	struct timeval tv;
 	time_t curtime;
-	char *buffer = NULL;
-
-	va_list va;
 
 	if (zlog_fout) {
 		gettimeofday(&tv, NULL);
@@ -154,7 +153,7 @@ void zlog_time(char *filename, int line, char const *fmt, ...)
 
 		buffer = zlog_get_buffer();
 		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s%ss] [%s:%d] ",
-			timebuf, usecbuf + 1, basename(filename), line);
+			timebuf, usecbuf + 1, filename, line);
 		buffer += strlen(buffer);
 
 		va_start(va, fmt);
@@ -164,10 +163,13 @@ void zlog_time(char *filename, int line, char const *fmt, ...)
 	}
 }
 
-void zlog(char *filename, int line, char const *fmt, ...)
+void zlog(const char *filename, int line, char const *fmt, ...)
 {
-	char *buffer = NULL;
 	va_list va;
+	char *buffer = NULL;
+	char *fn = strdup(filename);
+	if (fn == NULL)
+		return;
 
 	if (zlog_fout) {
 		buffer = zlog_get_buffer();
@@ -182,7 +184,7 @@ void zlog(char *filename, int line, char const *fmt, ...)
 /*
  * hex dump from http://sws.dett.de/mini/hexdump-c/
  */
-void zlog_hex(char *filename, int line, const void *buf, size_t len)
+void zlog_hex(const char *filename, int line, const void *buf, size_t len)
 {
 	const unsigned char *p = buf;
 	unsigned char c;

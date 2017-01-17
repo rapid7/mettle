@@ -101,16 +101,16 @@ void zlogf(char const *fmt, ...)
 void zlogf_time(char const *fmt, ...)
 	__attribute__ ((format(printf, 1, 2)));
 
-void zlog_hex(char *filename, int line, const void *buf, size_t len);
+void zlog_hex(const char *filename, int line, const void *buf, size_t len);
 
 // log an entry with the filename and location;
 //   the first 2 arguments can be replaced by ZLOG_LOC which
 //   will be filled by the compiler
-void zlog(char *filename, int line, char const *fmt, ...)
+void zlog(const char *filename, int line, char const *fmt, ...)
 	__attribute__ ((format(printf, 3, 4)));
 
 // log an entry with the filename and location with a timestamp
-void zlog_time(char *filename, int line, char const *fmt, ...)
+void zlog_time(const char *filename, int line, char const *fmt, ...)
 	__attribute__ ((format(printf, 3, 4)));
 
 #endif
