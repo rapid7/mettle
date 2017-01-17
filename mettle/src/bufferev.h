@@ -7,6 +7,7 @@
 #define _BUFFEREV_H_
 
 #include <ev.h>
+#include <netdb.h>
 #include <sys/types.h>
 
 #include "buffer_queue.h"
