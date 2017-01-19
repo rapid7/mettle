@@ -56,6 +56,11 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	bool debug = false;
 	int log_level = 0;
 
+	/*
+	 * This needs to be initialized to 1 in order for consistent behavior from
+	 * getopt_long when called multiple times.
+	 */
+	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
 		case 'u':
