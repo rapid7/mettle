@@ -56,6 +56,11 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	bool debug = false;
 	int log_level = 0;
 
+	/*
+	 * This needs to be initialized to 1 in order for consistent behavior from
+	 * getopt_long when called multiple times.
+	 */
+	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
 		case 'u':
@@ -84,7 +89,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	return 0;
 }
 
-int parse_default_args(int argc, char * const argv[], struct mettle *m)
+void parse_default_args(struct mettle *m)
 {
 	static char default_opts[] = "DEFAULT_OPTS"
 		"                                                               "
@@ -98,11 +103,8 @@ int parse_default_args(int argc, char * const argv[], struct mettle *m)
 		argv = argv_split(default_opts, argv, &argc);
 		if (argv) {
 			parse_cmdline(argc, argv, m);
-			return 0;
 		}
 	}
-
-	return -1;
 }
 
 int main(int argc, char * argv[])
@@ -129,11 +131,10 @@ int main(int argc, char * argv[])
 		 * There is a fd sitting here, trust me
 		 */
 		mettle_add_tcp_sock(m, (int)((long *)argv)[1]);
-		parse_default_args(argc, argv, m);
+		parse_default_args(m);
 	} else {
-		if (parse_default_args(argc, argv, m)) {
-			parse_cmdline(argc, argv, m);
-		}
+		parse_default_args(m);
+		parse_cmdline(argc, argv, m);
 	}
 
 	/*
