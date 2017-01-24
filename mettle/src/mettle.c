@@ -139,9 +139,12 @@ struct procmgr * mettle_get_procmgr(struct mettle *m)
 void mettle_free(struct mettle *m)
 {
 	if (m) {
-		channelmgr_free(m->cm);
-		tlv_dispatcher_free(m->td);
-		network_client_free(m->nc);
+		if (m->cm)
+			channelmgr_free(m->cm);
+		if (m->td)
+			tlv_dispatcher_free(m->td);
+		if (m->nc)
+			network_client_free(m->nc);
 		free(m);
 	}
 }

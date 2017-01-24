@@ -12,18 +12,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#include <sys/types.h>
-#ifdef _WIN32
-#include <winsock2.h>
-#include <windows.h>
-#else
-#include <sys/socket.h>
 #include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
-#endif
-#include <unistd.h>
 
 #include "buffer_queue.h"
 #include "log.h"
@@ -155,7 +150,7 @@ static void on_read_tcp(struct bufferev *be)
 	size_t bytes_read = 0;
 	char buf[65535];
 	ssize_t rc;
-	while ((rc = recv(be->sock, buf, sizeof(buf), 0)) > 0) {
+	while ((rc = read(be->sock, buf, sizeof(buf))) > 0) {
 		bytes_read += rc;
 		buffer_queue_add(be->rx_queue, buf, rc);
 	}
@@ -175,7 +170,7 @@ static void on_read_tcp(struct bufferev *be)
 		if (be->event_cb) {
 			be->event_cb(be, BEV_EOF, be->cb_arg);
 		}
-	} else if (rc == -1 && my_errno != EAGAIN && my_errno != EWOULDBLOCK) {
+	} else if (rc == -1 && my_errno != EAGAIN && my_errno != EINPROGRESS && my_errno != EWOULDBLOCK) {
 		/*
 		 * An error occurred
 		 */
@@ -322,9 +317,8 @@ int bufferev_connect_addrinfo(struct bufferev *be,
 		}
 	}
 
-
 	int rc = connect(be->sock, dst->ai_addr, dst->ai_addrlen);
-	if (rc == 0 || errno == EINPROGRESS) {
+	if (rc == 0 || errno == EINPROGRESS || errno == EWOULDBLOCK) {
 		ev_io_init(&be->data_ev, on_connect, be->sock, EV_WRITE);
 		be->data_ev.data = be;
 		ev_io_start(be->loop, &be->data_ev);

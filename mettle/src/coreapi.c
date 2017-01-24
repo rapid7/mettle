@@ -38,7 +38,9 @@ static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
 	/*
 	 * First try to kill ourselves with a signal
 	 */
+#ifdef SIGKILL
 	raise(SIGKILL);
+#endif
 
 	/*
 	 * If at first you don't suceeed, trigger a SIGSEGV

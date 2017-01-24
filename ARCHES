@@ -9,3 +9,4 @@ mips-linux-muslsf
 mipsel-linux-muslsf
 mips64-linux-muslsf
 s390x-linux-musl
+i686-w64-mingw32

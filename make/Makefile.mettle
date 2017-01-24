@@ -10,7 +10,7 @@ deps/README.md: make/Makefile.tools
 
 METTLE_DEPS=
 METTLE_OPTS=
-ifneq "$(TARGET)" "native"
+ifneq (,$(findstring musl,$(TARGET)))
     METTLE_DEPS=$(BUILD)/bin/mettle.bin
     METTLE_OPTS=--enable-staticpie
 endif

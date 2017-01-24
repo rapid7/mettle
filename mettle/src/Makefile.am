@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include
+AM_CPPFLAGS = -I$(top_srcdir)/include/compat
 
 lib_LTLIBRARIES = libmettle.la
 
@@ -22,7 +22,13 @@ libmettle_la_SOURCES += network_server.c
 libmettle_la_SOURCES += tlv.c
 libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += stdapi/stdapi.c
+if HOST_WIN
+libmettle_la_SOURCES += inet_ntop.c inet_pton.c
+libmettle_la_SOURCES += posix_win.c
+libmettle_la_SOURCES += process_win.c
+else
 libmettle_la_SOURCES += process.c
+endif
 libmettle_la_SOURCES += util.c
 
 if !HAVE_REALLOCARRAY

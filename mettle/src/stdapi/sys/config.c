@@ -59,9 +59,12 @@ struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
-	return tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
+#ifndef _WIN32
+	p = tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
 			"uid=%d, gid=%d, euid=%d, egid=%d",
 			getuid(), getgid(), geteuid(), getegid());
+#endif
+	return p;
 }
 
 struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
@@ -85,13 +88,17 @@ struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 
 struct tlv_packet *sys_config_localtime(struct tlv_handler_ctx *ctx)
 {
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+#ifndef _WIN32
 	char dateTime[128] = { 0 };
 	time_t t = time(NULL);
 	struct tm lt = { 0 };
 	localtime_r(&t, &lt);
 	strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	return tlv_packet_add_str(p, TLV_TYPE_LOCAL_DATETIME, dateTime);
+	p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_DATETIME, dateTime);
+#endif
+	return p;
 }
 
 
