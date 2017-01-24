@@ -1,12 +1,12 @@
+i686-w64-mingw32
+x86_64-linux-musl
+i486-linux-musl
 aarch64-linux-musl
 armv5l-linux-musleabi
 armv5b-linux-musleabi
-i486-linux-musl
-x86_64-linux-musl
 powerpc-linux-muslsf
 powerpc64le-linux-musl
 mips-linux-muslsf
 mipsel-linux-muslsf
 mips64-linux-muslsf
 s390x-linux-musl
-i686-w64-mingw32

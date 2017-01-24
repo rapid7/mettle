@@ -28,6 +28,9 @@ namespace :mettle do
     each_arch do |tuple|
       file = "build/#{tuple}/bin/mettle"
 
+      if File.exists? "#{file}.exe"
+        next
+      end
       unless File.exists? file
         insane tuple, 'mettle executable does not exist'
         success = false
