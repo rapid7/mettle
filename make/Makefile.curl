@@ -1,4 +1,4 @@
-LIBCURL_VERSION=7.46.0
+LIBCURL_VERSION=7.53.1
 
 $(BUILD)/lib/libcurl.a: build/tools \
 	$(BUILD)/lib/libmbedtls.a
@@ -13,14 +13,32 @@ $(BUILD)/lib/libcurl.a: build/tools \
 		$(ENV) ./$(CONFIGURE) \
 		--without-ssl --with-mbedtls=$(BUILD) \
 		--without-libpsl \
-		--disable-ldap --without-libidn --without-libssh2 \
+		--enable-optimize \
+		--disable-dict  \
+		--disable-gopher  \
+		--disable-ftp  \
+		--disable-imap  \
+		--disable-ldap  \
+		--disable-ldaps  \
+		--disable-pop3  \
+		--disable-proxy  \
+		--disable-rtsp  \
+		--disable-smb  \
+		--disable-smtp  \
+		--disable-telnet  \
+		--disable-tftp  \
+		--without-libidn  \
+		--without-librtmp  \
+		--without-libssh2  \
+		--without-zlib  \
+		--disable-shared \
 		--without-ca-bundle --without-ca-path \
 		--enable-threaded-resolver \
 		ac_cv_header_sys_poll_h=no \
 		$(LOGBUILD)
 	@echo "Building curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
-		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE) lib $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 curl: $(BUILD)/lib/libcurl.a

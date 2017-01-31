@@ -1,4 +1,4 @@
-MBEDTLS_VERSION=2.3.0
+MBEDTLS_VERSION=2.4.0
 
 MBEDTLS_ENV=
 ifneq (,$(findstring mingw,$(TARGET)))
@@ -8,11 +8,13 @@ endif
 
 $(BUILD)/lib/libmbedtls.a: build/tools
 	@echo "Unpacking mbedtls for $(TARGET)"
-	@mkdir -p $(BUILD)
-	@cd $(BUILD); \
+	@mkdir -p $(BUILD)/lib
+	@mkdir -p $(BUILD)/include
+	cd $(BUILD); \
 		rm -fr $(BUILD)/mbedtls; \
 		$(TAR) zxf $(DEPS)/mbedtls-$(MBEDTLS_VERSION)-apache.tgz; \
-		mv mbedtls-$(MBEDTLS_VERSION) mbedtls
+		mv mbedtls-$(MBEDTLS_VERSION) mbedtls; \
+		cp $(DEPS)/mbedtls-config.h mbedtls/include/mbedtls/config.h
 	@echo "Building mbedtls for $(TARGET)"
 	@cd $(BUILD)/mbedtls; \
 		$(ENV) $(MBEDTLS_ENV) $(MAKE) $(LOGBUILD) ; \
