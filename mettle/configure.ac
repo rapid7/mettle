@@ -30,9 +30,9 @@ esac
 
 AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
 
-CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
-
 CHECK_LIBC_COMPAT
+
+CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
 
 AC_CONFIG_FILES([
 	Makefile

@@ -15,6 +15,10 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
+ifeq "$(shell uname -s)" "Darwin"
+	export SDKROOT=macosx10.8
+endif
+
 CFLAGS:=$(CFLAGS) -Os -I$(BUILD)/include
 ifeq (,$(findstring mingw,$(TARGET)))
     CFLAGS:=$(CFLAGS) -fPIE
@@ -35,10 +39,12 @@ ifneq "$(HOST)" ""
 endif
 
 # if Debug is enabled, build with debug symbols, otherwise strip the symbol table
-ifeq "$(D)" "1"
-    CFLAGS:=$(CFLAGS) -g
-else
-    LDFLAGS:=$(LDFLAGS) -s
+ifeq "$(shell uname -s)" "Linux"
+    ifeq "$(D)" "1"
+        CFLAGS:=$(CFLAGS) -g
+    else
+        LDFLAGS:=$(LDFLAGS) -s
+    endif
 endif
 
 ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
