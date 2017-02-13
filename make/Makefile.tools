@@ -15,6 +15,17 @@ ifneq "$(TARGET)" "native"
         LD=$(TARGET)-ld
         RANLIB=$(TARGET)-ranlib
     endif
+    ifneq (,$(findstring iphone,$(TARGET)))
+        ADDFLAGS:=-isysroot $(SDKROOT)
+        ifneq (,$(findstring arm,$(TARGET)))
+            ADDFLAGS:=$(ADDFLAGS) -mios-version-min=7.1 -arch armv7
+        else
+            ADDFLAGS:=$(ADDFLAGS) -mios-version-min=7.1 -arch arm64
+        endif
+        CFLAGS:=$(CFLAGS) $(ADDFLAGS)
+        CPPFLAGS:=$(CPPFLAGS) $(ADDFLAGS)
+        LDFLAGS:=$(LDFLAGS) $(ADDFLAGS)
+    endif
 endif
 
 TAR=tar
