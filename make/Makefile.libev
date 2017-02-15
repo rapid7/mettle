@@ -16,6 +16,7 @@ $(BUILD)/libev/Makefile: build/tools $(BUILD)/libev/configure $(LIBEV_DEPS)
 $(BUILD)/lib/libev.a: $(BUILD)/libev/Makefile
 	@echo "Building libev for $(TARGET)"
 	@cd $(BUILD)/libev; \
+		sed -i -- 's/HAVE_CLOCK_GETTIME 1/HAVE_CLOCK_GETTIME 0/g' config.h; \
 		$(MAKE) $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
