@@ -9,9 +9,6 @@
 #else
 #include <arpa/inet.h>
 #endif
-#ifdef __APPLE__
-#define htole32(x) OSSwapHostToLittleInt32(x)
-#endif
 #include <endian.h>
 
 #include <pthread.h>
