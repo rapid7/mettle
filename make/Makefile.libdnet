@@ -4,8 +4,7 @@ $(BUILD)/libdnet/configure:
 	@cd $(BUILD); \
 		rm -fr libdnet; \
 		$(TAR) zxf $(ROOT)/deps/libdnet-1.12.tar.gz; \
-		mv libdnet-1.12 libdnet; \
-		cp libdnet/src/route-none.c libdnet/src/route-linux.c
+		mv libdnet-1.12 libdnet
 
 DNET_CONFIGURE_FLAGS:=""
 ifneq "$(TARGET)" "native"
