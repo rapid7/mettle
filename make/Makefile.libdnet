@@ -8,7 +8,11 @@ $(BUILD)/libdnet/configure:
 
 DNET_CONFIGURE_FLAGS:=""
 ifneq "$(TARGET)" "native"
-    DNET_CONFIGURE_FLAGS:=ac_cv_dnet_linux_procfs=yes ac_cv_dnet_bsd_bpf=no
+    ifneq (,$(findstring iphone,$(TARGET)))
+        DNET_CONFIGURE_FLAGS:=ac_cv_dnet_bsd_bpf=no
+    else
+        DNET_CONFIGURE_FLAGS:=ac_cv_dnet_linux_procfs=yes ac_cv_dnet_bsd_bpf=no
+    endif
 endif
 
 $(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure $(DNET_DEPS)
