@@ -33,7 +33,8 @@ To generate a payload with Mettle:
 mettle = MetasploitPayloads::Mettle.new(platform_triple, config={})
 ```
 
-The available platform triples are:
+The available platform triples for Linux targets are:
+
 * `aarch64-linux-musl`
 * `armv5l-linux-musleabi`
 * `armv5b-linux-musleabi`
@@ -45,6 +46,20 @@ The available platform triples are:
 * `mipsel-linux-muslsf`
 * `mips64-linux-muslsf`
 * `s390x-linux-musl`
+
+For Mingw32-64 Windows targets, the following triples are added. On up-to-date
+Debian / Ubuntu systems, the `mingw-w64` package will install both toolchains.
+
+* `x86_64-w64-mingw32`
+* `i686-w64-mingw32`
+
+For macOS/iOS builds, the following triples are added. To target older MacOSX
+versions, see https://github.com/phracker/MacOSX-SDKs to get the appropriate
+SDK folder.
+
+* `arm-iphone-darwin`
+* `arm64-iphone-darwin`
+* `x86_64-apple-darwin`
 
 Available config options are:
 * `:uri` - the uri to connect back to
