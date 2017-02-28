@@ -32,10 +32,10 @@ void resolve_host_async(struct eio_req *req)
 		.ai_family = addr_type,
 	};
 
-        struct tlv_iterator i = {
-                .packet = ctx->req,
-                .value_type = TLV_TYPE_HOST_NAME,
-        };
+	struct tlv_iterator i = {
+		.packet = ctx->req,
+		.value_type = TLV_TYPE_HOST_NAME,
+	};
 	const char *hostname;
 	while ((hostname = tlv_packet_iterate_str(&i))) {
 		struct addrinfo *resolved_host = NULL;

@@ -503,7 +503,7 @@ resolve(struct eio_req *req)
 static void
 reconnect_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 {
-	struct network_client *nc = (struct network_client *)w;
+	struct network_client *nc = w->data;
 
 	if (nc->state != network_client_closed || nc->num_servers == 0) {
 		return;
@@ -516,6 +516,7 @@ reconnect_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 int network_client_start(struct network_client *nc)
 {
 	ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
+	nc->connect_timer.data = nc;
 	ev_timer_start(nc->loop, &nc->connect_timer);
 	return 0;
 }

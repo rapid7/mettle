@@ -76,6 +76,7 @@ heartbeat_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 int start_heartbeat(struct mettle *m)
 {
 	ev_timer_init(&m->heartbeat, heartbeat_cb, 0, 5.0);
+	m->heartbeat.data = m;
 	ev_timer_start(m->loop, &m->heartbeat);
 	return 0;
 }

@@ -1,3 +1,4 @@
+include make/Makefile.curl
 include make/Makefile.libdnet
 include make/Makefile.libev
 include make/Makefile.libeio
@@ -21,6 +22,7 @@ $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 		autoreconf -i $(LOGBUILD)
 
 $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
+	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libmbedtls.a \
