@@ -3,6 +3,7 @@ include make/Makefile.libdnet
 include make/Makefile.libev
 include make/Makefile.libeio
 include make/Makefile.libsigar
+include make/Makefile.libz
 include make/Makefile.mbedtls
 
 deps/README.md: make/Makefile.tools

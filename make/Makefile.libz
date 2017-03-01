@@ -1,0 +1,22 @@
+LIBZ_VERSION=1.2.8.2015.12.26
+
+$(BUILD)/libz/configure:
+	@echo "Unpacking libz for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/libz; \
+		$(TAR) zxf $(DEPS)/libz-$(LIBZ_VERSION).tar.gz; \
+		mv libz-$(LIBZ_VERSION) libz
+
+$(BUILD)/libz/Makefile: build/tools $(BUILD)/libz/configure $(LIBZ_DEPS)
+	@echo "Configuring libz for $(TARGET)"
+	@cd $(BUILD)/libz; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/libz.a: $(BUILD)/libz/Makefile
+	@echo "Building libz for $(TARGET)"
+	@cd $(BUILD)/libz; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libz: $(BUILD)/lib/libz.a

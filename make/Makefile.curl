@@ -1,7 +1,8 @@
 LIBCURL_VERSION=7.53.1
 
 $(BUILD)/lib/libcurl.a: build/tools \
-	$(BUILD)/lib/libmbedtls.a
+	$(BUILD)/lib/libmbedtls.a \
+	$(BUILD)/lib/libz.a
 	@echo "Unpacking curl for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
@@ -30,7 +31,6 @@ $(BUILD)/lib/libcurl.a: build/tools \
 		--without-libidn  \
 		--without-librtmp  \
 		--without-libssh2  \
-		--without-zlib  \
 		--disable-shared \
 		--without-ca-bundle --without-ca-path \
 		--enable-threaded-resolver \
