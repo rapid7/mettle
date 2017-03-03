@@ -16,7 +16,7 @@ ARCHES := $(shell cat ARCHES)
 # Create the individual build/clean/dist-clean rules for each arch...
 define rules_for_each_arch
 
-$(strip $(1)).build: $(ROOT)/build/tools/musl-cross/.unpacked
+$(strip $(1)).build: $(ROOT)/build/tools/musl-cross/.unpacked $(ROOT)/mettle/configure
 	make TARGET=$(strip $(1))
 
 $(strip $(1)).clean:
