@@ -7,7 +7,7 @@ git submodule init; git submodule update
 ```
 after cloning.
 
-To build the gem (currently requires linux):
+To build the gem (currently requires Linux or macOS):
 
 ```
 rake build
@@ -24,6 +24,26 @@ To completely reset your dev environment and delete all binary artifacts:
 ```
 rake mettle:ultraclean
 ```
+
+Make Targets
+------------
+
+For general development, there are a few make targets defined:
+
+Running `make` will build for the local environment. E.g. if you're on macOS,
+it will build for macOS using your native compiler and tools.
+
+`make TARGET=triple` will build for a specific host triple. See below for some
+common ones.
+
+`make clean` will clean the 'mettle' directory for the current build target
+
+`make distclean` will clean the entire build target`
+
+`make all-parallel` will build for every known target, useful with '-j' to build multiple targets at once.
+
+`make clean-parallel` and `make distclean-parallel` do similar for all targets.
+
 
 Gem API
 -------

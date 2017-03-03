@@ -5,22 +5,19 @@ ifneq (,$(findstring mingw,$(TARGET)))
     MBEDTLS_ENV=WINDOWS=1
 endif
 
-
 $(BUILD)/lib/libmbedtls.a: build/tools
 	@echo "Unpacking mbedtls for $(TARGET)"
 	@mkdir -p $(BUILD)/lib
 	@mkdir -p $(BUILD)/include
-	cd $(BUILD); \
+	@cd $(BUILD); \
 		rm -fr $(BUILD)/mbedtls; \
 		$(TAR) zxf $(DEPS)/mbedtls-$(MBEDTLS_VERSION)-apache.tgz; \
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls; \
 		cp $(DEPS)/mbedtls-config.h mbedtls/include/mbedtls/config.h
 	@echo "Building mbedtls for $(TARGET)"
 	@cd $(BUILD)/mbedtls; \
-		$(ENV) $(MBEDTLS_ENV) $(MAKE) $(LOGBUILD) ; \
+		$(ENV) $(MBEDTLS_ENV) $(MAKE) lib $(LOGBUILD); \
 		cp -r library/*.a $(BUILD)/lib ; \
 		cp -r include/mbedtls $(BUILD)/include
-
-	#$(MBEDTLS_ENV) $(MAKE_INSTALL) DESTDIR=$(BUILD) $(LOGBUILD)
 
 mbedtls: $(BUILD)/lib/libmbedtls.a
