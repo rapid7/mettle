@@ -23,7 +23,7 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-CFLAGS:=$(CFLAGS) -Os -I$(BUILD)/include
+CFLAGS:=$(CFLAGS) -Os -Wno-attributes -I$(BUILD)/include
 ifeq (,$(findstring mingw,$(TARGET)))
     CFLAGS:=$(CFLAGS) -fPIE
     ifneq (,$(findstring sparc,$(TARGET)))
