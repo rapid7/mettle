@@ -30,8 +30,7 @@ struct network_client_server {
 	char *uri;
 	enum network_proto proto;
 	char *host;
-	char **services;
-	int num_services;
+	char *service;
 };
 
 struct network_client {
@@ -40,7 +39,7 @@ struct network_client {
 	struct network_client_server *servers;
 	int num_servers;
 
-	int curr_server, curr_service;
+	int curr_server;
 	uint64_t connect_time_s;
 
 	struct bufferev *be;
@@ -84,32 +83,14 @@ void server_free(struct network_client_server *srv)
 {
 	free(srv->host);
 	free(srv->uri);
-	for (int i = 0; i < srv->num_services; i++) {
-		free(srv->services[i]);
-	}
-	free(srv->services);
+	free(srv->service);
 	memset(srv, 0, sizeof(*srv));
-}
-
-int add_server_service(struct network_client_server *srv, const char *service)
-{
-	char *service_cpy = strdup(service);
-	if (service_cpy == NULL) {
-		return -1;
-	}
-	srv->services = reallocarray(srv->services,
-			srv->num_services + 1, sizeof(char *));
-	if (srv->services == NULL) {
-		return -1;
-	}
-	srv->services[srv->num_services++] = service_cpy;
-	return 0;
 }
 
 int init_server(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
-	char *services = NULL;
+	char *service = NULL;
 	char *proto = NULL;
 	char *uri_tmp = strdup(uri);
 	char *host = strstr(uri_tmp, "://");
@@ -130,10 +111,10 @@ int init_server(struct network_client_server *srv, const char *uri)
 		host += 3;
 	}
 
-	services = strstr(host, ":");
-	if (services) {
-		services[0] = '\0';
-		services++;
+	service = strstr(host, ":");
+	if (service) {
+		service[0] = '\0';
+		service++;
 	}
 
 	if (proto == NULL || host == NULL) {
@@ -144,21 +125,8 @@ int init_server(struct network_client_server *srv, const char *uri)
 	srv->host = strdup(host);
 	srv->proto = network_str_to_proto(proto);
 
-	if (services) {
-		char *services_tmp = strdup(services);
-		if (!services_tmp) {
-			goto out;
-		}
-
-		char *service_tmp = services_tmp;
-		const char *service;
-		while ((service = strsep(&service_tmp, ",")) != NULL) {
-			if (add_server_service(srv, service) != 0) {
-				free(services_tmp);
-				goto out;
-			}
-		}
-		free(services_tmp);
+	if (service) {
+		srv->service = strdup(service);
 	} else {
 		log_error("%s service unspecified", proto);
 		goto out;
@@ -215,29 +183,13 @@ get_curr_server(struct network_client *nc)
 	}
 }
 
-const char *
-get_curr_service(struct network_client *nc)
-{
-	if (nc->servers) {
-		return nc->servers[nc->curr_server].services[nc->curr_service];
-	} else {
-		return 0;
-	}
-}
-
 struct network_client_server *
 choose_next_server(struct network_client *nc)
 {
-	struct network_client_server *srv = get_curr_server(nc);
-	if (srv && nc->curr_service < srv->num_services - 1) {
-		nc->curr_service++;
-	} else {
-		nc->curr_service = 0;
-		if (nc->num_servers > 1) {
-			nc->curr_server++;
-			if (nc->curr_server >= nc->num_servers) {
-				nc->curr_server = 0;
-			}
+	if (nc->num_servers > 1) {
+		nc->curr_server++;
+		if (nc->curr_server >= nc->num_servers) {
+			nc->curr_server = 0;
 		}
 	}
 	return get_curr_server(nc);
@@ -295,7 +247,7 @@ client_connected(struct network_client *nc)
 	nc->state = network_client_connected;
 	struct network_client_server *srv = get_curr_server(nc);
 	log_info("connected to %s://%s:%s",
-		network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+		network_proto_to_str(srv->proto), srv->host, srv->service);
 }
 
 static void on_read(struct bufferev *be, void *arg)
@@ -311,7 +263,7 @@ static void connection_failed(struct network_client *nc)
 {
 	struct network_client_server *srv = get_curr_server(nc);
 	log_info("failed to connect to '%s://%s:%s'",
-			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+			network_proto_to_str(srv->proto), srv->host, srv->service);
 	set_closed(nc);
 
 	if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
@@ -371,7 +323,7 @@ on_resolve(struct eio_req *req)
 
 	if (req->result != 0) {
 		log_info("could not resolve '%s://%s:%s': %s",
-			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc),
+			network_proto_to_str(srv->proto), srv->host, srv->service,
 			gai_strerror(req->result));
 		nc->state = network_client_closed;
 		return 0;
@@ -445,8 +397,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	}
 
 	srv->proto = network_proto_tcp;
-
-	add_server_service(srv, service);
+	srv->service = strdup(service);
 
 	if (nc->be == NULL) {
 		nc->be = bufferev_new(nc->loop);
@@ -469,7 +420,6 @@ resolve(struct eio_req *req)
 	}
 
 	struct network_client_server *srv = get_curr_server(nc);
-	const char *service = get_curr_service(nc);
 
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
@@ -485,10 +435,10 @@ resolve(struct eio_req *req)
 	}
 
 	log_info("resolving %s://%s:%s",
-			network_proto_to_str(srv->proto), srv->host, service);
+			network_proto_to_str(srv->proto), srv->host, srv->service);
 
 	nc->state = network_client_resolving;
-	req->result = getaddrinfo(srv->host, service, &hints, &nc->addrinfo);
+	req->result = getaddrinfo(srv->host, srv->service, &hints, &nc->addrinfo);
 
 	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
 		char *port = NULL;
