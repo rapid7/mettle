@@ -111,15 +111,36 @@ int init_server(struct network_client_server *srv, const char *uri)
 		host += 3;
 	}
 
-	service = strstr(host, ":");
-	if (service) {
-		service[0] = '\0';
-		service++;
-	}
-
 	if (proto == NULL || host == NULL) {
 		log_error("failed to parse URI: %s", uri);
 		goto out;
+	}
+
+	if (*host == '[') {
+		host++;
+		char *ipv6_end = host;
+		while (*ipv6_end != 0 && *ipv6_end != ']') {
+			ipv6_end++;
+		}
+		if (*ipv6_end == ']') {
+			*ipv6_end = '\0';
+		} else {
+			log_error("invalid ipv6 address: %s", uri);
+			goto out;
+		}
+		printf("%s\n", host);
+		service = ipv6_end + 1;
+		if (*service == ':' && service[1] != '\0') {
+			service++;
+		} else {
+			service = NULL;
+		}
+	} else {
+		service = strstr(host, ":");
+		if (service) {
+			service[0] = '\0';
+			service++;
+		}
 	}
 
 	srv->host = strdup(host);
@@ -262,8 +283,7 @@ static void on_read(struct bufferev *be, void *arg)
 static void connection_failed(struct network_client *nc)
 {
 	struct network_client_server *srv = get_curr_server(nc);
-	log_info("failed to connect to '%s://%s:%s'",
-			network_proto_to_str(srv->proto), srv->host, srv->service);
+	log_info("failed to connect to '%s'", srv->uri);
 	set_closed(nc);
 
 	if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
@@ -312,7 +332,11 @@ log_addrinfo(const char *msg, struct addrinfo *ai)
 		port = ntohs(s->sin6_port);
 		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
 	}
-	log_info("%s %s://%s:%d", msg, proto, host, port);
+	if (strchr(host, ':') != NULL) {
+		log_info("%s %s://[%s]:%d", msg, proto, host, port);
+	} else {
+		log_info("%s %s://%s:%d", msg, proto, host, port);
+	}
 }
 
 static int
@@ -322,9 +346,8 @@ on_resolve(struct eio_req *req)
 	struct network_client_server *srv = get_curr_server(nc);
 
 	if (req->result != 0) {
-		log_info("could not resolve '%s://%s:%s': %s",
-			network_proto_to_str(srv->proto), srv->host, srv->service,
-			gai_strerror(req->result));
+		log_info("could not resolve '%s': %s",
+			srv->uri, gai_strerror(req->result));
 		nc->state = network_client_closed;
 		return 0;
 	}
@@ -434,8 +457,7 @@ resolve(struct eio_req *req)
 		hints.ai_protocol = IPPROTO_TCP;
 	}
 
-	log_info("resolving %s://%s:%s",
-			network_proto_to_str(srv->proto), srv->host, srv->service);
+	log_info("resolving '%s'", srv->uri);
 
 	nc->state = network_client_resolving;
 	req->result = getaddrinfo(srv->host, srv->service, &hints, &nc->addrinfo);
