@@ -177,3 +177,17 @@ ssize_t buffer_queue_remove_all(struct buffer_queue *q, void **data)
 	*data = buf;
 	return bytes;
 }
+
+ssize_t buffer_queue_move_all(struct buffer_queue *dst, struct buffer_queue *src)
+{
+	size_t moved = 0;
+	struct buffer *buf, *tmp;
+	LL_FOREACH_SAFE(src->head, buf, tmp) {
+		LL_DELETE(src->head, buf);
+		src->bytes -= buf->len;
+		LL_APPEND(dst->head, buf);
+		dst->bytes += buf->len;
+		moved += buf->len;
+	}
+	return moved;
+}

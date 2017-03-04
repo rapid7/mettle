@@ -249,7 +249,7 @@ static void set_closed(struct network_client *nc)
 	}
 }
 
-int network_client_close(struct network_client *nc)
+int network_client_stop(struct network_client *nc)
 {
 	if (nc->state != network_client_connected) {
 		return -1;
@@ -258,7 +258,7 @@ int network_client_close(struct network_client *nc)
 	return 0;
 }
 
-void network_client_setcbs(struct network_client *nc,
+void network_client_set_cbs(struct network_client *nc,
 	bufferev_data_cb read_cb,
 	bufferev_data_cb write_cb,
 	bufferev_event_cb event_cb,
@@ -370,7 +370,7 @@ on_resolve(struct eio_req *req)
 		nc->state = network_client_connecting;
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
-			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			bufferev_set_cbs(nc->be, on_read, NULL, on_event, nc);
 			if (bufferev_connect_addrinfo(nc->be, nc->src, nc->dst, 1.0) == 0) {
 				nc->dst = nc->dst->ai_next;
 				failed = false;
@@ -432,7 +432,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	if (nc->be == NULL) {
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
-			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			bufferev_set_cbs(nc->be, on_read, NULL, on_event, nc);
 			bufferev_connect_tcp_sock(nc->be, sock);
 			client_connected(nc);
 		}
@@ -494,8 +494,6 @@ reconnect_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 
 int network_client_start(struct network_client *nc)
 {
-	ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
-	nc->connect_timer.data = nc;
 	ev_timer_start(nc->loop, &nc->connect_timer);
 	return 0;
 }
@@ -513,7 +511,7 @@ void network_client_free(struct network_client *nc)
 			nc->be = NULL;
 		}
 		ev_timer_stop(nc->loop, &nc->connect_timer);
-		network_client_close(nc);
+		network_client_stop(nc);
 		network_client_remove_servers(nc);
 		free(nc->src_addr);
 		if (nc->src) {
@@ -533,6 +531,8 @@ struct network_client * network_client_new(struct ev_loop *loop)
 		nc->loop = loop;
 		nc->state = network_client_closed;
 		nc->max_retries = -1;
+		ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
+		nc->connect_timer.data = nc;
 	}
 	return nc;
 }

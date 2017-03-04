@@ -64,7 +64,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
 		case 'u':
-			mettle_add_server_uri(m, optarg);
+			mettle_add_transport_uri(m, optarg);
 			break;
 		case 'U':
 			mettle_set_uuid_base64(m, optarg);
@@ -130,7 +130,12 @@ int main(int argc, char * argv[])
 		/*
 		 * There is a fd sitting here, trust me
 		 */
-		mettle_add_tcp_sock(m, (int)((long *)argv)[1]);
+		int fd = (int)((long *)argv)[1];
+		char *uri;
+		if (asprintf(&uri, "fd://%d", fd) > 0) {
+			mettle_add_transport_uri(m, uri);
+			free(uri);
+		}
 		parse_default_args(m);
 	} else {
 		parse_default_args(m);

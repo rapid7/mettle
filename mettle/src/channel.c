@@ -137,7 +137,7 @@ static struct tlv_packet * new_request(struct channel *c, const char *method, si
 	return p;
 }
 
-static int send_write_request(struct channel *c, void *buf, size_t buf_len)
+static ssize_t send_write_request(struct channel *c, void *buf, size_t buf_len)
 {
 	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
@@ -145,7 +145,7 @@ static int send_write_request(struct channel *c, void *buf, size_t buf_len)
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
 
-int channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct tlv_packet *extra)
+ssize_t channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct tlv_packet *extra)
 {
 	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
@@ -154,7 +154,7 @@ int channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct tlv_
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 }
 
-int channel_enqueue(struct channel *c, void *buf, size_t buf_len)
+ssize_t channel_enqueue(struct channel *c, void *buf, size_t buf_len)
 {
 	if (c->interactive) {
 		return send_write_request(c, buf, buf_len);
@@ -163,17 +163,22 @@ int channel_enqueue(struct channel *c, void *buf, size_t buf_len)
 	}
 }
 
-int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *q)
+ssize_t channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *q)
 {
-	void *buf;
-	ssize_t buf_len = buffer_queue_remove_all(q, &buf);
-	if (buf_len <= 0) {
-		return -1;
+	ssize_t enqueued_bytes = -1;
+	if (c->interactive) {
+		void *buf;
+		ssize_t buf_len = buffer_queue_remove_all(q, &buf);
+		if (buf_len <= 0) {
+			goto out;
+		}
+		enqueued_bytes = send_write_request(c, buf, buf_len);
+		free(buf);
+	} else {
+		enqueued_bytes = buffer_queue_move_all(c->queue, q);
 	}
-
-	int rc = channel_enqueue(c, buf, buf_len);
-	free(buf);
-	return rc;
+out:
+	return enqueued_bytes;
 }
 
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len)

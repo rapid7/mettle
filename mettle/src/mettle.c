@@ -12,9 +12,9 @@
 #include <sigar.h>
 
 #include "base64.h"
-#include "mettle.h"
+#include "c2.h"
 #include "log.h"
-#include "network_client.h"
+#include "mettle.h"
 #include "process.h"
 #include "tlv.h"
 
@@ -24,7 +24,7 @@ struct mettle {
 	struct channelmgr *cm;
 	struct procmgr *pm;
 
-	struct network_client *nc;
+	struct c2 *c2;
 	bool first_packet;
 	struct tlv_dispatcher *td;
 
@@ -81,14 +81,9 @@ int start_heartbeat(struct mettle *m)
 	return 0;
 }
 
-int mettle_add_server_uri(struct mettle *m, const char *uri)
+int mettle_add_transport_uri(struct mettle *m, const char *uri)
 {
-	return network_client_add_uri(m->nc, uri);
-}
-
-int mettle_add_tcp_sock(struct mettle *m, int fd)
-{
-	return network_client_add_tcp_sock(m->nc, fd);
+	return c2_add_transport_uri(m->c2, uri);
 }
 
 struct ev_loop * mettle_get_loop(struct mettle *m)
@@ -140,12 +135,12 @@ struct procmgr * mettle_get_procmgr(struct mettle *m)
 void mettle_free(struct mettle *m)
 {
 	if (m) {
+		if (m->c2)
+			c2_free(m->c2);
 		if (m->cm)
 			channelmgr_free(m->cm);
 		if (m->td)
 			tlv_dispatcher_free(m->td);
-		if (m->nc)
-			network_client_free(m->nc);
 		free(m);
 	}
 }
@@ -157,23 +152,23 @@ static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 	size_t len;
 
 	while ((buf = tlv_dispatcher_dequeue_response(td, &len))) {
-		network_client_write(m->nc, buf, len);
+		c2_write(m->c2, buf, len);
 		free(buf);
 	}
 }
 
-static void on_network_event(struct bufferev *be, int event, void *arg)
+static void on_c2_event(struct c2 *c2, int event, void *arg)
 {
 	struct mettle *m = arg;
-	if (event & BEV_CONNECTED) {
+	if (event & C2_REACHABLE) {
 		m->first_packet = true;
 	}
 }
 
-static void on_network_read(struct bufferev *be, void *arg)
+static void on_c2_read(struct c2 *c2, void *arg)
 {
 	struct mettle *m = arg;
-	struct buffer_queue *q = bufferev_rx_queue(be);
+	struct buffer_queue *q = c2_ingress_queue(c2);
 	struct tlv_packet *request;
 
 	if (m->first_packet) {
@@ -213,10 +208,11 @@ struct mettle *mettle(void)
 
 	start_heartbeat(m);
 
-	m->nc = network_client_new(m->loop);
-	if (m->nc == NULL) {
+	m->c2 = c2_new(m->loop);
+	if (m->c2 == NULL) {
 		goto err;
 	}
+	c2_set_cbs(m->c2, on_c2_read, NULL, on_c2_event, m);
 
 	if (sigar_open(&m->sigar) == -1) {
 		goto err;
@@ -227,8 +223,6 @@ struct mettle *mettle(void)
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
-
-	network_client_setcbs(m->nc, on_network_read, NULL, on_network_event, m);
 
 	m->td = tlv_dispatcher_new(on_tlv_response, m);
 	if (m->td == NULL) {
@@ -255,7 +249,7 @@ int mettle_start(struct mettle *m)
 
 	tlv_register_stdapi(m);
 
-	network_client_start(m->nc);
+	c2_start(m->c2);
 
 	ev_async_start(m->loop, &eio_async_watcher);
 

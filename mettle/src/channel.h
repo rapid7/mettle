@@ -64,12 +64,12 @@ void channel_set_interactive(struct channel *c, bool enable);
 
 int channel_send_close_request(struct channel *c);
 
-int channel_enqueue(struct channel *c, void *buf, size_t buf_len);
+ssize_t channel_enqueue(struct channel *c, void *buf, size_t buf_len);
 
-int channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len,
+ssize_t channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len,
 		struct tlv_packet *extra);
 
-int channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *bq);
+ssize_t channel_enqueue_buffer_queue(struct channel *c, struct buffer_queue *bq);
 
 ssize_t channel_dequeue(struct channel *c, void *buf, size_t buf_len);
 

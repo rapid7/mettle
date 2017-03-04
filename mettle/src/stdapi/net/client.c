@@ -30,13 +30,15 @@ tcp_client_channel_free(struct tcp_client_channel *tcc)
 	}
 }
 
-void tcp_client_channel_read_cb(struct bufferev *be, void *arg)
+static void
+tcp_client_channel_read_cb(struct bufferev *be, void *arg)
 {
 	struct tcp_client_channel *tcc = arg;
 	channel_enqueue_buffer_queue(tcc->channel, bufferev_rx_queue(be));
 }
 
-void tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
+static void
+tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 {
 	struct tcp_client_channel *tcc = arg;
 	struct tlv_handler_ctx *tlv_ctx = tcc->tlv_ctx;
@@ -68,7 +70,8 @@ void tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 	}
 }
 
-static int tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
+static int
+tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
 	const char *src_host, *dst_host;
 	uint32_t src_port = 0, dst_port = 0;
@@ -102,7 +105,7 @@ static int tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 		goto err;
 	}
 
-	network_client_setcbs(tcc->nc,
+	network_client_set_cbs(tcc->nc,
 			tcp_client_channel_read_cb, NULL,
 			tcp_client_channel_event_cb, tcc);
 	if (src_host || src_port) {
@@ -123,19 +126,22 @@ err:
 	return -1;
 }
 
-static ssize_t tcp_client_read(struct channel *c, void *buf, size_t len)
+static ssize_t
+tcp_client_read(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_client_channel *tcc = channel_get_ctx(c);
 	return network_client_read(tcc->nc, buf, len);
 }
 
-static ssize_t tcp_client_write(struct channel *c, void *buf, size_t len)
+static ssize_t
+tcp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_client_channel *tcc = channel_get_ctx(c);
 	return network_client_write(tcc->nc, buf, len);
 }
 
-static int tcp_client_free(struct channel *c)
+static int
+tcp_client_free(struct channel *c)
 {
 	struct tcp_client_channel *tcc = channel_get_ctx(c);
 	if (tcc) {
@@ -145,7 +151,8 @@ static int tcp_client_free(struct channel *c)
 	return 0;
 }
 
-static struct tlv_packet *tcp_shutdown(struct tlv_handler_ctx *ctx)
+static struct tlv_packet *
+tcp_shutdown(struct tlv_handler_ctx *ctx)
 {
 	struct channel *c = tlv_handler_ctx_channel_by_id(ctx);
 	if (c == NULL) {
@@ -180,7 +187,8 @@ udp_client_channel_free(struct udp_client_channel *ucc)
 	}
 }
 
-void udp_client_channel_read_cb(struct bufferev *be, void *arg)
+static void
+udp_client_channel_read_cb(struct bufferev *be, void *arg)
 {
 	struct udp_client_channel *ucc = arg;
 	size_t len;
@@ -199,7 +207,8 @@ void udp_client_channel_read_cb(struct bufferev *be, void *arg)
 	}
 }
 
-void udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
+static void
+udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 {
 	struct udp_client_channel *tcc = arg;
 	struct tlv_handler_ctx *tlv_ctx = tcc->tlv_ctx;
@@ -231,7 +240,8 @@ void udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 	}
 }
 
-static int udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
+static int
+udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
 	const char *src_host, *dst_host;
 	uint32_t src_port = 0, dst_port = 0;
@@ -262,7 +272,7 @@ static int udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 		goto err;
 	}
 
-	network_client_setcbs(uc->nc,
+	network_client_set_cbs(uc->nc,
 			udp_client_channel_read_cb, NULL,
 			udp_client_channel_event_cb, uc);
 	if (src_host || src_port) {
@@ -284,7 +294,8 @@ err:
 	return 0;
 }
 
-static ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
+static ssize_t
+udp_client_read(struct channel *c, void *buf, size_t len)
 {
 	struct udp_client_channel *ucc = channel_get_ctx(c);
 	size_t msg_len;
@@ -293,14 +304,16 @@ static ssize_t udp_client_read(struct channel *c, void *buf, size_t len)
 	return msg_len;
 }
 
-static ssize_t udp_client_write(struct channel *c, void *buf, size_t len)
+static ssize_t
+udp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct udp_client_channel *ucc = channel_get_ctx(c);
 	return network_client_write(ucc->nc, buf,
 			TYPESAFE_MIN(len, IP_LEN_MAX - IP_HDR_LEN - UDP_HDR_LEN));
 }
 
-static int udp_client_free(struct channel *c)
+static int
+udp_client_free(struct channel *c)
 {
 	struct udp_client_channel *ucc = channel_get_ctx(c);
 	if (ucc) {
