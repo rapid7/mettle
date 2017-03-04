@@ -18,10 +18,6 @@ enum network_proto {
 	network_proto_tls,
 };
 
-const char *network_proto_to_str(enum network_proto proto);
-
-enum network_proto network_str_to_proto(const char *proto);
-
 struct bufferev;
 
 struct bufferev * bufferev_new(struct ev_loop *loop);

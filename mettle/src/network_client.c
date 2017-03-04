@@ -87,7 +87,7 @@ void server_free(struct network_client_server *srv)
 	memset(srv, 0, sizeof(*srv));
 }
 
-int init_server(struct network_client_server *srv, const char *uri)
+int server_init(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
 	char *service = NULL;
@@ -144,7 +144,15 @@ int init_server(struct network_client_server *srv, const char *uri)
 	}
 
 	srv->host = strdup(host);
-	srv->proto = network_str_to_proto(proto);
+
+	if (strcmp(proto, "udp") == 0) {
+		srv->proto = network_proto_udp;
+	} else if (strcmp(proto, "tcp") == 0) {
+		srv->proto = network_proto_tcp;
+	} else {
+		log_error("unsupported protocol '%s'", proto);
+		goto out;
+	}
 
 	if (service) {
 		srv->service = strdup(service);
@@ -186,7 +194,7 @@ network_client_add_uri(struct network_client *nc, const char *uri)
 		return -1;
 	}
 
-	if (init_server(&nc->servers[nc->num_servers], uri) != 0) {
+	if (server_init(&nc->servers[nc->num_servers], uri) != 0) {
 		return -1;
 	}
 
@@ -267,8 +275,7 @@ client_connected(struct network_client *nc)
 {
 	nc->state = network_client_connected;
 	struct network_client_server *srv = get_curr_server(nc);
-	log_info("connected to %s://%s:%s",
-		network_proto_to_str(srv->proto), srv->host, srv->service);
+	log_info("connected to '%s'", srv->uri);
 }
 
 static void on_read(struct bufferev *be, void *arg)

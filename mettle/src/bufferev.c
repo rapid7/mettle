@@ -47,37 +47,6 @@ struct bufferev {
 	int num_services;
 };
 
-struct {
-	enum network_proto proto;
-	const char *str;
-} proto_list[] = {
-	{network_proto_udp, "udp"},
-	{network_proto_tcp, "tcp"},
-	{network_proto_tcp, "tls"},
-};
-
-const char
-*network_proto_to_str(enum network_proto proto)
-{
-	for (int i = 0; i < COUNT_OF(proto_list); i++) {
-		if (proto_list[i].proto == proto) {
-			return proto_list[i].str;
-		}
-	}
-	return "unknown";
-}
-
-enum network_proto
-network_str_to_proto(const char *proto)
-{
-	for (int i = 0; i < COUNT_OF(proto_list); i++) {
-		if (!strcasecmp(proto_list[i].str, proto)) {
-			return proto_list[i].proto;
-		}
-	}
-	return network_proto_tcp;
-}
-
 void bufferev_setcbs(struct bufferev *be,
 	bufferev_data_cb read_cb,
 	bufferev_data_cb write_cb,

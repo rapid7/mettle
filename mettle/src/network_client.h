@@ -9,8 +9,6 @@
 
 #include "bufferev.h"
 
-struct buffer_queue;
-
 struct network_client;
 
 struct network_client * network_client_new(struct ev_loop *loop);
