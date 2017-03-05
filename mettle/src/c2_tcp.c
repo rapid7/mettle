@@ -7,12 +7,27 @@
 #include <stdlib.h>
 
 #include "c2.h"
-#include "network_client.h"
 #include "log.h"
+#include "network_client.h"
+#include "tlv.h"
+
+struct tcp_ctx {
+	struct network_client *nc;
+	int first_packet;
+};
 
 static void tcp_read_cb(struct bufferev *be, void *arg)
 {
 	struct c2_transport *t = arg;
+	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
+	if (ctx->first_packet) {
+		struct buffer_queue *q = bufferev_rx_queue(be);
+		if (tlv_have_sync_packet(q, "core_machine_id")) {
+			ctx->first_packet = 0;
+		} else {
+			return;
+		}
+	}
 	c2_transport_ingress_queue(t, bufferev_read_queue(be));
 }
 
@@ -32,57 +47,75 @@ int fd_transport_init(struct c2_transport *t)
 	if (fd < 0) {
 		return -1;
 	}
-	struct network_client *nc = network_client_new(c2_transport_loop(t));
-	if (nc == NULL) {
+
+	struct tcp_ctx *ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL) {
 		return -1;
 	}
-	network_client_add_tcp_sock(nc, fd);
-	network_client_set_retries(nc, 0);
-	network_client_set_cbs(nc, tcp_read_cb, NULL, tcp_event_cb, t);
-	c2_transport_set_ctx(t, nc);
+
+	ctx->nc = network_client_new(c2_transport_loop(t));
+	if (ctx->nc == NULL) {
+		free(ctx);
+		return -1;
+	}
+
+	network_client_add_tcp_sock(ctx->nc, fd);
+	network_client_set_retries(ctx->nc, 0);
+	network_client_set_cbs(ctx->nc, tcp_read_cb, NULL, tcp_event_cb, t);
+	ctx->first_packet = 1;
+	c2_transport_set_ctx(t, ctx);
 	return 0;
 }
 
 int tcp_transport_init(struct c2_transport *t)
 {
-	struct network_client *nc = network_client_new(c2_transport_loop(t));
-	if (nc == NULL) {
+	struct tcp_ctx *ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL) {
 		return -1;
 	}
-	network_client_add_uri(nc, c2_transport_uri(t));
-	network_client_set_retries(nc, 0);
-	network_client_set_cbs(nc, tcp_read_cb, NULL, tcp_event_cb, t);
-	c2_transport_set_ctx(t, nc);
+
+	ctx->nc = network_client_new(c2_transport_loop(t));
+	if (ctx->nc == NULL) {
+		free(ctx);
+		return -1;
+	}
+
+	network_client_add_uri(ctx->nc, c2_transport_uri(t));
+	network_client_set_retries(ctx->nc, 0);
+	network_client_set_cbs(ctx->nc, tcp_read_cb, NULL, tcp_event_cb, t);
+	ctx->first_packet = 1;
+	c2_transport_set_ctx(t, ctx);
 	return 0;
 }
 
 void tcp_transport_start(struct c2_transport *t)
 {
-	struct network_client *nc = c2_transport_get_ctx(t);
-	network_client_start(nc);
+	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
+	network_client_start(ctx->nc);
 }
 
 void tcp_transport_egress(struct c2_transport *t, struct buffer_queue *egress)
 {
-	struct network_client *nc = c2_transport_get_ctx(t);
+	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
 	void *buf = NULL;
 	size_t buflen = buffer_queue_remove_all(egress, &buf);
 	if (buf) {
-		network_client_write(nc, buf, buflen);
+		network_client_write(ctx->nc, buf, buflen);
 		free(buf);
 	}
 }
 
 void tcp_transport_stop(struct c2_transport *t)
 {
-	struct network_client *nc = c2_transport_get_ctx(t);
-	network_client_stop(nc);
+	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
+	network_client_stop(ctx->nc);
 }
 
 void tcp_transport_free(struct c2_transport *t)
 {
-	struct network_client *nc = c2_transport_get_ctx(t);
-	network_client_free(nc);
+	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
+	network_client_free(ctx->nc);
+	free(ctx);
 	c2_transport_set_ctx(t, NULL);
 }
 

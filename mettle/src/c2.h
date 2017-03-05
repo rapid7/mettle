@@ -49,7 +49,6 @@ struct c2_transport_cbs {
 	int (*init)(struct c2_transport *t);
 	void (*start)(struct c2_transport *t);
 	void (*egress)(struct c2_transport *t, struct buffer_queue *egress);
-	void (*poll)(struct c2_transport *t);
 	void (*stop)(struct c2_transport *t);
 	void (*free)(struct c2_transport *t);
 };

@@ -268,11 +268,6 @@ transport_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 			t->type->cbs.start(t);
 		}
 		c2->transport_state = c2_transport_state_starting;
-
-	} else if (c2->transport_state == c2_transport_state_reachable) {
-		if (t->type->cbs.poll) {
-			t->type->cbs.poll(t);
-		}
 	}
 }
 

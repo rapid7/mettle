@@ -35,15 +35,20 @@ static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
 {
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
+#ifdef SIGKILL
 	/*
 	 * First try to kill ourselves with a signal
 	 */
-#ifdef SIGKILL
 	raise(SIGKILL);
 #endif
 
 	/*
-	 * If at first you don't suceeed, trigger a SIGSEGV
+	 * Try to simply exit
+	 */
+	exit(0);
+
+	/*
+	 * Finally, trigger a SIGSEGV
 	 */
 	void (*nada) (void) = NULL;
 	nada();

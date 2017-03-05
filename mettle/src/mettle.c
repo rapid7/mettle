@@ -25,7 +25,6 @@ struct mettle {
 	struct procmgr *pm;
 
 	struct c2 *c2;
-	bool first_packet;
 	struct tlv_dispatcher *td;
 
 	sigar_t *sigar;
@@ -161,7 +160,6 @@ static void on_c2_event(struct c2 *c2, int event, void *arg)
 {
 	struct mettle *m = arg;
 	if (event & C2_REACHABLE) {
-		m->first_packet = true;
 	}
 }
 
@@ -170,14 +168,6 @@ static void on_c2_read(struct c2 *c2, void *arg)
 	struct mettle *m = arg;
 	struct buffer_queue *q = c2_ingress_queue(c2);
 	struct tlv_packet *request;
-
-	if (m->first_packet) {
-		if (tlv_have_sync_packet(q, "core_machine_id")) {
-			m->first_packet = false;
-		} else {
-			return;
-		}
-	}
 
 	while ((request = tlv_packet_read_buffer_queue(q))) {
 		tlv_dispatcher_process_request(m->td, request);
