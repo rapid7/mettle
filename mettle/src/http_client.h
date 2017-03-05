@@ -37,7 +37,7 @@ struct http_request_data {
 #define HTTP_DATA_COMPRESS (1 << 0)
 	unsigned int flags;
 	const char *content_type;
-	const void *content;
+	void *content;
 	size_t content_len;
 };
 
