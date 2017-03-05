@@ -537,9 +537,13 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	ctx->method = tlv_packet_get_str(p, TLV_TYPE_METHOD);
 	ctx->id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID);
 
-	if (ctx->method == NULL || ctx->id == NULL) {
+	if (ctx->method == NULL) {
 		tlv_handler_ctx_free(ctx);
 		return -1;
+	}
+
+	if (ctx->id == NULL) {
+		ctx->id = "none";
 	}
 
 	struct tlv_packet *response = NULL;
@@ -570,7 +574,6 @@ bool tlv_have_sync_packet(struct buffer_queue *q, const char *method)
 	size_t method_len = strlen(method);
 
 	while (buffer_queue_len(q) >= 62 + method_len) {
-
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
 		uint32_t xor_key = ntohl(h.xor_key);
