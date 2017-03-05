@@ -472,10 +472,11 @@ resolve(struct eio_req *req)
 	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
 		char *port = NULL;
 		if (nc->src_port > 0) {
-			asprintf(&port, "%u", nc->src_port);
+			char port_buf[6];
+			snprintf(port_buf, sizeof(port_buf), "%u", nc->src_port);
+			port = port_buf;
 		}
 		getaddrinfo(nc->src_addr, port, &hints, &nc->src);
-		free(port);
 	}
 }
 
