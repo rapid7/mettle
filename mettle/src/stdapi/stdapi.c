@@ -12,6 +12,7 @@
 #include "net/resolve.c"
 #include "sys/config.c"
 #include "sys/process.c"
+#include "webcam/webcam.c"
 
 void tlv_register_stdapi(struct mettle *m)
 {
@@ -26,4 +27,6 @@ void tlv_register_stdapi(struct mettle *m)
 
 	sys_config_register_handlers(m);
 	sys_process_register_handlers(m);
+
+	webcam_register_handlers(m);
 }
