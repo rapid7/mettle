@@ -41,7 +41,6 @@
 
 - (void) dealloc
 {
-  [super dealloc];
   @synchronized (self) {
     if (head != nil) {
       CFRelease(head);
@@ -62,12 +61,11 @@
     [AVCaptureDeviceInput deviceInputWithDevice: device  error: &error];
   [session addInput:input];
 
-  AVCaptureVideoDataOutput *output = [[[AVCaptureVideoDataOutput alloc] init] autorelease];
+  AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
   [session addOutput:output];
 
   dispatch_queue_t queue = dispatch_queue_create("webcam_queue", NULL);
   [output setSampleBufferDelegate:self queue:queue];
-  dispatch_release(queue);
 
   [session startRunning];
   return true;
@@ -136,9 +134,11 @@ Capture* capture;
 struct tlv_packet *webcam_get_frame(struct tlv_handler_ctx *ctx)
 {
   struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-  NSData* jpgData = [capture getFrame];
-  if (jpgData) {
-    p = tlv_packet_add_raw(p, TLV_TYPE_WEBCAM_IMAGE, jpgData.bytes, jpgData.length);
+  @autoreleasepool {
+    NSData* jpgData = [capture getFrame];
+    if (jpgData) {
+      p = tlv_packet_add_raw(p, TLV_TYPE_WEBCAM_IMAGE, jpgData.bytes, jpgData.length);
+    }
   }
   return p;
 }
@@ -151,18 +151,22 @@ struct tlv_packet *webcam_start(struct tlv_handler_ctx *ctx)
   tlv_packet_get_u32(ctx->req, TLV_TYPE_WEBCAM_QUALITY, &quality);
 
   int rc = TLV_RESULT_FAILURE;
-  capture = [[Capture alloc] init];
-  if ([capture start:deviceIndex]) {
-    rc = TLV_RESULT_SUCCESS;
-  } else {
-    capture = nil;
+  @autoreleasepool {
+    capture = [[Capture alloc] init];
+    if ([capture start:deviceIndex]) {
+      rc = TLV_RESULT_SUCCESS;
+    } else {
+      capture = nil;
+    }
   }
   return tlv_packet_response_result(ctx, rc);
 }
 
 struct tlv_packet *webcam_stop(struct tlv_handler_ctx *ctx)
 {
-  [capture stop];
+  @autoreleasepool {
+    [capture stop];
+  }
   return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
