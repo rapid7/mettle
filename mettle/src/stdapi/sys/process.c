@@ -202,13 +202,22 @@ int sys_process_free(struct channel *c)
  */
 static void process_channel_exit_cb(struct process *p, int exit_status, void *arg)
 {
-	struct channel *c = arg;
-	channel_send_close_request(c);
+	struct channelmgr *cm = arg;
+	uint32_t channel_id = process_get_channel_id(p);
+	struct channel *c = channelmgr_channel_by_id(cm, channel_id);
+	if (c) {
+		channel_send_close_request(c);
+	}
 }
 
-static void process_channel_read_cb(struct buffer_queue *queue, void *arg)
+static void process_channel_read_cb(struct process *p, struct buffer_queue *queue, void *arg)
 {
-	struct channel *c = arg;
+	struct channelmgr *cm = arg;
+	uint32_t channel_id = process_get_channel_id(p);
+	struct channel *c = channelmgr_channel_by_id(cm, channel_id);
+	if (!c) {
+		return;
+	}
 	size_t len = buffer_queue_len(queue);
 	void *buf = malloc(len);
 	if (buf) {
@@ -255,11 +264,12 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		channel_set_ctx(c, p);
 		ctx->channel = c;
 		ctx->channel_id = channel_get_id(c);
+		process_set_channel_id(p, ctx->channel_id);
 
 		process_set_callbacks(p,
 		    process_channel_read_cb,
 		    process_channel_read_cb,
-		    process_channel_exit_cb, c);
+		    process_channel_exit_cb, cm);
 	}
 
 	struct tlv_packet *resp = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);

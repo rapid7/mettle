@@ -13,7 +13,7 @@ void procmgr_free(struct procmgr *mgr);
 
 typedef void (*process_exit_cb_t)(struct process *, int exit_status, void *arg);
 
-typedef	void (*process_read_cb_t)(struct buffer_queue *queue, void *arg);
+typedef	void (*process_read_cb_t)(struct process *, struct buffer_queue *queue, void *arg);
 
 struct process_options {
 	const char *args;               /* Process arguments (none if not specified) */
@@ -64,5 +64,15 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
  * Returns the PID of the given process
  */
 pid_t process_get_pid(struct process *p);
+
+/*
+ * Returns the channel_id of the given process
+ */
+uint32_t process_get_channel_id(struct process *process);
+
+/*
+ * Sets the channel_id of the given process
+ */
+void process_set_channel_id(struct process *process, uint32_t channel_id);
 
 #endif

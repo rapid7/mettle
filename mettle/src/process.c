@@ -39,6 +39,7 @@ struct process {
 	process_exit_cb_t exit_cb;
 
 	void *cb_arg;
+	uint32_t channel_id;
 
 	UT_hash_handle hh;
 	pid_t pid;
@@ -54,6 +55,16 @@ extern char **environ;
 pid_t process_get_pid(struct process *process)
 {
 	return process->pid;
+}
+
+uint32_t process_get_channel_id(struct process *process)
+{
+	return process->channel_id;
+}
+
+void process_set_channel_id(struct process *process, uint32_t channel_id)
+{
+	process->channel_id = channel_id;
 }
 
 static void free_process_queue(struct ev_loop *loop, struct process_queue *pipe)
@@ -238,7 +249,7 @@ static void stdout_cb(struct ev_loop *loop, struct ev_io *w, int events)
 
 	if (read_fd_into_queue(w->fd, process->out.queue) > 0) {
 		if (process->out_cb) {
-			process->out_cb(process->out.queue, process->cb_arg);
+			process->out_cb(process, process->out.queue, process->cb_arg);
 		}
 	}
 }
@@ -249,7 +260,7 @@ static void stderr_cb(struct ev_loop *loop, struct ev_io *w, int events)
 
 	if (read_fd_into_queue(w->fd, process->err.queue) > 0) {
 		if (process->err_cb) {
-			process->err_cb(process->err.queue, process->cb_arg);
+			process->err_cb(process, process->err.queue, process->cb_arg);
 		}
 	}
 }
