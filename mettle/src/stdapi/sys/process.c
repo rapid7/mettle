@@ -205,7 +205,7 @@ static void process_channel_exit_cb(struct process *p, int exit_status, void *ar
 	struct channelmgr *cm = arg;
 	uint32_t channel_id = process_get_channel_id(p);
 	struct channel *c = channelmgr_channel_by_id(cm, channel_id);
-	if (c) {
+	if (c && channel_get_interactive(c)) {
 		channel_send_close_request(c);
 	}
 }
