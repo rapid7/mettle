@@ -136,6 +136,15 @@ void zlog_finish()
 	zlog_fout = stdout;
 }
 
+static const char *short_filename(const char *filename)
+{
+	char *src = strstr(filename, "src/");
+	if (src) {
+		src += strlen("src/");
+	}
+	return src;
+}
+
 void zlog_time(const char *filename, int line, char const *fmt, ...)
 {
 	va_list va;
@@ -153,7 +162,7 @@ void zlog_time(const char *filename, int line, char const *fmt, ...)
 
 		buffer = zlog_get_buffer();
 		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s%ss] [%s:%d] ",
-			timebuf, usecbuf + 1, filename, line);
+			timebuf, usecbuf + 1, short_filename(filename), line);
 		buffer += strlen(buffer);
 
 		va_start(va, fmt);
@@ -167,13 +176,11 @@ void zlog(const char *filename, int line, char const *fmt, ...)
 {
 	va_list va;
 	char *buffer = NULL;
-	char *fn = strdup(filename);
-	if (fn == NULL)
-		return;
 
 	if (zlog_fout) {
 		buffer = zlog_get_buffer();
-		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s:%d]", filename, line);
+		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s:%d]",
+			short_filename(filename), line);
 		va_start(va, fmt);
 		vsnprintf(buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
 		zlog_finish_buffer();
