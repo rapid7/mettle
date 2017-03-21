@@ -23,7 +23,7 @@ ifeq "$(shell uname -s)" "Darwin"
     endif
 endif
 
-CFLAGS:=$(CFLAGS) -Os -Wno-attributes -I$(BUILD)/include
+CFLAGS:=$(CFLAGS) -Os -Wno-attributes
 ifeq (,$(findstring mingw,$(TARGET)))
     CFLAGS:=$(CFLAGS) -fPIE
     ifneq (,$(findstring sparc,$(TARGET)))
@@ -33,7 +33,7 @@ ifeq (,$(findstring mingw,$(TARGET)))
     endif
 endif
 
-CPPFLAGS:=-I$(BUILD)/include
+CPPFLAGS:=-I$(BUILD)/include -DCURL_STATICLIB
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 ifneq "$(TARGET)" "native"
 	HOST=$(TARGET)
