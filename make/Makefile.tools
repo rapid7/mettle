@@ -58,7 +58,7 @@ $(ROOT)/build/tools/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_V
 	@touch build/tools/musl-cross/.unpacked
 
 TOOLS_DEPS=
-ifneq "$(TARGET)" "native"
+ifneq (,$(findstring musl,$(TARGET)))
   TOOLS_DEPS=$(ROOT)/build/tools/musl-cross/.unpacked $(ELF2BIN)
 endif
 
