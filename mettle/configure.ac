@@ -8,12 +8,17 @@ AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_PROG_CC
+AC_PROG_OBJC
 AC_PROG_CC_STDC
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
 LT_INIT
 
 case $host_os in
+	*darwin*)
+		HOST_OS=apple
+		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
+		;;
 	*linux*)
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
 		;;
@@ -29,6 +34,7 @@ case $host_os in
 esac
 
 AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
+AM_CONDITIONAL([HOST_APPLE],     [test x$HOST_OS = xapple])
 
 CHECK_LIBC_COMPAT
 

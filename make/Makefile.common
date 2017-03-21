@@ -16,10 +16,13 @@ DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
 ifeq "$(shell uname -s)" "Darwin"
+    LDFLAGS:=$(LDFLAGS) -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreImage -framework CoreVideo
     ifneq (,$(findstring iphone,$(TARGET)))
         export SDKROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
+        LDFLAGS:=$(LDFLAGS) -framework UIKit -framework CoreGraphics
     else
         export SDKROOT=$(shell xcrun --sdk macosx --show-sdk-path)
+        LDFLAGS:=$(LDFLAGS) -framework AppKit
     endif
 endif
 
