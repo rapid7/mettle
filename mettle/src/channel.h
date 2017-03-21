@@ -62,6 +62,8 @@ struct channel_callbacks * channel_get_callbacks(struct channel *c);
 
 void channel_set_interactive(struct channel *c, bool enable);
 
+bool channel_get_interactive(struct channel *c);
+
 int channel_send_close_request(struct channel *c);
 
 ssize_t channel_enqueue(struct channel *c, void *buf, size_t buf_len);

@@ -13,7 +13,7 @@ void procmgr_free(struct procmgr *mgr);
 
 typedef void (*process_exit_cb_t)(struct process *, int exit_status, void *arg);
 
-typedef	void (*process_read_cb_t)(struct buffer_queue *queue, void *arg);
+typedef	void (*process_read_cb_t)(struct process *, struct buffer_queue *queue, void *arg);
 
 struct process_options {
 	const char *args;               /* Process arguments (none if not specified) */

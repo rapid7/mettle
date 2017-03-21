@@ -323,6 +323,10 @@ void channel_set_interactive(struct channel *c, bool enable)
 	c->interactive = enable;
 }
 
+bool channel_get_interactive(struct channel *c)
+{
+	return c->interactive;
+}
 
 static struct tlv_packet *channel_interact(struct tlv_handler_ctx *ctx)
 {

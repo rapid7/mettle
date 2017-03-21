@@ -129,7 +129,7 @@ static void stdout_cb(struct ev_loop *loop, struct ev_io *w, int events)
 
 	if (read_fd_into_queue(w->fd, process->out.queue) > 0) {
 		if (process->out_cb) {
-			process->out_cb(process->out.queue, process->cb_arg);
+			process->out_cb(process, process->out.queue, process->cb_arg);
 		}
 	}
 }
@@ -140,7 +140,7 @@ static void stderr_cb(struct ev_loop *loop, struct ev_io *w, int events)
 
 	if (read_fd_into_queue(w->fd, process->err.queue) > 0) {
 		if (process->err_cb) {
-			process->err_cb(process->err.queue, process->cb_arg);
+			process->err_cb(process, process->err.queue, process->cb_arg);
 		}
 	}
 }

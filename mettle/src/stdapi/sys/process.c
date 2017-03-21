@@ -170,6 +170,11 @@ struct tlv_packet *sys_process_wait(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
+struct channelmgr_ctx {
+	struct channelmgr *cm;
+	uint32_t channel_id;
+};
+
 /*
  * Handlers registered with the channel manager to send data to the process manager
  */
@@ -202,13 +207,21 @@ int sys_process_free(struct channel *c)
  */
 static void process_channel_exit_cb(struct process *p, int exit_status, void *arg)
 {
-	struct channel *c = arg;
-	channel_send_close_request(c);
+	struct channelmgr_ctx *cm_ctx = arg;
+	struct channel *c = channelmgr_channel_by_id(cm_ctx->cm, cm_ctx->channel_id);
+	if (c && channel_get_interactive(c)) {
+		channel_send_close_request(c);
+	}
+	free(cm_ctx);
 }
 
-static void process_channel_read_cb(struct buffer_queue *queue, void *arg)
+static void process_channel_read_cb(struct process *p, struct buffer_queue *queue, void *arg)
 {
-	struct channel *c = arg;
+	struct channelmgr_ctx *cm_ctx = arg;
+	struct channel *c = channelmgr_channel_by_id(cm_ctx->cm, cm_ctx->channel_id);
+	if (!c) {
+		return;
+	}
 	size_t len = buffer_queue_len(queue);
 	void *buf = malloc(len);
 	if (buf) {
@@ -246,20 +259,24 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	}
 
 	if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED) {
+
+		struct channelmgr_ctx *cm_ctx = calloc(1, sizeof *ctx);
 		struct channel *c = channelmgr_channel_new(cm, "process");
-		if (c == NULL) {
+		if (c == NULL || cm_ctx == NULL) {
 			process_kill(p);
+			free(cm_ctx);
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 		}
 
 		channel_set_ctx(c, p);
 		ctx->channel = c;
-		ctx->channel_id = channel_get_id(c);
+		cm_ctx->cm = cm;
+		cm_ctx->channel_id = ctx->channel_id = channel_get_id(c);
 
 		process_set_callbacks(p,
 		    process_channel_read_cb,
 		    process_channel_read_cb,
-		    process_channel_exit_cb, c);
+		    process_channel_exit_cb, cm_ctx);
 	}
 
 	struct tlv_packet *resp = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
