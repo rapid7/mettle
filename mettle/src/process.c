@@ -39,7 +39,6 @@ struct process {
 	process_exit_cb_t exit_cb;
 
 	void *cb_arg;
-	uint32_t channel_id;
 
 	UT_hash_handle hh;
 	pid_t pid;
@@ -55,16 +54,6 @@ extern char **environ;
 pid_t process_get_pid(struct process *process)
 {
 	return process->pid;
-}
-
-uint32_t process_get_channel_id(struct process *process)
-{
-	return process->channel_id;
-}
-
-void process_set_channel_id(struct process *process, uint32_t channel_id)
-{
-	process->channel_id = channel_id;
 }
 
 static void free_process_queue(struct ev_loop *loop, struct process_queue *pipe)

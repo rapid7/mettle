@@ -65,14 +65,4 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
  */
 pid_t process_get_pid(struct process *p);
 
-/*
- * Returns the channel_id of the given process
- */
-uint32_t process_get_channel_id(struct process *process);
-
-/*
- * Sets the channel_id of the given process
- */
-void process_set_channel_id(struct process *process, uint32_t channel_id);
-
 #endif
