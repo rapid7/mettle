@@ -31,9 +31,7 @@ struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m);
 
 void mettle_free(struct mettle *);
 
-int mettle_add_server_uri(struct mettle *m, const char *uri);
-
-int mettle_add_tcp_sock(struct mettle *m, int fd);
+int mettle_add_transport_uri(struct mettle *m, const char *uri);
 
 struct channelmgr * mettle_get_channelmgr(struct mettle *m);
 

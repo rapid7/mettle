@@ -30,14 +30,13 @@ enum http_proxy_type {
 
 struct http_request_data {
 
-	struct http_request_header {
-		const char *key, *value;
-	} *headers;
+	char * const *headers;
+	int num_headers;
 
 #define HTTP_DATA_COMPRESS (1 << 0)
 	unsigned int flags;
 	const char *content_type;
-	const void *content;
+	void *content;
 	size_t content_len;
 };
 
@@ -69,6 +68,8 @@ struct http_conn;
 int http_request(const char *url, enum http_request req,
 	void (*cb)(struct http_conn *, void *arg), void *cb_arg,
 	struct http_request_data *data, struct http_request_opts *opts);
+
+struct buffer_queue * http_conn_response_queue(struct http_conn *conn);
 
 char *http_conn_response(struct http_conn *conn);
 

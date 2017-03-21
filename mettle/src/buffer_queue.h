@@ -35,4 +35,6 @@ void * buffer_queue_remove_msg(struct buffer_queue *q, size_t *len);
 
 ssize_t buffer_queue_remove_all(struct buffer_queue *q, void **data);
 
+ssize_t buffer_queue_move_all(struct buffer_queue *dst, struct buffer_queue *src);
+
 #endif

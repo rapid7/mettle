@@ -9,8 +9,6 @@
 
 #include "bufferev.h"
 
-struct buffer_queue;
-
 struct network_client;
 
 struct network_client * network_client_new(struct ev_loop *loop);
@@ -23,7 +21,7 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock);
 
 int network_client_start(struct network_client *nc);
 
-void network_client_setcbs(struct network_client *be,
+void network_client_set_cbs(struct network_client *be,
 	bufferev_data_cb read_cb,
 	bufferev_data_cb write_cb,
 	bufferev_event_cb event_cb,
@@ -37,7 +35,7 @@ void * network_client_read_msg(struct network_client *nc, size_t *buflen);
 
 ssize_t network_client_write(struct network_client *nc, void *buf, size_t buflen);
 
-int network_client_close(struct network_client *nc);
+int network_client_stop(struct network_client *nc);
 
 void network_client_free(struct network_client *nc);
 

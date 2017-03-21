@@ -25,6 +25,11 @@ struct http_conn {
 	struct buffer_queue *response;
 };
 
+struct buffer_queue * http_conn_response_queue(struct http_conn *conn)
+{
+	return conn->response;
+}
+
 char *http_conn_response(struct http_conn *conn)
 {
 	void *data = NULL;
@@ -254,17 +259,8 @@ int http_request(const char *url, enum http_request req,
 	}
 
 	if (data) {
-		if (data->headers) {
-			const struct http_request_header *header = data->headers;
-			while (header) {
-				char *header_str = NULL;
-				int rc = asprintf(&header_str, "%s: %s", header->key, header->value);
-				if (rc > 0) {
-					conn->request_headers = curl_slist_append(conn->request_headers, header_str);
-				}
-				free(header_str);
-				header++;
-			}
+		for (int i = 0; i < data->num_headers; i++) {
+			conn->request_headers = curl_slist_append(conn->request_headers, data->headers[i]);
 		}
 
 		if (data->content) {

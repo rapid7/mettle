@@ -79,7 +79,7 @@ static void open_tcp_channel(struct network_server_channel *nsc, struct bufferev
 	p = tlv_packet_add_str(p, TLV_TYPE_PEER_HOST, peer_host);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, peer_port);
 
-	bufferev_setcbs(be, conn_read_cb, NULL, conn_event_cb, conn);
+	bufferev_set_cbs(be, conn_read_cb, NULL, conn_event_cb, conn);
 	channel_set_ctx(conn->channel, conn);
 	channel_set_interactive(conn->channel, true);
 

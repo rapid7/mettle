@@ -464,7 +464,7 @@ void file_register_handlers(struct mettle *m)
 
 	tlv_dispatcher_add_handler(td, "stdapi_fs_chdir", fs_chdir, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_file", fs_delete_file, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_expand_path", fs_expand_path, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_file_expand_path", fs_expand_path, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_copy", fs_file_copy, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);

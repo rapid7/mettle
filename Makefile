@@ -19,6 +19,9 @@ define rules_for_each_arch
 $(strip $(1)).build: $(ROOT)/build/tools/musl-cross/.unpacked $(ROOT)/mettle/configure
 	make TARGET=$(strip $(1))
 
+$(strip $(1)).install:
+	make TARGET=$(strip $(1)) install
+
 $(strip $(1)).clean:
 	make TARGET=$(strip $(1)) clean
 
@@ -34,3 +37,5 @@ all-parallel: $(patsubst %,%.build,$(ARCHES))
 clean-parallel: $(patsubst %,%.clean,$(ARCHES))
 
 distclean-parallel: $(patsubst %,%.distclean,$(ARCHES))
+
+install-parallel: $(patsubst %,%.install,$(ARCHES))

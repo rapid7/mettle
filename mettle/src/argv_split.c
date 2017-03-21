@@ -13,7 +13,7 @@ char ** argv_split(char *args, char **argv, size_t *argc)
 {
 	char *p, *start_of_word = NULL;
 	int c;
-	enum states { DULL, IN_WORD, IN_STRING } state = DULL;
+	enum states { DULL, IN_WORD, IN_STRING, IN_STRING_LIT } state = DULL;
 
 	for (p = args; *p != '\0'; p++) {
 		c = (unsigned char) *p;
@@ -28,12 +28,26 @@ char ** argv_split(char *args, char **argv, size_t *argc)
 				start_of_word = p + 1;
 				continue;
 			}
+			if (c == '\'') {
+				state = IN_STRING_LIT;
+				start_of_word = p + 1;
+				continue;
+			}
 			state = IN_WORD;
 			start_of_word = p;
 			continue;
 
 		case IN_STRING:
 			if (c == '"') {
+				*p = 0;
+				argv = realloc(argv, sizeof(char *) * (*argc + 1));
+				argv[(*argc)++] = start_of_word;
+				state = DULL;
+			}
+			continue;
+
+		case IN_STRING_LIT:
+			if (c == '\'') {
 				*p = 0;
 				argv = realloc(argv, sizeof(char *) * (*argc + 1));
 				argv[(*argc)++] = start_of_word;

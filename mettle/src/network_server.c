@@ -54,7 +54,7 @@ void connect_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 		make_socket_nonblocking(fd);
 		struct bufferev *be = bufferev_new(loop);
 		if (be) {
-			bufferev_setcbs(be, ns->read_cb, ns->write_cb, ns->event_cb, ns->cb_arg);
+			bufferev_set_cbs(be, ns->read_cb, ns->write_cb, ns->event_cb, ns->cb_arg);
 			bufferev_connect_tcp_sock(be, fd);
 		}
 	}

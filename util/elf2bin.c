@@ -32,10 +32,10 @@
 #define MAP_BE MAP(ntohl,ntohl,ntohs)
 #define MAP_BE64 MAP(bswap64,ntohl,ntohs)
 
-unsigned long bswap64(unsigned long x)
+uint64_t bswap64(uint64_t x)
 {
-	return (x << 56) | (x << 40 & 0xff000000000000UL) | (x << 24 & 0xff0000000000UL) | (x << 8 & 0xff00000000UL) |
-		(x >> 8 & 0xff000000UL) | (x >> 24 & 0xff0000UL) | (x >> 40 & 0xff00UL) | (x >> 56);
+	return (x << 56) | (x << 40 & 0xff000000000000ULL) | (x << 24 & 0xff0000000000ULL) | (x << 8 & 0xff00000000ULL) |
+		(x >> 8 & 0xff000000ULL) | (x >> 24 & 0xff0000ULL) | (x >> 40 & 0xff00ULL) | (x >> 56);
 }
 
 int main(int argc, char **argv)

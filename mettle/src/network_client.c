@@ -30,8 +30,7 @@ struct network_client_server {
 	char *uri;
 	enum network_proto proto;
 	char *host;
-	char **services;
-	int num_services;
+	char *service;
 };
 
 struct network_client {
@@ -40,7 +39,7 @@ struct network_client {
 	struct network_client_server *servers;
 	int num_servers;
 
-	int curr_server, curr_service;
+	int curr_server;
 	uint64_t connect_time_s;
 
 	struct bufferev *be;
@@ -84,32 +83,14 @@ void server_free(struct network_client_server *srv)
 {
 	free(srv->host);
 	free(srv->uri);
-	for (int i = 0; i < srv->num_services; i++) {
-		free(srv->services[i]);
-	}
-	free(srv->services);
+	free(srv->service);
 	memset(srv, 0, sizeof(*srv));
 }
 
-int add_server_service(struct network_client_server *srv, const char *service)
-{
-	char *service_cpy = strdup(service);
-	if (service_cpy == NULL) {
-		return -1;
-	}
-	srv->services = reallocarray(srv->services,
-			srv->num_services + 1, sizeof(char *));
-	if (srv->services == NULL) {
-		return -1;
-	}
-	srv->services[srv->num_services++] = service_cpy;
-	return 0;
-}
-
-int init_server(struct network_client_server *srv, const char *uri)
+int server_init(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
-	char *services = NULL;
+	char *service = NULL;
 	char *proto = NULL;
 	char *uri_tmp = strdup(uri);
 	char *host = strstr(uri_tmp, "://");
@@ -130,35 +111,51 @@ int init_server(struct network_client_server *srv, const char *uri)
 		host += 3;
 	}
 
-	services = strstr(host, ":");
-	if (services) {
-		services[0] = '\0';
-		services++;
-	}
-
 	if (proto == NULL || host == NULL) {
 		log_error("failed to parse URI: %s", uri);
 		goto out;
 	}
 
-	srv->host = strdup(host);
-	srv->proto = network_str_to_proto(proto);
-
-	if (services) {
-		char *services_tmp = strdup(services);
-		if (!services_tmp) {
+	if (*host == '[') {
+		host++;
+		char *ipv6_end = host;
+		while (*ipv6_end != 0 && *ipv6_end != ']') {
+			ipv6_end++;
+		}
+		if (*ipv6_end == ']') {
+			*ipv6_end = '\0';
+		} else {
+			log_error("invalid ipv6 address: %s", uri);
 			goto out;
 		}
-
-		char *service_tmp = services_tmp;
-		const char *service;
-		while ((service = strsep(&service_tmp, ",")) != NULL) {
-			if (add_server_service(srv, service) != 0) {
-				free(services_tmp);
-				goto out;
-			}
+		printf("%s\n", host);
+		service = ipv6_end + 1;
+		if (*service == ':' && service[1] != '\0') {
+			service++;
+		} else {
+			service = NULL;
 		}
-		free(services_tmp);
+	} else {
+		service = strstr(host, ":");
+		if (service) {
+			service[0] = '\0';
+			service++;
+		}
+	}
+
+	srv->host = strdup(host);
+
+	if (strcmp(proto, "udp") == 0) {
+		srv->proto = network_proto_udp;
+	} else if (strcmp(proto, "tcp") == 0) {
+		srv->proto = network_proto_tcp;
+	} else {
+		log_error("unsupported protocol '%s'", proto);
+		goto out;
+	}
+
+	if (service) {
+		srv->service = strdup(service);
 	} else {
 		log_error("%s service unspecified", proto);
 		goto out;
@@ -197,7 +194,7 @@ network_client_add_uri(struct network_client *nc, const char *uri)
 		return -1;
 	}
 
-	if (init_server(&nc->servers[nc->num_servers], uri) != 0) {
+	if (server_init(&nc->servers[nc->num_servers], uri) != 0) {
 		return -1;
 	}
 
@@ -215,29 +212,13 @@ get_curr_server(struct network_client *nc)
 	}
 }
 
-const char *
-get_curr_service(struct network_client *nc)
-{
-	if (nc->servers) {
-		return nc->servers[nc->curr_server].services[nc->curr_service];
-	} else {
-		return 0;
-	}
-}
-
 struct network_client_server *
 choose_next_server(struct network_client *nc)
 {
-	struct network_client_server *srv = get_curr_server(nc);
-	if (srv && nc->curr_service < srv->num_services - 1) {
-		nc->curr_service++;
-	} else {
-		nc->curr_service = 0;
-		if (nc->num_servers > 1) {
-			nc->curr_server++;
-			if (nc->curr_server >= nc->num_servers) {
-				nc->curr_server = 0;
-			}
+	if (nc->num_servers > 1) {
+		nc->curr_server++;
+		if (nc->curr_server >= nc->num_servers) {
+			nc->curr_server = 0;
 		}
 	}
 	return get_curr_server(nc);
@@ -268,7 +249,7 @@ static void set_closed(struct network_client *nc)
 	}
 }
 
-int network_client_close(struct network_client *nc)
+int network_client_stop(struct network_client *nc)
 {
 	if (nc->state != network_client_connected) {
 		return -1;
@@ -277,7 +258,7 @@ int network_client_close(struct network_client *nc)
 	return 0;
 }
 
-void network_client_setcbs(struct network_client *nc,
+void network_client_set_cbs(struct network_client *nc,
 	bufferev_data_cb read_cb,
 	bufferev_data_cb write_cb,
 	bufferev_event_cb event_cb,
@@ -294,8 +275,7 @@ client_connected(struct network_client *nc)
 {
 	nc->state = network_client_connected;
 	struct network_client_server *srv = get_curr_server(nc);
-	log_info("connected to %s://%s:%s",
-		network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+	log_info("connected to '%s'", srv->uri);
 }
 
 static void on_read(struct bufferev *be, void *arg)
@@ -310,8 +290,7 @@ static void on_read(struct bufferev *be, void *arg)
 static void connection_failed(struct network_client *nc)
 {
 	struct network_client_server *srv = get_curr_server(nc);
-	log_info("failed to connect to '%s://%s:%s'",
-			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc));
+	log_info("failed to connect to '%s'", srv->uri);
 	set_closed(nc);
 
 	if (nc->max_retries >= 0 && nc->retries >= nc->max_retries) {
@@ -360,7 +339,11 @@ log_addrinfo(const char *msg, struct addrinfo *ai)
 		port = ntohs(s->sin6_port);
 		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
 	}
-	log_info("%s %s://%s:%d", msg, proto, host, port);
+	if (strchr(host, ':') != NULL) {
+		log_info("%s %s://[%s]:%d", msg, proto, host, port);
+	} else {
+		log_info("%s %s://%s:%d", msg, proto, host, port);
+	}
 }
 
 static int
@@ -370,9 +353,8 @@ on_resolve(struct eio_req *req)
 	struct network_client_server *srv = get_curr_server(nc);
 
 	if (req->result != 0) {
-		log_info("could not resolve '%s://%s:%s': %s",
-			network_proto_to_str(srv->proto), srv->host, get_curr_service(nc),
-			gai_strerror(req->result));
+		log_info("could not resolve '%s': %s",
+			srv->uri, gai_strerror(req->result));
 		nc->state = network_client_closed;
 		return 0;
 	}
@@ -388,7 +370,7 @@ on_resolve(struct eio_req *req)
 		nc->state = network_client_connecting;
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
-			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			bufferev_set_cbs(nc->be, on_read, NULL, on_event, nc);
 			if (bufferev_connect_addrinfo(nc->be, nc->src, nc->dst, 1.0) == 0) {
 				nc->dst = nc->dst->ai_next;
 				failed = false;
@@ -445,13 +427,12 @@ int network_client_add_tcp_sock(struct network_client *nc, int sock)
 	}
 
 	srv->proto = network_proto_tcp;
-
-	add_server_service(srv, service);
+	srv->service = strdup(service);
 
 	if (nc->be == NULL) {
 		nc->be = bufferev_new(nc->loop);
 		if (nc->be) {
-			bufferev_setcbs(nc->be, on_read, NULL, on_event, nc);
+			bufferev_set_cbs(nc->be, on_read, NULL, on_event, nc);
 			bufferev_connect_tcp_sock(nc->be, sock);
 			client_connected(nc);
 		}
@@ -469,7 +450,6 @@ resolve(struct eio_req *req)
 	}
 
 	struct network_client_server *srv = get_curr_server(nc);
-	const char *service = get_curr_service(nc);
 
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
@@ -484,19 +464,19 @@ resolve(struct eio_req *req)
 		hints.ai_protocol = IPPROTO_TCP;
 	}
 
-	log_info("resolving %s://%s:%s",
-			network_proto_to_str(srv->proto), srv->host, service);
+	log_info("resolving '%s'", srv->uri);
 
 	nc->state = network_client_resolving;
-	req->result = getaddrinfo(srv->host, service, &hints, &nc->addrinfo);
+	req->result = getaddrinfo(srv->host, srv->service, &hints, &nc->addrinfo);
 
 	if ((nc->src_addr || nc->src_port) && nc->src == NULL) {
 		char *port = NULL;
 		if (nc->src_port > 0) {
-			asprintf(&port, "%u", nc->src_port);
+			char port_buf[6];
+			snprintf(port_buf, sizeof(port_buf), "%u", nc->src_port);
+			port = port_buf;
 		}
 		getaddrinfo(nc->src_addr, port, &hints, &nc->src);
-		free(port);
 	}
 }
 
@@ -515,8 +495,6 @@ reconnect_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 
 int network_client_start(struct network_client *nc)
 {
-	ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
-	nc->connect_timer.data = nc;
 	ev_timer_start(nc->loop, &nc->connect_timer);
 	return 0;
 }
@@ -534,7 +512,7 @@ void network_client_free(struct network_client *nc)
 			nc->be = NULL;
 		}
 		ev_timer_stop(nc->loop, &nc->connect_timer);
-		network_client_close(nc);
+		network_client_stop(nc);
 		network_client_remove_servers(nc);
 		free(nc->src_addr);
 		if (nc->src) {
@@ -554,6 +532,8 @@ struct network_client * network_client_new(struct ev_loop *loop)
 		nc->loop = loop;
 		nc->state = network_client_closed;
 		nc->max_retries = -1;
+		ev_timer_init(&nc->connect_timer, reconnect_cb, 0, 1.0);
+		nc->connect_timer.data = nc;
 	}
 	return nc;
 }
