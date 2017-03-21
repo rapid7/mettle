@@ -500,9 +500,9 @@ void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		void (*cb)(const char *method, void *arg), void *arg)
 {
 	struct tlv_handler *handler, *tmp;
-	size_t extension_len = strlen(extension);
+	size_t extension_len = extension ? strlen(extension) : 0;
 	HASH_ITER(hh, td->handlers, handler, tmp) {
-		if (strncmp(handler->method, extension, extension_len) == 0) {
+		if (extension == NULL || strncmp(handler->method, extension, extension_len) == 0) {
 			cb(handler->method, arg);
 		}
 	}

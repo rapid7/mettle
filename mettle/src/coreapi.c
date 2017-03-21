@@ -21,8 +21,12 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	const char *extension = tlv_packet_get_str(ctx->req, TLV_TYPE_STRING);
-	if (extension == NULL) {
-		return NULL;
+
+	/*
+	 * When enumerating stdapi, send everything we know about so far
+	 */
+	if (extension == NULL || strcmp(extension, "stdapi") == 0) {
+		extension = NULL;
 	}
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
