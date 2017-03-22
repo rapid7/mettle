@@ -20,6 +20,7 @@ case $host_os in
 		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
 		;;
 	*linux*)
+		HOST_OS=linux
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
 		;;
 	*mingw*)
@@ -33,6 +34,7 @@ case $host_os in
 		;;
 esac
 
+AM_CONDITIONAL([HOST_LINUX],     [test x$HOST_OS = xlinux])
 AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
 AM_CONDITIONAL([HOST_APPLE],     [test x$HOST_OS = xapple])
 
