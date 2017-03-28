@@ -18,10 +18,12 @@ case $host_os in
 	*darwin*)
 		HOST_OS=apple
 		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
+		AC_DEFINE(HAVE_WEBCAM)
 		;;
 	*linux*)
 		HOST_OS=linux
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
+		AC_DEFINE(HAVE_WEBCAM)
 		;;
 	*mingw*)
 		HOST_OS=win
