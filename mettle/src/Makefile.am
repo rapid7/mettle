@@ -41,6 +41,9 @@ if HOST_APPLE
 libmettle_la_SOURCES += stdapi/webcam/apple_webcam.m
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
 endif
+if HOST_LINUX
+libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
+endif
 
 if !HAVE_REALLOCARRAY
 libmettle_la_SOURCES += compat/reallocarray.c

@@ -15,7 +15,7 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
-ifeq "$(shell uname -s)" "Darwin"
+ifneq (,$(findstring darwin,$(TARGET)))
     LDFLAGS:=$(LDFLAGS) -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreImage -framework CoreVideo
     ifneq (,$(findstring iphone,$(TARGET)))
         export SDKROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
