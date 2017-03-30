@@ -78,7 +78,7 @@ versions, see https://github.com/phracker/MacOSX-SDKs to get the appropriate
 SDK folder.
 
 * `arm-iphone-darwin`
-* `arm64-iphone-darwin`
+* `aarch64-iphone-darwin`
 * `x86_64-apple-darwin`
 
 Available config options are:
