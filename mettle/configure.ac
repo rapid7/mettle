@@ -19,6 +19,16 @@ case $host_os in
 		HOST_OS=apple
 		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
 		AC_DEFINE(HAVE_WEBCAM)
+		AC_SUBST([PLATFORM_LDADD], ['-framework CoreMedia -framework CoreImage -framework AVFoundation -framework ImageIO'])
+		# Include things here for macOS and not iOS, and vice-versa
+		# There is probably a better iOS check
+		AC_CHECK_HEADER([arpa/telnet.h],
+			[
+			AC_DEFINE(HAVE_DESKTOP_SCREENSHOT)
+			AC_SUBST([PLATFORM_LDADD], ["$PLATFORM_LDADD -framework Cocoa"])
+			],
+			[
+			])
 		;;
 	*linux*)
 		HOST_OS=linux

@@ -20,15 +20,13 @@
 #include <TargetConditionals.h>
 #endif
 
-#if TARGET_OS_OSX
-extern struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx);
-#endif
+struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx);
 
 void ui_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-#if TARGET_OS_OSX
+#if HAVE_DESKTOP_SCREENSHOT
 	tlv_dispatcher_add_handler(td, "stdapi_ui_desktop_screenshot", desktop_screenshot, m);
 #endif
 }
