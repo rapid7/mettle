@@ -29,6 +29,7 @@ libmettle_la_SOURCES += network_server.c
 libmettle_la_SOURCES += tlv.c
 libmettle_la_SOURCES += stdapi/stdapi.c
 libmettle_la_SOURCES += stdapi/webcam/webcam.c
+libmettle_la_SOURCES += stdapi/audio/interface.c
 if HOST_WIN
 libmettle_la_SOURCES += inet_ntop.c inet_pton.c
 libmettle_la_SOURCES += posix_win.c
@@ -41,6 +42,7 @@ endif
 libmettle_la_SOURCES += util.c
 if HOST_APPLE
 libmettle_la_SOURCES += stdapi/webcam/apple_webcam.m
+libmettle_la_SOURCES += stdapi/audio/apple_interface.m
 endif
 if HOST_OSX
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
