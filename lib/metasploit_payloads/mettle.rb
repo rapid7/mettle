@@ -57,6 +57,8 @@ module MetasploitPayloads
         'd'
       when :log_file
         'o'
+      when :background
+        'b'
       else
         fail RuntimeError, "unknown mettle option #{opt}", caller
       end
