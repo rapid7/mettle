@@ -82,10 +82,11 @@ SDK folder.
 * `x86_64-apple-darwin`
 
 Available config options are:
-* `:uri` - the uri to connect back to
-* `:uuid` - the UUID to identify the payload
+* `:background` - fork to background as a daemon
 * `:debug` - to turn on debug messages
 * `:log_file` - the file to send debug messages to instead of `stderr`
+* `:uri` - the uri to connect back to
+* `:uuid` - the UUID to identify the payload
 
 Config options can also be set with:
 ```ruby
