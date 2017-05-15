@@ -10,6 +10,8 @@ end
 module MetasploitPayloads
   class Mettle
 
+    CMDLINE_MAX = 512
+    CMDLINE_SIG = 'DEFAULT_OPTS'.freeze
     #
     # Config is a hash. Valid keys are:
     #  :uri to connect to
@@ -40,23 +42,25 @@ module MetasploitPayloads
       @config.each do |opt, val|
         cmd_line << "-#{short_opt(opt)} \"#{val}\" "
       end
-      if cmd_line.length > 264
+      if cmd_line.length > CMDLINE_MAX
         fail RuntimeError, 'mettle argument list too big', caller
       end
 
-      cmd_line + "\x00" * (264 - cmd_line.length)
+      cmd_line + "\x00" * (CMDLINE_MAX - cmd_line.length)
     end
 
     def short_opt(opt)
       case opt
-      when :uri
-        'u'
-      when :uuid
-        'U'
+      when :background
+        'b'
       when :debug
         'd'
       when :log_file
         'o'
+      when :uri
+        'u'
+      when :uuid
+        'U'
       else
         fail RuntimeError, "unknown mettle option #{opt}", caller
       end
@@ -64,7 +68,7 @@ module MetasploitPayloads
 
     def add_args(bin, params)
       if params[8] != "\x00"
-        bin.sub('DEFAULT_OPTS' +  ' ' * 252, params)
+        bin.sub(CMDLINE_SIG +  ' ' * (CMDLINE_MAX - CMDLINE_SIG.length), params)
       else
         bin
       end

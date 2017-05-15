@@ -15,15 +15,17 @@
 #include "argv_split.h"
 #include "log.h"
 #include "mettle.h"
+#include "service.h"
 
 static void usage(const char *name)
 {
 	printf("Usage: %s [options]\n", name);
-	printf("  -h, --help        display help\n");
-	printf("  -u, --uri [uri]   add connection URI\n");
-	printf("  -U, --uuid [uuid] set the UUID (base64)\n");
-	printf("  -d, --debug       enable debug output\n");
-	printf("  -o, --out [file]  write debug output to a file\n");
+	printf("  -h, --help             display help\n");
+	printf("  -u, --uri <uri>        add connection URI\n");
+	printf("  -U, --uuid <uuid>      set the UUID (base64)\n");
+	printf("  -d, --debug [level]    enable debug output\n");
+	printf("  -o, --out <file>       write debug output to a file\n");
+	printf("  -b, --background [0|1] start as a background service\n");
 	printf("\n");
 	exit(1);
 }
@@ -45,15 +47,17 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	int index = 0;
 
 	struct option options[] = {
-		{"debug", no_argument, NULL, 'd'},
+		{"debug", optional_argument, NULL, 'd'},
 		{"out", required_argument, NULL, 'o'},
 		{"uri", required_argument, NULL, 'u'},
 		{"uuid", required_argument, NULL, 'U'},
+		{"background", optional_argument, NULL, 'b'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:do:";
+	const char *short_options = "hu:U:d::o:b::";
 	const char *out = NULL;
 	bool debug = false;
+	bool background = false;
 	int log_level = 0;
 
 	/*
@@ -70,8 +74,32 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 			mettle_set_uuid_base64(m, optarg);
 			break;
 		case 'd':
-			debug = true;
-			log_set_level(++log_level);
+			if (optarg) {
+				const char *errstr = NULL;
+				int val = strtonum(optarg, 0, 3, &errstr);
+				if (errstr != NULL) {
+					fprintf(stderr, "invalid debug level '%s': %s\n", optarg, errstr);
+					return -1;
+				}
+				log_level = val;
+			} else {
+				log_level++;
+			}
+			log_set_level(log_level);
+			debug = (log_level > 0);
+			break;
+		case 'b':
+			if (optarg) {
+				const char *errstr = NULL;
+				int val = strtonum(optarg, 0, 1, &errstr);
+				if (errstr != NULL) {
+					fprintf(stderr, "invalid background setting '%s': %s", optarg, errstr);
+					return -1;
+				}
+				background = val == 1;
+			} else {
+				background = true;
+			}
 			break;
 		case 'o':
 			out = optarg;
@@ -86,16 +114,26 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		start_logger(out);
 	}
 
+	if (background) {
+		start_service();
+	}
+
 	return 0;
 }
 
 void parse_default_args(struct mettle *m)
 {
 	static char default_opts[] = "DEFAULT_OPTS"
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               ";
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  ";
 
 	if (strncasecmp(default_opts, "default_opts", strlen("default_opts"))) {
 		size_t argc = 0;
@@ -139,7 +177,9 @@ int main(int argc, char * argv[])
 		parse_default_args(m);
 	} else {
 		parse_default_args(m);
-		parse_cmdline(argc, argv, m);
+		if (parse_cmdline(argc, argv, m)) {
+			return -1;
+		}
 	}
 
 	/*
