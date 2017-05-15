@@ -124,14 +124,16 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 void parse_default_args(struct mettle *m)
 {
 	static char default_opts[] = "DEFAULT_OPTS"
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               "
-		"                                                               ";
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  "
+		"                                                  ";
 
 	if (strncasecmp(default_opts, "default_opts", strlen("default_opts"))) {
 		size_t argc = 0;
