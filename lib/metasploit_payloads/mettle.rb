@@ -49,18 +49,16 @@ module MetasploitPayloads
 
     def short_opt(opt)
       case opt
-      when :uri
-        'u'
-      when :uuid
-        'U'
       when :background
         'b'
       when :debug
         'd'
       when :log_file
         'o'
-      when :background
-        'b'
+      when :uri
+        'u'
+      when :uuid
+        'U'
       else
         fail RuntimeError, "unknown mettle option #{opt}", caller
       end
