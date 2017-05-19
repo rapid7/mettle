@@ -62,7 +62,8 @@ int fork_service(void)
 	return 0;
 }
 
-int start_service(const char *name, const char *cmd, enum persist_type persist)
+int start_service(const char *name, const char *path, const char *args,
+	enum persist_type persist)
 {
 	switch (persist) {
 		case persist_none:

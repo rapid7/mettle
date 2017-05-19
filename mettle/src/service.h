@@ -7,6 +7,7 @@ enum persist_type {
 	persist_uninstall
 };
 
-int start_service(const char *name, const char *cmd, enum persist_type persist);
+int start_service(const char *name, const char *path, const char *args,
+	enum persist_type persist);
 
 #endif

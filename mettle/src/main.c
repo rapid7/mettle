@@ -138,22 +138,22 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	}
 
 	if (background) {
-		char *cmd, *new_cmd;
-		if (asprintf(&cmd, "%s -d %u", argv[0], log_level) == -1) {
+		char *args, *new_args;
+		if (asprintf(&args, "%s -d %u", argv[0], log_level) == -1) {
 			return -1;
 		}
 		optind = 1;
 		while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 			if (c == 'u' || c == 'U' || c == 'o') {
-				if (asprintf(&new_cmd, "%s -u %s", cmd, optarg) == -1) {
+				if (asprintf(&new_args, "%s -%c %s", args, c, optarg) == -1) {
 					return -1;
 				}
-				free(cmd);
-				cmd = new_cmd;
+				free(args);
+				args = new_args;
 			}
 		}
-		start_service(name, cmd, persist);
-		free(cmd);
+		start_service(name, argv[0], args, persist);
+		free(args);
 	}
 
 	return 0;
