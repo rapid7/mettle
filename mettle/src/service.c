@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-int start_service(void)
+int start_service(const char *cmd)
 {
 	pid_t pid = fork();
 	if (pid < 0) {
