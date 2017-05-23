@@ -25,6 +25,21 @@ To completely reset your dev environment and delete all binary artifacts:
 rake mettle:ultraclean
 ```
 
+OSX requirements
+------------
+
+On OSX you will need the following:
+```
+# Install brew (if you have not already)
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+# Install command line tools
+xcode-select --install
+
+# Dependencies
+brew install coreutils m4 automake
+```
+
 Make Targets
 ------------
 
