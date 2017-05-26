@@ -7,24 +7,6 @@ git submodule init; git submodule update
 ```
 after cloning.
 
-To build the gem (currently requires Linux or macOS):
-
-```
-rake build
-```
-
-To check the resulting binaries:
-
-```
-rake check
-```
-
-To completely reset your dev environment and delete all binary artifacts:
-
-```
-rake mettle:ultraclean
-```
-
 OSX requirements
 ------------
 
@@ -59,6 +41,26 @@ common ones.
 
 `make clean-parallel` and `make distclean-parallel` do similar for all targets.
 
+Packaging
+=========
+
+To build the gem for distribution (currently requires Linux or macOS):
+
+```
+rake build
+```
+
+To check the resulting binaries:
+
+```
+rake check
+```
+
+To completely reset your dev environment and delete all binary artifacts:
+
+```
+rake mettle:ultraclean
+```
 
 Gem API
 -------
