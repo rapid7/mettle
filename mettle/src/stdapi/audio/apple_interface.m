@@ -21,9 +21,9 @@
 @end
 @interface AudioCapture ()
 {
-    CMSampleBufferRef head;
     AVCaptureSession* session;
-    int count;
+    unsigned char* audioData;
+    int length;
 }
 - (BOOL) start: (int) deviceIndex;
 - (void) stop;
@@ -35,37 +35,50 @@
 - (id) init
 {
     self = [super init];
-    head = nil;
-    count = 0;
+    length = 0;
+    audioData = (unsigned char*)malloc(4000);
     return self;
 }
 
 - (void) dealloc
 {
     @synchronized (self) {
-        if (head != nil) {
-            CFRelease(head);
-        }
+        
     }
 }
 
 - (BOOL) start: (int) deviceIndex
 {
     session = [[AVCaptureSession alloc] init];
-    session.sessionPreset = AVCaptureSessionPresetMedium;
     
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
     AVCaptureDevice *device = devices[0];
     
+    [device lockForConfiguration:nil];
+    //[device beginConfiguration:nil];
+    
+    //[session setSessionPreset: AVCaptureSessionPresetLow];
+    device.activeFormat = device.formats[7];
+    
+    //[device commitConfiguration:nil];
+    //[device unlockForConfiguration];
+    
+    NSLog(@"Device Formats: %@", [device formats]);
+    
     NSError* error = nil;
+    
     AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice: device  error: &error];
     [session addInput:input];
+    
+    NSLog(@"Input: %@", input);
     
     AVCaptureAudioDataOutput *output = [[AVCaptureAudioDataOutput alloc] init];
     [session addOutput:output];
     
     dispatch_queue_t queue = dispatch_queue_create("audio_interface_queue", NULL);
     [output setSampleBufferDelegate:self queue:queue];
+    
+    //fileHandle = [NSFileHandle fileHandleForWritingAtPath: @"/Users/dmohanty/audio.wav"];
     
     [session startRunning];
     return true;
@@ -78,23 +91,12 @@
 
 - (NSData* ) getFrame
 {
-    //Wait for 5 seconds or for 5 frames otherwise the frame is too dark
-    for (int waitFrame = 0; waitFrame < 500; waitFrame++) {
-        if (count > 5) {
-            break;
-        }
-        usleep(10000);
-    }
-    NSLog(@"Head in Get Frame: %@", head);
+    
     @synchronized (self) {
-        if (head == nil) {
-            return nil;
-        }
-        //return head;
-        
-        return [NSData dataWithBytes:head length:64];
+        NSData *audioPayload = [NSData dataWithBytes:audioData length:length];
+        length = 0;
+        return audioPayload;
     }
-    return nil;
 }
 
 - (void) captureOutput: (AVCaptureOutput*) output
@@ -102,17 +104,21 @@
         fromConnection: (AVCaptureConnection*) connection
 {
     NSLog(@"buffer in Capture: %@", buffer);
-    CMSampleBufferRef frame;
-    CMSampleBufferRef prev;
-    CMSampleBufferCreateCopy(kCFAllocatorDefault, buffer, &frame);
-    CFRetain(frame);
+    
+    CMBlockBufferRef blockBuffer = CMSampleBufferGetDataBuffer(buffer);
+    NSLog(@"blockBuffer: %@", blockBuffer);
+    
+    NSLog(@"Writing length: %zu", CMBlockBufferGetDataLength(blockBuffer));
+    
     @synchronized (self) {
-        prev = head;
-        head = frame;
-        count++;
-    }
-    if (prev != nil) {
-        CFRelease(prev);
+        CMBlockBufferCopyDataBytes(blockBuffer, 0, CMBlockBufferGetDataLength(blockBuffer), audioData);
+        for(int i = 0; i < CMBlockBufferGetDataLength(blockBuffer); i+=16){
+            
+            audioData[length] = audioData[i];
+            audioData[length+1] = audioData[i+1];
+            
+            length += 2;
+        }
     }
 }
 @end
@@ -128,8 +134,7 @@ struct tlv_packet *audio_interface_get_frame(struct tlv_handler_ctx *ctx)
             NSLog(@"wav: %@", wavData);
             p = tlv_packet_add_raw(p, TLV_TYPE_AUDIO_DATA, wavData.bytes, wavData.length);
         }else {
-            char bytesToAppend[5] = {0x01, 0xf0, 0x64, 0x0, 0x6a};
-            p = tlv_packet_add_raw(p, TLV_TYPE_AUDIO_DATA, bytesToAppend, 5);
+            p = tlv_packet_add_raw(p, TLV_TYPE_AUDIO_DATA, NULL, 0);
         }
     }
     return p;
