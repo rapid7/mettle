@@ -52,16 +52,11 @@
     session = [[AVCaptureSession alloc] init];
     
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
-    AVCaptureDevice *device = devices[0];
+    AVCaptureDevice *device = devices[deviceIndex];
     
     [device lockForConfiguration:nil];
-    //[device beginConfiguration:nil];
     
-    //[session setSessionPreset: AVCaptureSessionPresetLow];
     device.activeFormat = device.formats[7];
-    
-    //[device commitConfiguration:nil];
-    //[device unlockForConfiguration];
     
     NSLog(@"Device Formats: %@", [device formats]);
     
@@ -77,8 +72,6 @@
     
     dispatch_queue_t queue = dispatch_queue_create("audio_interface_queue", NULL);
     [output setSampleBufferDelegate:self queue:queue];
-    
-    //fileHandle = [NSFileHandle fileHandleForWritingAtPath: @"/Users/dmohanty/audio.wav"];
     
     [session startRunning];
     return true;
@@ -150,7 +143,7 @@ struct tlv_packet *audio_interface_start(struct tlv_handler_ctx *ctx)
     int rc = TLV_RESULT_FAILURE;
     @autoreleasepool {
         capture = [[AudioCapture alloc] init];
-        if ([capture start:0]) {
+        if ([capture start:deviceIndex]) {
             rc = TLV_RESULT_SUCCESS;
         } else {
             capture = nil;
