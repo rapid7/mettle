@@ -138,6 +138,9 @@ const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len);
 
 int tlv_dispatcher_set_uuid(struct tlv_dispatcher *td, char *uuid, size_t len);
 
+const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td, size_t *len);
+int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *uuid, size_t len);
+
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 
 struct mettle;

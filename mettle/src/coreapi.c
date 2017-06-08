@@ -60,6 +60,35 @@ static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+static struct tlv_packet *core_get_session_guid(struct tlv_handler_ctx *ctx)
+{
+	size_t session_guid_len;
+	struct mettle *m = ctx->arg;
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	const char *session_guid = tlv_dispatcher_get_session_guid(td, &session_guid_len);
+
+	if (session_guid && session_guid_len) {
+	       struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	       return tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, session_guid, session_guid_len);
+	}
+
+	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+}
+
+static struct tlv_packet *core_set_session_guid(struct tlv_handler_ctx *ctx)
+{
+	size_t guid_len = 0;
+	struct mettle *m = ctx->arg;
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	char *guid = tlv_packet_get_raw(ctx->req, TLV_TYPE_SESSION_GUID, &guid_len);
+
+	if (guid && guid_len) {
+		tlv_dispatcher_set_session_guid(td, guid, guid_len);
+	}
+
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+}
+
 static struct tlv_packet *core_machine_id(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
@@ -106,5 +135,7 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_machine_id", core_machine_id, m);
 	tlv_dispatcher_add_handler(td, "core_set_uuid", core_set_uuid, m);
 	tlv_dispatcher_add_handler(td, "core_uuid", core_uuid, m);
+	tlv_dispatcher_add_handler(td, "core_get_session_guid", core_get_session_guid, m);
+	tlv_dispatcher_add_handler(td, "core_set_session_guid", core_set_session_guid, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 }

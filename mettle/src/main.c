@@ -51,10 +51,11 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		{"out", required_argument, NULL, 'o'},
 		{"uri", required_argument, NULL, 'u'},
 		{"uuid", required_argument, NULL, 'U'},
+		{"session-guid", required_argument, NULL, 'G'},
 		{"background", optional_argument, NULL, 'b'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:d::o:b::";
+	const char *short_options = "hu:U:G:d::o:b::";
 	const char *out = NULL;
 	bool debug = false;
 	bool background = false;
@@ -72,6 +73,9 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 			break;
 		case 'U':
 			mettle_set_uuid_base64(m, optarg);
+			break;
+		case 'G':
+			mettle_set_session_guid_base64(m, optarg);
 			break;
 		case 'd':
 			if (optarg) {

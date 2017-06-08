@@ -23,6 +23,8 @@ const char *mettle_get_machine_id(struct mettle *m);
 
 int mettle_set_uuid_base64(struct mettle *m, char *uuid_b64);
 
+int mettle_set_session_guid_base64(struct mettle *m, char *uuid_b64);
+
 sigar_t *mettle_get_sigar(struct mettle *m);
 
 struct ev_loop * mettle_get_loop(struct mettle *m);
