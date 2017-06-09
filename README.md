@@ -7,22 +7,19 @@ git submodule init; git submodule update
 ```
 after cloning.
 
-To build the gem (currently requires Linux or macOS):
+OSX requirements
+------------
 
+On OSX you will need the following:
 ```
-rake build
-```
+# Install brew (if you have not already)
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
-To check the resulting binaries:
+# Install command line tools
+xcode-select --install
 
-```
-rake check
-```
-
-To completely reset your dev environment and delete all binary artifacts:
-
-```
-rake mettle:ultraclean
+# Dependencies
+brew install coreutils m4 automake
 ```
 
 Make Targets
@@ -44,6 +41,26 @@ common ones.
 
 `make clean-parallel` and `make distclean-parallel` do similar for all targets.
 
+Packaging
+=========
+
+To build the gem for distribution (currently requires Linux or macOS):
+
+```
+rake build
+```
+
+To check the resulting binaries:
+
+```
+rake check
+```
+
+To completely reset your dev environment and delete all binary artifacts:
+
+```
+rake mettle:ultraclean
+```
 
 Gem API
 -------

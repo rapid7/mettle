@@ -14,6 +14,7 @@
 #define TLV_TYPE_WEBCAM_QUALITY        (TLV_META_TYPE_UINT    | TLV_EXTENSIONS + 3)
 #define TLV_TYPE_WEBCAM_NAME           (TLV_META_TYPE_STRING  | TLV_EXTENSIONS + 4)
 
+
 @interface Capture : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 - (void) captureOutput: (AVCaptureOutput*) output
   didOutputSampleBuffer: (CMSampleBufferRef) buffer
@@ -21,9 +22,6 @@
 @end
 @interface Capture ()
 {
-  CVImageBufferRef head;
-  AVCaptureSession* session;
-  int count;
 }
 - (BOOL) start: (int) deviceIndex;
 - (void) stop;
@@ -31,6 +29,11 @@
 @end
 
 @implementation Capture
+
+Capture* capture;
+CVImageBufferRef head;
+AVCaptureSession* session;
+int count;
 
 - (id) init
 {
@@ -129,8 +132,6 @@
   }
 }
 @end
-
-Capture* capture;
 
 struct tlv_packet *webcam_get_frame(struct tlv_handler_ctx *ctx)
 {
