@@ -111,6 +111,17 @@ int mettle_set_uuid_base64(struct mettle *m, char *uuid_b64)
 	return 0;
 }
 
+int mettle_set_session_guid_base64(struct mettle *m, char *guid_b64)
+{
+	char *guid = calloc(1, strlen(guid_b64));
+	if (guid == NULL)
+		return -1;
+	int guid_len = base64decode(guid, guid_b64, strlen(guid_b64));
+	tlv_dispatcher_set_session_guid(m->td, guid, guid_len);
+	free(guid);
+	return 0;
+}
+
 struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m)
 {
 	return m->td;

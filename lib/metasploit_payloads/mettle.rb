@@ -61,6 +61,8 @@ module MetasploitPayloads
         'u'
       when :uuid
         'U'
+      when :session_guid
+        'G'
       else
         fail RuntimeError, "unknown mettle option #{opt}", caller
       end

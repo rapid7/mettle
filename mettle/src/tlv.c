@@ -397,6 +397,9 @@ struct tlv_dispatcher {
 
 	char *uuid;
 	size_t uuid_len;
+
+	char *session_guid;
+	size_t session_guid_len;
 };
 
 struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
@@ -665,6 +668,26 @@ const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len)
 {
 	*len = td->uuid_len;
 	return td->uuid;
+}
+
+const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td, size_t *len)
+{
+	*len = td->session_guid_len;
+	return td->session_guid;
+}
+
+int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *guid, size_t len)
+{
+	free(td->session_guid);
+	td->session_guid_len = 0;
+
+	td->session_guid = malloc(len);
+	if (td->session_guid == NULL)
+		return -1;
+
+	td->session_guid_len = len;
+	memcpy(td->session_guid, guid, len);
+	return 0;
 }
 
 void tlv_dispatcher_free(struct tlv_dispatcher *td)
