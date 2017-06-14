@@ -7,7 +7,7 @@
 #endif
 
 #include "tlv.h"
-#include "interface.h"
+#include "mic.h"
 
 #define TLV_TYPE_AUDIO_DURATION  (TLV_META_TYPE_UINT  | TLV_EXTENSIONS + 1)
 #define TLV_TYPE_AUDIO_DATA  (TLV_META_TYPE_RAW  | TLV_EXTENSIONS + 2)
@@ -118,7 +118,7 @@
 
 AudioCapture* capture;
 
-struct tlv_packet *audio_interface_get_frame(struct tlv_handler_ctx *ctx)
+struct tlv_packet *audio_mic_get_frame(struct tlv_handler_ctx *ctx)
 {    
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     @autoreleasepool {
@@ -133,14 +133,37 @@ struct tlv_packet *audio_interface_get_frame(struct tlv_handler_ctx *ctx)
     return p;
 }
 
-struct tlv_packet *audio_interface_start(struct tlv_handler_ctx *ctx)
+struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx)
 {
     uint32_t deviceIndex = 0;
     uint32_t quality = 0;
     tlv_packet_get_u32(ctx->req, TLV_TYPE_AUDIO_INTERFACE_NAME, &deviceIndex);
     tlv_packet_get_u32(ctx->req, TLV_TYPE_AUDIO_DURATION, &quality);
-    
     int rc = TLV_RESULT_FAILURE;
+    
+    //make channel
+//    struct mettle *m = ctx->arg;
+//    struct channelmgr *cm = mettle_get_channelmgr(m);
+    
+//    struct process *p = process_create(pm, path, &opts);
+//    if (p == NULL) {
+//        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+//    }
+    
+    //struct channelmgr_ctx *cm_ctx = calloc(1, sizeof *ctx);
+    //struct channel *c = channelmgr_channel_new(cm, "stream");
+    //channel_set_ctx(c, p);
+    //ctx->channel = c;
+    //cm_ctx->cm = cm;
+    //cm_ctx->channel_id = ctx->channel_id = channel_get_id(c);
+    
+//    process_set_callbacks(p,
+//                          process_channel_read_cb,
+//                          process_channel_read_cb,
+//                          process_channel_exit_cb, cm_ctx);
+    struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+    //p = tlv_packet_add_str(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
+    
     @autoreleasepool {
         capture = [[AudioCapture alloc] init];
         if ([capture start:deviceIndex]) {
@@ -149,10 +172,11 @@ struct tlv_packet *audio_interface_start(struct tlv_handler_ctx *ctx)
             capture = nil;
         }
     }
-    return tlv_packet_response_result(ctx, rc);
+    //return tlv_packet_response_result(ctx, rc);
+    return p;
 }
 
-struct tlv_packet *audio_interface_stop(struct tlv_handler_ctx *ctx)
+struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx)
 {
     @autoreleasepool {
         [capture stop];
@@ -160,7 +184,7 @@ struct tlv_packet *audio_interface_stop(struct tlv_handler_ctx *ctx)
     return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
-struct tlv_packet *audio_interface_list(struct tlv_handler_ctx *ctx)
+struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx)
 {
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];

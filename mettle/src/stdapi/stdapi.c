@@ -15,7 +15,7 @@
 #include "webcam/webcam.c"
 #include "ui/ui.c"
 #include "clipboard/clipboard.c"
-#include "audio/interface.c"
+#include "audio/mic.c"
 
 void tlv_register_stdapi(struct mettle *m)
 {
@@ -34,5 +34,5 @@ void tlv_register_stdapi(struct mettle *m)
 	webcam_register_handlers(m);
 	ui_register_handlers(m);
 	clipboard_register_handlers(m);
-    audio_interface_register_handlers(m);
+    audio_mic_register_handlers(m);
 }
