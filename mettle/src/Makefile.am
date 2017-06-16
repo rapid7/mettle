@@ -29,8 +29,6 @@ libmettle_la_SOURCES += network_server.c
 libmettle_la_SOURCES += ringbuf.c
 libmettle_la_SOURCES += tlv.c
 libmettle_la_SOURCES += stdapi/stdapi.c
-libmettle_la_SOURCES += stdapi/webcam/webcam.c
-libmettle_la_SOURCES += stdapi/audio/mic.c
 if HOST_WIN
 libmettle_la_SOURCES += inet_ntop.c inet_pton.c
 libmettle_la_SOURCES += posix_win.c
