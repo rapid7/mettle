@@ -1,8 +1,22 @@
 LIBCURL_VERSION=7.54.0
 
-$(BUILD)/lib/libcurl.a: build/tools \
-	$(BUILD)/lib/libmbedtls.a \
-	$(BUILD)/lib/libz.a
+LIBCURL_DEPS = build/tools $(BUILD)/lib/libz.a
+LIBCURL_ENV =
+LIBCURL_OPTS =
+
+ifneq (,$(findstring darwin,$(BUILD)))
+    LIBCURL_OPTS += --with-darwinssl
+    LIBCURL_ENV += MACOSX_DEPLOYMENT_TARGET="10.8"
+else
+    ifneq (,$(findstring mingw,$(BUILD)))
+        LIBCURL_OPTS += --with-ssl
+    else
+        LIBCURL_DEPS += $(BUILD)/lib/libmbedtls.a
+        LIBCURL_OPTS += --without-ssl --with-mbedtls=$(BUILD)
+    endif
+endif
+
+$(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS)
 	@echo "Unpacking curl for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
@@ -11,8 +25,8 @@ $(BUILD)/lib/libcurl.a: build/tools \
 		mv curl-$(LIBCURL_VERSION) curl
 	@echo "Configuring curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
-		$(ENV) ./$(CONFIGURE) \
-		--without-ssl --with-mbedtls=$(BUILD) \
+		$(LIBCURL_ENV) $(ENV) ./$(CONFIGURE) \
+		$(LIBCURL_OPTS) \
 		--without-libpsl \
 		--enable-optimize \
 		--disable-dict  \
@@ -38,7 +52,7 @@ $(BUILD)/lib/libcurl.a: build/tools \
 		$(LOGBUILD)
 	@echo "Building curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
-		$(MAKE) lib $(LOGBUILD) ; \
+		$(LIBCURL_ENV) $(MAKE) lib $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 curl: $(BUILD)/lib/libcurl.a

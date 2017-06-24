@@ -12,7 +12,7 @@ deps/README.md: make/Makefile.tools
 
 METTLE_DEPS=
 METTLE_OPTS=
-ifneq (,$(findstring musl,$(TARGET)))
+ifneq (,$(findstring musl,$(BUILD)))
     METTLE_DEPS=$(BUILD)/bin/mettle.bin
     METTLE_OPTS=--enable-staticpie
 endif
@@ -22,11 +22,20 @@ $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@cd $(ROOT)/mettle; \
 		autoreconf -i $(LOGBUILD)
 
+METTLE_DEPS =
+ifneq (,$(findstring darwin,$(BUILD)))
+else
+    ifneq (,$(findstring mingw,$(BUILD)))
+    else
+        METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
+    endif
+endif
+
 $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
+	$(METTLE_DEPS) \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
-	$(BUILD)/lib/libmbedtls.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"

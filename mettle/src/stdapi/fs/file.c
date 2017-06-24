@@ -15,8 +15,8 @@
 #include <dnet.h>
 #include <eio.h>
 #include <mettle.h>
-#include <mbedtls/md5.h>
-#include <mbedtls/sha1.h>
+#include <md5.h>
+#include <sha1.h>
 
 #include "channel.h"
 #include "log.h"
@@ -328,16 +328,14 @@ fs_md5_async(struct eio_req *req)
 		goto out;
 	}
 
-	mbedtls_md5_context md5;
-	mbedtls_md5_init(&md5);
-	mbedtls_md5_starts(&md5);
+	MD5_CTX md5;
+	MD5Init(&md5);
 	unsigned char buf[8096];
 	size_t buf_len = 0;
 	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
-		mbedtls_md5_update(&md5, buf, buf_len);
+		MD5Update(&md5, buf, buf_len);
 	}
-	mbedtls_md5_finish(&md5, digest);
-	mbedtls_md5_free(&md5);
+	MD5Final(digest, &md5);
 
 	fclose(f);
 
@@ -376,16 +374,14 @@ fs_sha1_async(struct eio_req *req)
 		goto out;
 	}
 
-	mbedtls_sha1_context sha1;
-	mbedtls_sha1_init(&sha1);
-	mbedtls_sha1_starts(&sha1);
+	SHA1_CTX sha1;
+	SHA1Init(&sha1);
 	unsigned char buf[8096];
 	size_t buf_len = 0;
 	while ((buf_len = fread(buf, 1, sizeof(buf), f)) > 0) {
-		mbedtls_sha1_update(&sha1, buf, buf_len);
+		SHA1Update(&sha1, buf, buf_len);
 	}
-	mbedtls_sha1_finish(&sha1, digest);
-	mbedtls_sha1_free(&sha1);
+	SHA1Final(digest, &sha1);
 
 	fclose(f);
 
