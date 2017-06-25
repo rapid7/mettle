@@ -8,6 +8,7 @@
 
 #include "tlv.h"
 #include "mic.h"
+#include "ringbuf.h"
 
 #define TLV_TYPE_AUDIO_DURATION  (TLV_META_TYPE_UINT  | TLV_EXTENSIONS + 1)
 #define TLV_TYPE_AUDIO_DATA  (TLV_META_TYPE_RAW  | TLV_EXTENSIONS + 2)
@@ -22,10 +23,11 @@
 @interface AudioCapture ()
 {
     AVCaptureSession* session;
-    unsigned char* audioData;
+    size_t audioDataBufMaxLen;
+    uint8_t *audioDataBuf;
+    ringbuf_t audioDataRingBuf;
     unsigned int audioDataDownsampleStep;
     unsigned int audioDataBitsPerChannel;
-    int length;
 }
 - (BOOL) start: (int) deviceIndex;
 - (void) stop;
@@ -37,8 +39,17 @@
 - (id) init
 {
     self = [super init];
-    length = 0;
-    audioData = (unsigned char*)malloc(32000);
+    audioDataBufMaxLen = 65536;
+    audioDataBuf = malloc(audioDataBufMaxLen);
+    if (audioDataBuf == NULL) {
+      NSLog(@"Uh oh, audioDataBuf wasn't successfully allocated...");
+     // TODO: something to not keep going!
+    }
+    audioDataRingBuf = ringbuf_new(audioDataBufMaxLen);
+    if (audioDataRingBuf == NULL) {
+      NSLog(@"Uh oh, audioDataRingBuf wasn't successfully allocated...");
+     // TODO: something to not keep going!
+    }
     audioDataDownsampleStep = 16;
     audioDataBitsPerChannel= 16;
     return self;
@@ -61,27 +72,17 @@
 
     [device lockForConfiguration:nil];
 
-    NSLog(@"Device Formats: %@", [device formats]);
-
+    //NSLog(@"Device Formats: %@", [device formats]);
     //device.activeFormat = device.formats[7];
-
     NSLog(@"Device activeformats: %@", [device activeFormat]);
-    //NSLog(@"Device supports session preset: %@", [device formats]);
     const AudioStreamBasicDescription *ASBD = CMAudioFormatDescriptionGetStreamBasicDescription(device.activeFormat.formatDescription);
-    NSLog(@"ASBD samplerate: %f", ASBD->mSampleRate);
-    NSLog(@"ASBD bitsperchannel: %u", ASBD->mBitsPerChannel);
-    NSLog(@"ASBD channelsperframe: %u", ASBD->mChannelsPerFrame);
     audioDataDownsampleStep = ((unsigned int)(ASBD->mSampleRate) / 11025) * (ASBD->mBitsPerChannel / 8) * ASBD->mChannelsPerFrame;
     audioDataBitsPerChannel = ASBD->mBitsPerChannel;
-    NSLog(@"downsamplestep: %u", audioDataDownsampleStep);
-    NSLog(@"downsamplebitsperchannel: %u", audioDataBitsPerChannel);
     
     NSError* error = nil;
     
     AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice: device  error: &error];
     [session addInput:input];
-    
-    NSLog(@"Input: %@", input);
     
     AVCaptureAudioDataOutput *output = [[AVCaptureAudioDataOutput alloc] init];
     [session addOutput:output];
@@ -102,8 +103,17 @@
 {
     
     @synchronized (self) {
-        NSData *audioPayload = [NSData dataWithBytes:audioData length:length];
-        length = 0;
+        NSData *audioPayload;
+        const size_t copyLen = ringbuf_bytes_used(audioDataRingBuf);
+        if (ringbuf_bytes_free(audioDataRingBuf) > 0) {
+            // Ring buffer hasn't filled up, so we already have a contiguous memory space to point to...
+            audioPayload = [NSData dataWithBytes:ringbuf_tail(audioDataRingBuf) length:copyLen];
+        } else {
+            // Ring buffer has wrapped, let's copy out the contents into a contigous memory space...
+            ringbuf_memcpy_from(audioDataBuf, audioDataRingBuf, copyLen);
+            audioPayload = [NSData dataWithBytes:audioDataBuf length:copyLen];
+        }
+        ringbuf_reset(audioDataRingBuf);
         return audioPayload;
     }
 }
@@ -112,27 +122,21 @@
  didOutputSampleBuffer: (CMSampleBufferRef) buffer
         fromConnection: (AVCaptureConnection*) connection
 {
-    //NSLog(@"buffer in Capture: %@", buffer);
-    
     CMBlockBufferRef blockBuffer = CMSampleBufferGetDataBuffer(buffer);
-    //NSLog(@"blockBuffer: %@", blockBuffer);
     
-    NSLog(@"Writing length: %zu", CMBlockBufferGetDataLength(blockBuffer));
-    
+   // NSLog(@"Writing length: %zu", CMBlockBufferGetDataLength(blockBuffer));
     @synchronized (self) {
         size_t bufferLen = CMBlockBufferGetDataLength(blockBuffer);
-        CMBlockBufferCopyDataBytes(blockBuffer, 0, bufferLen, audioData);
+        size_t copyLen = MIN(bufferLen, audioDataBufMaxLen);
+
+        CMBlockBufferCopyDataBytes(blockBuffer, 0, copyLen, audioDataBuf);
 
         // Downsample the audio to 11.025KHz, 16-bit, single channel
-int count = 0;
         size_t downsampledLen = 0;
         for (int i = 0; i < copyLen; i += audioDataDownsampleStep) {
-if (count < 16){
-NSLog(@"sample count %d: 0x%08x", count, *((uint32_t *)&audioDataBuf[i]));
-}
             switch (audioDataBitsPerChannel) {
                 case 32:
-                    *((uint16_t *)&audioData[length]) = (uint16_t)(*((float *)&audioData[i]) * 32767);
+                    *((uint16_t *)&audioDataBuf[downsampledLen]) = (uint16_t)(*((float *)&audioDataBuf[i]) * 32767);
                     break;
                 case 24:
                     audioDataBuf[downsampledLen] = audioDataBuf[i+1];
@@ -140,15 +144,14 @@ NSLog(@"sample count %d: 0x%08x", count, *((uint32_t *)&audioDataBuf[i]));
                     break;
                 case 16:
                 default:
-                    audioData[length] = audioData[i];
-                    audioData[length+1] = audioData[i+1];
+                    audioDataBuf[downsampledLen] = audioDataBuf[i];
+                    audioDataBuf[downsampledLen+1] = audioDataBuf[i+1];
                     break;
             }
-if (count++ < 16){
-NSLog(@"downsample sample count %d: 0x%04x", count, *((uint16_t *)&audioDataBuf[downsampledLen]));
-}
             downsampledLen += 2;
         }
+        // Store in a ring buffer to make sure we never lose the 'latest' captured audio.
+        ringbuf_memcpy_into(audioDataRingBuf, audioDataBuf, downsampledLen);
     }
 }
 @end
@@ -159,7 +162,6 @@ struct tlv_packet *audio_mic_get_frame(struct tlv_handler_ctx *ctx)
 {    
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     @autoreleasepool {
-NSLog(@"MSF is collecting the audio data now...");
         NSData* wavData = [capture getFrame];
         if (wavData) {
             //NSLog(@"wav: %@", wavData);
