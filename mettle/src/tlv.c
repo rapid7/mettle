@@ -477,6 +477,9 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
 		pthread_mutex_init(&td->mutex, NULL);
 		td->response_cb = cb;
 		td->response_cb_arg = cb_arg;
+		char default_session_guid[16] = {0};
+		tlv_dispatcher_set_session_guid(td,
+			default_session_guid, sizeof default_session_guid);
 	}
 	return td;
 }
