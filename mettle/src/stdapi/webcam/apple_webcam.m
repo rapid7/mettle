@@ -175,10 +175,12 @@ struct tlv_packet *webcam_stop(struct tlv_handler_ctx *ctx)
 struct tlv_packet *webcam_list(struct tlv_handler_ctx *ctx)
 {
   struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-  NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-  for (AVCaptureDevice *device in devices) {
-    const char *webcam_str = (const char *)[[device localizedName]cStringUsingEncoding:NSUTF8StringEncoding];
-    p = tlv_packet_add_str(p, TLV_TYPE_WEBCAM_NAME, webcam_str);
+  @autoreleasepool {
+    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    for (AVCaptureDevice *device in devices) {
+      const char *webcam_str = (const char *)[[device localizedName]cStringUsingEncoding:NSUTF8StringEncoding];
+      p = tlv_packet_add_str(p, TLV_TYPE_WEBCAM_NAME, webcam_str);
+    }
   }
   return p;
 }
