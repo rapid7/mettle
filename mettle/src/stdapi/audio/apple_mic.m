@@ -244,10 +244,12 @@ struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx)
 struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx)
 {
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
-    for (AVCaptureDevice *device in devices) {
-        const char *webcam_str = (const char *)[[device uniqueID]cStringUsingEncoding:NSUTF8StringEncoding];
-        p = tlv_packet_add_str(p, TLV_TYPE_AUDIO_INTERFACE_NAME, webcam_str);
+    @autoreleasepool {
+        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+        for (AVCaptureDevice *device in devices) {
+            const char *mic_str = (const char *)[[device uniqueID]cStringUsingEncoding:NSUTF8StringEncoding];
+            p = tlv_packet_add_str(p, TLV_TYPE_AUDIO_INTERFACE_NAME, mic_str);
+        }
     }
     return p;
 }
