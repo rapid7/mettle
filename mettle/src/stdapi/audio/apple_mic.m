@@ -214,23 +214,34 @@ ssize_t audio_mic_read(struct channel *c, void *buf, size_t len)
     return readLen;
 }
 
+BOOL mic_index_valid(uint32 deviceIndex) {
+    @autoreleasepool {
+        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+        if (deviceIndex < [devices count]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx)
 {
     uint32_t deviceIndex;
     tlv_packet_get_u32(ctx->req, TLV_TYPE_AUDIO_INTERFACE_ID, &deviceIndex);
     int rc = TLV_RESULT_FAILURE;
     deviceIndex--;
-    struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     
     @autoreleasepool {
-        capture = [[AudioCapture alloc] init];
-        if ([capture start:deviceIndex]) {
-            rc = TLV_RESULT_SUCCESS;
-        } else {
-            capture = nil;
+        if (mic_index_valid(deviceIndex)) {
+            capture = [[AudioCapture alloc] init];
+            if ([capture start:deviceIndex]) {
+                rc = TLV_RESULT_SUCCESS;
+            } else {
+                capture = nil;
+            }
         }
     }
-    return p;
+    return tlv_packet_response_result(ctx, rc);
 }
 
 struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx)
