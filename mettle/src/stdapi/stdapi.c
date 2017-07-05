@@ -34,5 +34,5 @@ void tlv_register_stdapi(struct mettle *m)
 	webcam_register_handlers(m);
 	ui_register_handlers(m);
 	clipboard_register_handlers(m);
-    audio_mic_register_handlers(m);
+	audio_mic_register_handlers(m);
 }

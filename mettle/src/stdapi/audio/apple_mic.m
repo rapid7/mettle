@@ -22,14 +22,6 @@
 @end
 @interface AudioCapture ()
 {
-    AVCaptureSession* session;
-    uint8_t *audioDataBuf;
-    ringbuf_t audioDataRingBuf;
-    unsigned int audioDataBitsPerChannel;
-    unsigned int audioDataDownsampleChunkBytes;
-    unsigned int audioDataDownsampleStepBytes;
-    float audioDataDownsamplePartialStep;
-    float audioDataDownsamplePartialStepCount;
 }
 - (BOOL) start: (int) deviceIndex;
 - (void) stop;
@@ -37,6 +29,16 @@
 @end
 
 @implementation AudioCapture
+
+AudioCapture *capture;
+AVCaptureSession* session;
+uint8_t *audioDataBuf;
+ringbuf_t audioDataRingBuf;
+unsigned int audioDataBitsPerChannel;
+unsigned int audioDataDownsampleChunkBytes;
+unsigned int audioDataDownsampleStepBytes;
+float audioDataDownsamplePartialStep;
+float audioDataDownsamplePartialStepCount;
 
 - (id) init
 {
@@ -200,8 +202,6 @@
     }
 }
 @end
-
-AudioCapture* capture;
 
 ssize_t audio_mic_read(struct channel *c, void *buf, size_t len)
 {
