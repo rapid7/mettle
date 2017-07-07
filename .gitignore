@@ -17,3 +17,4 @@ build
 .*
 *.xz
 pkg/
+mettle.xcodeproj
