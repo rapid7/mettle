@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <util.h>
 //#include <assert.h>
 
 /*
@@ -164,7 +165,7 @@ ringbuf_findchr(const struct ringbuf_t *rb, int c, size_t offset)
     const uint8_t *start = rb->buf +
         (((rb->tail - rb->buf) + offset) % ringbuf_buffer_size(rb));
     //assert(bufend > start);
-    size_t n = MIN(bufend - start, bytes_used - offset);
+    size_t n = TYPESAFE_MIN(bufend - start, bytes_used - offset);
     const uint8_t *found = memchr(start, c, n);
     if (found)
         return offset + (found - start);
@@ -177,14 +178,14 @@ ringbuf_memset(ringbuf_t dst, int c, size_t len)
 {
     const uint8_t *bufend = ringbuf_end(dst);
     size_t nwritten = 0;
-    size_t count = MIN(len, ringbuf_buffer_size(dst));
+    size_t count = TYPESAFE_MIN(len, ringbuf_buffer_size(dst));
     int overflow = count > ringbuf_bytes_free(dst);
 
     while (nwritten != count) {
 
         /* don't copy beyond the end of the buffer */
         //assert(bufend > dst->head);
-        size_t n = MIN(bufend - dst->head, count - nwritten);
+        size_t n = TYPESAFE_MIN(bufend - dst->head, count - nwritten);
         memset(dst->head, c, n);
         dst->head += n;
         nwritten += n;
@@ -213,7 +214,7 @@ ringbuf_memcpy_into(ringbuf_t dst, const void *src, size_t count)
     while (nread != count) {
         /* don't copy beyond the end of the buffer */
         //assert(bufend > dst->head);
-        size_t n = MIN(bufend - dst->head, count - nread);
+        size_t n = TYPESAFE_MIN(bufend - dst->head, count - nread);
         memcpy(dst->head, u8src + nread, n);
         dst->head += n;
         nread += n;
@@ -239,7 +240,7 @@ ringbuf_read(int fd, ringbuf_t rb, size_t count)
 
     /* don't write beyond the end of the buffer */
     //assert(bufend > rb->head);
-    count = MIN(bufend - rb->head, count);
+    count = TYPESAFE_MIN(bufend - rb->head, count);
     ssize_t n = read(fd, rb->head, count);
     if (n > 0) {
         //assert(rb->head + n <= bufend);
@@ -271,7 +272,7 @@ ringbuf_memcpy_from(void *dst, ringbuf_t src, size_t count)
     size_t nwritten = 0;
     while (nwritten != count) {
         //assert(bufend > src->tail);
-        size_t n = MIN(bufend - src->tail, count - nwritten);
+        size_t n = TYPESAFE_MIN(bufend - src->tail, count - nwritten);
         memcpy(u8dst + nwritten, src->tail, n);
         src->tail += n;
         nwritten += n;
@@ -294,7 +295,7 @@ ringbuf_write(int fd, ringbuf_t rb, size_t count)
 
     const uint8_t *bufend = ringbuf_end(rb);
     //assert(bufend > rb->head);
-    count = MIN(bufend - rb->tail, count);
+    count = TYPESAFE_MIN(bufend - rb->tail, count);
     ssize_t n = write(fd, rb->tail, count);
     if (n > 0) {
         //assert(rb->tail + n <= bufend);
@@ -323,9 +324,9 @@ ringbuf_copy(ringbuf_t dst, ringbuf_t src, size_t count)
     size_t ncopied = 0;
     while (ncopied != count) {
         //assert(src_bufend > src->tail);
-        size_t nsrc = MIN(src_bufend - src->tail, count - ncopied);
+        size_t nsrc = TYPESAFE_MIN(src_bufend - src->tail, count - ncopied);
         //assert(dst_bufend > dst->head);
-        size_t n = MIN(dst_bufend - dst->head, nsrc);
+        size_t n = TYPESAFE_MIN(dst_bufend - dst->head, nsrc);
         memcpy(dst->head, src->tail, n);
         src->tail += n;
         dst->head += n;
