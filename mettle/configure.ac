@@ -19,7 +19,7 @@ case $host_os in
 		HOST_OS=apple
 		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
 		AC_DEFINE(HAVE_WEBCAM)
-		AC_SUBST([PLATFORM_LDADD], ['-framework AppKit -framework CoreMedia -framework QuartzCore -framework AVFoundation -framework ImageIO'])
+		AC_SUBST([PLATFORM_LDADD], ['-framework CoreMedia -framework QuartzCore -framework AVFoundation -framework ImageIO'])
 		AC_EGREP_CPP(yes,
 			[#import <TargetConditionals.h>
 			 #if TARGET_OS_OSX
@@ -29,7 +29,7 @@ case $host_os in
 			 AC_DEFINE(HAVE_DESKTOP_SCREENSHOT)
 			 AC_DEFINE(HAVE_CLIPBOARD)
 			 AC_DEFINE(HAVE_MIC)
-			 AC_SUBST([PLATFORM_LDADD], ["$PLATFORM_LDADD -framework Cocoa"])],
+			 AC_SUBST([PLATFORM_LDADD], ["$PLATFORM_LDADD -framework Cocoa -framework AppKit"])],
 			[HOST_OS=ios])
 		;;
 	*linux*)
