@@ -96,6 +96,7 @@ SDK folder.
 
 * `arm-iphone-darwin`
 * `aarch64-iphone-darwin`
+* `i386-apple-darwin`
 * `x86_64-apple-darwin`
 
 Available config options are:
