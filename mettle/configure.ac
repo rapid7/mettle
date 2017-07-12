@@ -62,6 +62,8 @@ CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variab
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
+	extensions/Makefile
+	extensions/sniffer/Makefile
 ])
 
 AC_ARG_ENABLE([staticpie],
