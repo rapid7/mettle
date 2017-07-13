@@ -22,14 +22,14 @@ case $host_os in
 		AC_SUBST([PLATFORM_LDADD], ['-framework CoreMedia -framework QuartzCore -framework AVFoundation -framework ImageIO'])
 		AC_EGREP_CPP(yes,
 			[#import <TargetConditionals.h>
-			 #if TARGET_OS_OSX
+			 #ifndef TARGET_OS_OSX
 			 yes
 			 #endif],
 			[HOST_OS=osx
 			 AC_DEFINE(HAVE_DESKTOP_SCREENSHOT)
 			 AC_DEFINE(HAVE_CLIPBOARD)
 			 AC_DEFINE(HAVE_MIC)
-			 AC_SUBST([PLATFORM_LDADD], ["$PLATFORM_LDADD -framework Cocoa -framework AppKit"])],
+			 AC_SUBST([PLATFORM_LDADD], ["-framework AppKit $PLATFORM_LDADD -framework Cocoa"])],
 			[HOST_OS=ios])
 		;;
 	*linux*)
