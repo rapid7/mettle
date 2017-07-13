@@ -22,6 +22,7 @@ libmettle_la_SOURCES += c2_http.c
 libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += coreapi.c
+libmettle_la_SOURCES += extensions.c
 libmettle_la_SOURCES += http_client.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += md5.c
