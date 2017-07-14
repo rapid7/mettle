@@ -16,7 +16,7 @@ struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx)
     NSDictionary *properties = [NSDictionary dictionaryWithObjectsAndKeys:
                                 @(compression), kCGImageDestinationLossyCompressionQuality,
                                 nil];
-    CGImageDestinationAddImage(destination, image, (CFDictionaryRef)properties);
+    CGImageDestinationAddImage(destination, image, (__bridge CFDictionaryRef)properties);
     if (CGImageDestinationFinalize(destination)) {
       NSData *newImage = (__bridge NSData *)newImageData;
       p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
