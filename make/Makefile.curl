@@ -1,4 +1,4 @@
-LIBCURL_VERSION=7.54.0
+LIBCURL_VERSION=7.54.1
 
 LIBCURL_DEPS = build/tools $(BUILD)/lib/libz.a
 LIBCURL_ENV =
@@ -32,6 +32,7 @@ $(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS)
 		--disable-dict  \
 		--disable-gopher  \
 		--disable-ftp  \
+		--without-libidn2 \
 		--disable-imap  \
 		--disable-ldap  \
 		--disable-ldaps  \
