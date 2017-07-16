@@ -6,7 +6,7 @@ ifneq (,$(findstring mingw,$(TARGET)))
 endif
 
 $(BUILD)/lib/libmbedtls.a: build/tools
-	@echo "Unpacking mbedtls for $(TARGET)"
+	@echo "Unpacking mbedtls for $(BUILD)"
 	@mkdir -p $(BUILD)/lib
 	@mkdir -p $(BUILD)/include
 	@cd $(BUILD); \
