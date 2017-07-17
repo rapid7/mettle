@@ -22,7 +22,7 @@ case $host_os in
 		AC_SUBST([PLATFORM_LDADD], ['-framework CoreMedia -framework QuartzCore -framework AVFoundation -framework ImageIO'])
 		AC_EGREP_CPP(yes,
 			[#import <TargetConditionals.h>
-			 #if TARGET_OS_OSX
+			 #if !TARGET_OS_IPHONE
 			 yes
 			 #endif
 			],
