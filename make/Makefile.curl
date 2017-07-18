@@ -9,7 +9,7 @@ ifneq (,$(findstring darwin,$(BUILD)))
     LIBCURL_ENV += MACOSX_DEPLOYMENT_TARGET="10.8"
 else
     ifneq (,$(findstring mingw,$(BUILD)))
-        LIBCURL_OPTS += --with-ssl
+        LIBCURL_OPTS += --with-ssl --with-winssl
     else
         LIBCURL_DEPS += $(BUILD)/lib/libmbedtls.a
         LIBCURL_OPTS += --without-ssl --with-mbedtls=$(BUILD)
