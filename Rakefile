@@ -36,7 +36,7 @@ namespace :mettle do
         success = false
         next
       end
-      unless File.size(file) < 1024 * 1024
+      unless File.size(file) < 1024 * 2048
         insane tuple, 'mettle executable looks too big'
         success = false
       end
