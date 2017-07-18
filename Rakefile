@@ -15,7 +15,7 @@ namespace :mettle do
   task :build do
     each_arch do |tuple|
       puts "Building target #{tuple}"
-      unless system "make TARGET=#{tuple}"
+      unless system "make TARGET=#{tuple} -j4"
         $stderr.puts "Failed to build #{tuple}"
         exit false
       end
