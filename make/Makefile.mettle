@@ -10,24 +10,21 @@ deps/README.md: make/Makefile.tools
 	git submodule init
 	git submodule update
 
-METTLE_DEPS=
-METTLE_OPTS=
-ifneq (,$(findstring musl,$(BUILD)))
-    METTLE_DEPS=$(BUILD)/bin/mettle.bin
-    METTLE_OPTS=--enable-staticpie
-endif
-
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
 		autoreconf -i $(LOGBUILD)
 
 METTLE_DEPS =
+METTLE_OPTS =
+
 ifneq (,$(findstring darwin,$(BUILD)))
 else
     ifneq (,$(findstring mingw,$(BUILD)))
     else
+        METTLE_DEPS += $(BUILD)/bin/mettle.bin
         METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
+        METTLE_OPTS += --enable-staticpie
     endif
 endif
 
