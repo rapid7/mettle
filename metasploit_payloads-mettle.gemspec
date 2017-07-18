@@ -14,6 +14,7 @@ Gem::Specification.new do |spec|
 
   spec.files         = `git ls-files lib/`.split("\n")
   spec.files        += Dir['build/*/bin/mettle']
+  spec.files        += Dir['build/*/bin/mettle.exe']
   spec.files        += Dir['build/*/bin/mettle.bin']
   spec.executables   = []
   spec.require_paths = ['lib']
