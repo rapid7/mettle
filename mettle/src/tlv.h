@@ -23,7 +23,7 @@ struct tlv_packet;
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len);
 
-bool tlv_have_sync_packet(struct buffer_queue *q, const char *method);
+bool tlv_found_first_packet(struct buffer_queue *q);
 
 struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q);
 

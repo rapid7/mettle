@@ -24,23 +24,27 @@
 #include "utlist.h"
 #include "mettle.h"
 
-struct tlv_xor_header {
-	uint32_t xor_key;
-	int32_t len;
-	uint32_t type;
-} __attribute__((packed));
-
 struct tlv_header {
 	int32_t len;
 	uint32_t type;
 } __attribute__((packed));
+
+struct tlv_xor_header {
+	char xor_key[4];
+	uint8_t session_guid[16];
+	uint32_t encryption_flags;
+	struct tlv_header tlv;
+} __attribute__((packed));
+
+#define TLV_PREPEND_LEN 24
+#define TLV_MIN_LEN 8
 
 struct tlv_packet {
 	struct tlv_header h;
 	char buf[];
 } __attribute__((packed));
 
-static uint32_t tlv_xor_key(void)
+static void tlv_xor_key(char xor_key[4])
 {
 	static int initialized = 0;
 	if (!initialized) {
@@ -48,19 +52,16 @@ static uint32_t tlv_xor_key(void)
 		initialized = 1;
 	}
 
-	return (((rand() % 254) + 1) << 0) |
-	(((rand() % 254) + 1) << 8) |
-	(((rand() % 254) + 1) << 16) |
-	(((rand() % 254) + 1) << 24);
+	xor_key[0] = (rand() % 254) + 1;
+	xor_key[1] = (rand() % 254) + 1;
+	xor_key[2] = (rand() % 254) + 1;
+	xor_key[3] = (rand() % 254) + 1;
 }
 
-static void *tlv_xor_bytes(uint32_t xor_key, void *buf, size_t len)
+static void *tlv_xor_bytes(char xor_key[4], void *buf, size_t len)
 {
-	uint32_t real_key = htole32(xor_key);
-	char *xor = (char *)&real_key;
-
 	for (size_t i = 0; i < len; i++)
-		((char *)buf)[i] ^= xor[i % sizeof(real_key)];
+		((char *)buf)[i] ^= xor_key[i % 4];
 
 	return buf;
 }
@@ -71,7 +72,7 @@ struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len)
 			(initial_len ? initial_len : 64));
 	if (p) {
 		p->h.type = htonl(type);
-		p->h.len = htonl(sizeof(struct tlv_header));
+		p->h.len = htonl(TLV_MIN_LEN);
 	}
 	return p;
 }
@@ -91,11 +92,6 @@ int tlv_packet_len(struct tlv_packet *p)
 	return ntohl(p->h.len);
 }
 
-int tlv_total_len(struct tlv_packet *p)
-{
-	return tlv_packet_len(p) + sizeof(uint32_t);
-}
-
 char *tlv_packet_get_buf_str(void * buf, size_t len)
 {
 	char *str = buf;
@@ -112,13 +108,13 @@ char *tlv_packet_get_buf_str(void * buf, size_t len)
 void *tlv_packet_iterate(struct tlv_iterator *i, size_t *len)
 {
 	*len = 0;
-	size_t packet_len = tlv_packet_len(i->packet) - sizeof(struct tlv_header);
+	size_t packet_len = tlv_packet_len(i->packet) - TLV_MIN_LEN;
 	while (i->offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(i->packet->buf + i->offset);
 		uint32_t type = ntohl(h->type) & ~TLV_META_TYPE_COMPRESSED;
 		i->offset += ntohl(h->len);
 		if (type == i->value_type) {
-			*len = ntohl(h->len) - sizeof(struct tlv_header);
+			*len = ntohl(h->len) - TLV_MIN_LEN;
 			return h + 1;
 		}
 	}
@@ -136,12 +132,12 @@ void *tlv_packet_get_raw(struct tlv_packet *p, uint32_t value_type, size_t *len)
 {
 	*len = 0;
 	off_t offset = 0;
-	int packet_len = tlv_packet_len(p) - sizeof(struct tlv_header);
+	int packet_len = tlv_packet_len(p) - TLV_MIN_LEN;
 	while (offset < packet_len) {
 		struct tlv_header *h = (struct tlv_header *)(p->buf + offset);
 		uint32_t type = ntohl(h->type) & ~TLV_META_TYPE_COMPRESSED;
 		if (type == value_type) {
-			*len = ntohl(h->len) - sizeof(struct tlv_header);
+			*len = ntohl(h->len) - TLV_MIN_LEN;
 			return h + 1;
 		}
 		offset += ntohl(h->len);
@@ -240,12 +236,12 @@ struct tlv_packet * tlv_packet_add_raw(struct tlv_packet *p, uint32_t type,
 	}
 
 	int packet_len = tlv_packet_len(p);
-	int new_len = packet_len + sizeof(struct tlv_header) + len;
+	int new_len = packet_len + TLV_MIN_LEN + len;
 	p = realloc(p, new_len);
 	if (p) {
 		struct tlv_header *hdr = (void *)p + packet_len;
 		hdr->type = htonl(type);
-		hdr->len = htonl(sizeof(struct tlv_header) + len);
+		hdr->len = htonl(TLV_MIN_LEN + len);
 		memcpy(hdr + 1, val, len);
 		p->h.len = htonl(new_len);
 	}
@@ -440,7 +436,7 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 {
 	struct tlv_packet *p = NULL;
 	struct tlv_response *r = td->responses;
-	char *out_buf = NULL;
+	void *out_buf = NULL;
 	*len = 0;
 
 	if (r) {
@@ -453,15 +449,13 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 
 		void *tlv_buf = tlv_packet_data(p);
 		size_t tlv_len = tlv_packet_len(p);
-		uint32_t xor_key = tlv_xor_key();
-		tlv_xor_bytes(xor_key, tlv_buf, tlv_len);
-		xor_key = htonl(xor_key);
-
-		out_buf = malloc(tlv_len + sizeof(xor_key));
+		out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
 		if (out_buf) {
-			memcpy(out_buf, &xor_key, sizeof(xor_key));
-			memcpy(out_buf + sizeof(xor_key), tlv_buf, tlv_len);
-			*len = tlv_len + sizeof(xor_key);
+			struct tlv_xor_header *hdr = out_buf;
+			tlv_xor_key(hdr->xor_key);
+			memcpy(&hdr->tlv, tlv_buf, tlv_len);
+			tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
+			*len = tlv_len + + TLV_PREPEND_LEN;
 		}
 
 		tlv_packet_free(p);
@@ -574,18 +568,16 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 /*
  * This works around garbage on the socket by attempting to read past it.
  */
-bool tlv_have_sync_packet(struct buffer_queue *q, const char *method)
+bool tlv_found_first_packet(struct buffer_queue *q)
 {
 	bool found = false;
-	size_t method_len = strlen(method);
 
-	while (buffer_queue_len(q) >= 62 + method_len) {
+	while (buffer_queue_len(q) >= 571) {
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
-		uint32_t xor_key = ntohl(h.xor_key);
-		tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
-		size_t len = ntohl(h.len);
-		if (len == (58 + method_len) && h.type == 0) {
+		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key));
+		size_t len = ntohl(h.tlv.len);
+		if (len == (547) && h.tlv.type == 0) {
 			found = true;
 			break;
 		}
@@ -609,25 +601,23 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 * Ensure there are enough bytes for the rest of the packet
 	 */
 	buffer_queue_copy(q, &h, sizeof(h));
-	uint32_t xor_key = ntohl(h.xor_key);
-	tlv_xor_bytes(xor_key, &h.len, sizeof(struct tlv_header));
-	size_t len = ntohl(h.len);
-	if (len > INT_MAX || len < sizeof(struct tlv_header)
-			|| buffer_queue_len(q) < (len + sizeof(xor_key))) {
+	tlv_xor_bytes(h.xor_key, &h.tlv, sizeof(h.tlv));
+	size_t len = ntohl(h.tlv.len);
+	if (len > INT_MAX || len < TLV_MIN_LEN
+			|| buffer_queue_len(q) < (len + TLV_PREPEND_LEN)) {
 		return NULL;
 	}
 
 	/*
 	 * Header is OK, read the rest of the packet
 	 */
-	struct tlv_packet *p = malloc(sizeof(struct tlv_header) + len);
+	struct tlv_packet *p = malloc(TLV_MIN_LEN + len);
 	if (p) {
-		p->h.len = h.len;
-		p->h.type = h.type;
+		p->h = h.tlv;
 		buffer_queue_drain(q, sizeof(h));
-		len -= sizeof(struct tlv_header);
+		len -= TLV_MIN_LEN;
 		buffer_queue_remove(q, p->buf, len);
-		tlv_xor_bytes(xor_key, p->buf, len);
+		tlv_xor_bytes(h.xor_key, p->buf, len);
 	}
 
 	/*
@@ -640,7 +630,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 		/*
 		 * Ensure the sub-TLV's fit within the packet
 		 */
-		if (tlv_len > (len - offset) || tlv_len < sizeof(struct tlv_header)) {
+		if (tlv_len > (len - offset) || tlv_len < TLV_MIN_LEN) {
 			free(p);
 			return NULL;
 		}
