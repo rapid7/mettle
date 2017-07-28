@@ -23,9 +23,11 @@ ifneq (,$(findstring darwin,$(BUILD)))
 else
     ifneq (,$(findstring mingw,$(BUILD)))
     else
-        METTLE_TARGETS += $(BUILD)/bin/mettle.bin
-        METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
-        METTLE_OPTS += --enable-staticpie
+        ifneq "$(TARGET)" "native"
+            METTLE_TARGETS += $(BUILD)/bin/mettle.bin
+            METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
+            METTLE_OPTS += --enable-staticpie
+        endif
     endif
 endif
 
