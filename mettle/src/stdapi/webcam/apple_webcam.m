@@ -58,7 +58,12 @@ int count;
   session.sessionPreset = AVCaptureSessionPresetMedium;
 
   NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-  AVCaptureDevice *device = devices[deviceIndex - 1];
+  int index = deviceIndex - 1;
+  if (index < 0 || index >= [devices count]) {
+    return false;
+  }
+
+  AVCaptureDevice *device = devices[index];
 
   NSError* error = nil;
   AVCaptureDeviceInput* input =
