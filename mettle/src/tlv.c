@@ -31,7 +31,7 @@ struct tlv_header {
 
 struct tlv_xor_header {
 	char xor_key[4];
-	uint8_t session_guid[16];
+	uint8_t session_guid[SESSION_GUID_LEN];
 	uint32_t encryption_flags;
 	struct tlv_header tlv;
 } __attribute__((packed));
@@ -394,8 +394,7 @@ struct tlv_dispatcher {
 	char *uuid;
 	size_t uuid_len;
 
-	char *session_guid;
-	size_t session_guid_len;
+	char session_guid[SESSION_GUID_LEN];
 };
 
 struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
@@ -453,6 +452,7 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 		if (out_buf) {
 			struct tlv_xor_header *hdr = out_buf;
 			tlv_xor_key(hdr->xor_key);
+			memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
 			memcpy(&hdr->tlv, tlv_buf, tlv_len);
 			tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
 			*len = tlv_len + + TLV_PREPEND_LEN;
@@ -471,9 +471,8 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
 		pthread_mutex_init(&td->mutex, NULL);
 		td->response_cb = cb;
 		td->response_cb_arg = cb_arg;
-		char default_session_guid[16] = {0};
-		tlv_dispatcher_set_session_guid(td,
-			default_session_guid, sizeof default_session_guid);
+		char default_session_guid[SESSION_GUID_LEN] = {0};
+		tlv_dispatcher_set_session_guid(td, default_session_guid);
 	}
 	return td;
 }
@@ -663,23 +662,14 @@ const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len)
 	return td->uuid;
 }
 
-const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td, size_t *len)
+const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td)
 {
-	*len = td->session_guid_len;
 	return td->session_guid;
 }
 
-int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *guid, size_t len)
+int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *guid)
 {
-	free(td->session_guid);
-	td->session_guid_len = 0;
-
-	td->session_guid = malloc(len);
-	if (td->session_guid == NULL)
-		return -1;
-
-	td->session_guid_len = len;
-	memcpy(td->session_guid, guid, len);
+	memcpy(td->session_guid, guid, SESSION_GUID_LEN);
 	return 0;
 }
 

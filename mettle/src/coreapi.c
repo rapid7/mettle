@@ -62,17 +62,12 @@ static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *core_get_session_guid(struct tlv_handler_ctx *ctx)
 {
-	size_t session_guid_len;
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-	const char *session_guid = tlv_dispatcher_get_session_guid(td, &session_guid_len);
+	const char *session_guid = tlv_dispatcher_get_session_guid(td);
 
-	if (session_guid && session_guid_len) {
-	       struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	       return tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, session_guid, session_guid_len);
-	}
-
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	return tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, session_guid, SESSION_GUID_LEN);
 }
 
 static struct tlv_packet *core_set_session_guid(struct tlv_handler_ctx *ctx)
@@ -82,10 +77,10 @@ static struct tlv_packet *core_set_session_guid(struct tlv_handler_ctx *ctx)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	char *guid = tlv_packet_get_raw(ctx->req, TLV_TYPE_SESSION_GUID, &guid_len);
 
-	if (guid && guid_len) {
-		tlv_dispatcher_set_session_guid(td, guid, guid_len);
-	}
+	if (!guid || guid_len != SESSION_GUID_LEN)
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
+	tlv_dispatcher_set_session_guid(td, guid);
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
