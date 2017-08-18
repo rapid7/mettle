@@ -22,7 +22,7 @@ static void tcp_read_cb(struct bufferev *be, void *arg)
 	struct tcp_ctx *ctx = c2_transport_get_ctx(t);
 	if (ctx->first_packet) {
 		struct buffer_queue *q = bufferev_rx_queue(be);
-		if (tlv_have_sync_packet(q, "core_machine_id")) {
+		if (tlv_found_first_packet(q)) {
 			ctx->first_packet = 0;
 		} else {
 			return;

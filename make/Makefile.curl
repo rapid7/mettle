@@ -6,7 +6,6 @@ LIBCURL_OPTS =
 
 ifneq (,$(findstring darwin,$(BUILD)))
     LIBCURL_OPTS += --with-darwinssl
-    LIBCURL_ENV += MACOSX_DEPLOYMENT_TARGET="10.8"
 else
     ifneq (,$(findstring mingw,$(BUILD)))
         LIBCURL_OPTS += --with-ssl --with-winssl

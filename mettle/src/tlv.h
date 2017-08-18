@@ -23,7 +23,7 @@ struct tlv_packet;
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len);
 
-bool tlv_have_sync_packet(struct buffer_queue *q, const char *method);
+bool tlv_found_first_packet(struct buffer_queue *q);
 
 struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q);
 
@@ -138,8 +138,9 @@ const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len);
 
 int tlv_dispatcher_set_uuid(struct tlv_dispatcher *td, char *uuid, size_t len);
 
-const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td, size_t *len);
-int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *uuid, size_t len);
+#define SESSION_GUID_LEN 16
+const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td);
+int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *uuid);
 
 void tlv_dispatcher_free(struct tlv_dispatcher *td);
 

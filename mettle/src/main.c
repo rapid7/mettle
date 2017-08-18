@@ -120,11 +120,15 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 
 	if (background) {
 		char *cmd, *new_cmd;
-		asprintf(&cmd, "%s -d %u", argv[0], log_level);
+		if (asprintf(&cmd, "%s -d %u", argv[0], log_level) == -1) {
+			return -1;
+		}
 		optind = 1;
 		while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 			if (c == 'u' || c == 'U' || c == 'o') {
-				asprintf(&new_cmd, "%s -u %s", cmd, optarg);
+				if (asprintf(&new_cmd, "%s -u %s", cmd, optarg) == -1) {
+					return -1;
+				}
 				free(cmd);
 				cmd = new_cmd;
 			}

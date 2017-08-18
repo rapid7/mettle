@@ -23,9 +23,11 @@ ifneq (,$(findstring darwin,$(BUILD)))
 else
     ifneq (,$(findstring mingw,$(BUILD)))
     else
-        METTLE_TARGETS += $(BUILD)/bin/mettle.bin
-        METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
-        METTLE_OPTS += --enable-staticpie
+        ifneq "$(TARGET)" "native"
+            METTLE_TARGETS += $(BUILD)/bin/mettle.bin
+            METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
+            METTLE_OPTS += --enable-staticpie
+        endif
     endif
 endif
 
@@ -41,17 +43,15 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	@cd $(BUILD)/mettle; \
 		$(ENV) $(ROOT)/mettle/$(CONFIGURE) $(METTLE_OPTS) $(LOGBUILD)
 
-$(BUILD)/mettle.built: $(BUILD)/bin/mettle
-
-$(BUILD)/bin/mettle: $(BUILD)/mettle/Makefile
+$(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 	@echo "Building mettle for $(TARGET)"
 	@cd $(BUILD)/mettle; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
-$(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle
+$(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built
 	$(ELF2BIN) $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
 
-mettle: $(BUILD)/mettle.built $(METTLE_TARGETS)
+mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
 DATADIR:=../metasploit-framework/data
 METTLEDIR:=$(DATADIR)/mettle

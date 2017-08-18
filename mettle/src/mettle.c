@@ -117,7 +117,9 @@ int mettle_set_session_guid_base64(struct mettle *m, char *guid_b64)
 	if (guid == NULL)
 		return -1;
 	int guid_len = base64decode(guid, guid_b64, strlen(guid_b64));
-	tlv_dispatcher_set_session_guid(m->td, guid, guid_len);
+	if (guid_len != SESSION_GUID_LEN)
+		return -1;
+	tlv_dispatcher_set_session_guid(m->td, guid);
 	free(guid);
 	return 0;
 }
