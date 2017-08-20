@@ -69,7 +69,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
 		case 'u':
-			mettle_add_transport_uri(m, optarg);
+			c2_add_transport_uri(mettle_get_c2(m), optarg);
 			break;
 		case 'U':
 			mettle_set_uuid_base64(m, optarg);
@@ -190,7 +190,8 @@ int main(int argc, char * argv[])
 		int fd = (int)((long *)argv)[1];
 		char *uri;
 		if (asprintf(&uri, "fd://%d", fd) > 0) {
-			mettle_add_transport_uri(m, uri);
+			struct c2 *c2 = mettle_get_c2(m);
+			c2_add_transport_uri(c2, uri);
 			free(uri);
 		}
 		parse_default_args(m);

@@ -196,6 +196,11 @@ ssize_t c2_write(struct c2 *c2, void *buf, size_t buflen)
 	return len;
 }
 
+struct c2_transport* c2_get_current_transport(struct c2 *c2)
+{
+	return c2->curr_transport;
+}
+
 void c2_transport_ingress_buf(struct c2_transport *t, void *buf, size_t buflen)
 {
 	if (buffer_queue_add(t->c2->ingress, buf, buflen) == 0) {

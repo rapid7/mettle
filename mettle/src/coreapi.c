@@ -122,8 +122,36 @@ static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
-static struct tlv_packet *negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
+static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
 {
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+}
+
+static struct tlv_packet *core_patch_url(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	char *base_url = NULL, *new_url = NULL;
+	const char *new_path = tlv_packet_get_str(ctx->req, TLV_TYPE_TRANS_URL);
+	struct c2_transport *t = c2_get_current_transport(mettle_get_c2(m));
+	if (new_path && t) {
+		base_url = strdup(c2_transport_uri(t));
+		if (base_url == NULL) {
+			goto out;
+		}
+		char *split = strrchr(base_url, '/');
+		if (split == NULL) {
+			goto out;
+		}
+		*split = '\0';
+
+		if (asprintf(&new_url, "%s%s", base_url, new_path) == -1) {
+			goto out;
+		}
+		log_info("new url %s, old url %s", new_url, c2_transport_uri(t));
+	}
+out:
+	free(base_url);
+	free(new_url);
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
@@ -134,9 +162,10 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_enumextcmd", enumextcmd, m);
 	tlv_dispatcher_add_handler(td, "core_machine_id", core_machine_id, m);
 	tlv_dispatcher_add_handler(td, "core_set_uuid", core_set_uuid, m);
+	tlv_dispatcher_add_handler(td, "core_patch_url", core_patch_url, m);
 	tlv_dispatcher_add_handler(td, "core_uuid", core_uuid, m);
 	tlv_dispatcher_add_handler(td, "core_get_session_guid", core_get_session_guid, m);
 	tlv_dispatcher_add_handler(td, "core_set_session_guid", core_set_session_guid, m);
-	tlv_dispatcher_add_handler(td, "core_negotiate_tlv_encryption", negotiate_tlv_encryption, m);
+	tlv_dispatcher_add_handler(td, "core_negotiate_tlv_encryption", core_negotiate_tlv_encryption, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 }

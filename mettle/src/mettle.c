@@ -80,9 +80,9 @@ int start_heartbeat(struct mettle *m)
 	return 0;
 }
 
-int mettle_add_transport_uri(struct mettle *m, const char *uri)
+struct c2 * mettle_get_c2(struct mettle *m)
 {
-	return c2_add_transport_uri(m->c2, uri);
+	return m->c2;
 }
 
 struct ev_loop * mettle_get_loop(struct mettle *m)
