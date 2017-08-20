@@ -99,6 +99,7 @@ void * buffer_queue_remove_msg(struct buffer_queue *q, size_t *len)
 		LL_DELETE(q->head, buf);
 		data = buf->data;
 		*len = buf->len;
+		q->bytes -= buf->len;
 		free(buf);
 	}
 	return data;
