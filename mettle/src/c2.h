@@ -13,13 +13,13 @@ struct c2;
 
 struct c2 * c2_new(struct ev_loop *loop);
 
-int c2_add_transport_uri(struct c2 *nc, const char *uri);
+int c2_add_transport_uri(struct c2 *c2, const char *uri);
 
-int c2_start(struct c2 *nc);
+int c2_start(struct c2 *c2);
 
-int c2_close(struct c2 *nc);
+int c2_close(struct c2 *c2);
 
-void c2_free(struct c2 *nc);
+void c2_free(struct c2 *c2);
 
 #define C2_REACHABLE 0x01
 
@@ -32,9 +32,9 @@ void c2_set_cbs(struct c2 *be,
 	c2_event_cb event_cb,
 	void *cb_arg);
 
-ssize_t c2_read(struct c2 *nc, void *buf, size_t buflen);
+ssize_t c2_read(struct c2 *c2, void *buf, size_t buflen);
 
-ssize_t c2_write(struct c2 *nc, void *buf, size_t buflen);
+ssize_t c2_write(struct c2 *c2, void *buf, size_t buflen);
 
 struct buffer_queue* c2_ingress_queue(struct c2 *c2);
 
@@ -55,6 +55,8 @@ struct c2_transport_cbs {
 
 int c2_register_transport_type(struct c2 *c2, const char *proto,
 	struct c2_transport_cbs *cbs);
+
+struct c2_transport* c2_get_current_transport(struct c2 *c2);
 
 const char * c2_transport_uri(struct c2_transport *t);
 const char * c2_transport_dest(struct c2_transport *t);

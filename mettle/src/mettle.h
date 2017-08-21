@@ -7,6 +7,7 @@
 #ifndef _METTLE_H_
 #define _METTLE_H_
 
+#include "c2.h"
 #include "channel.h"
 #include "process.h"
 
@@ -33,7 +34,7 @@ struct tlv_dispatcher *mettle_get_tlv_dispatcher(struct mettle *m);
 
 void mettle_free(struct mettle *);
 
-int mettle_add_transport_uri(struct mettle *m, const char *uri);
+struct c2 * mettle_get_c2(struct mettle *m);
 
 struct channelmgr * mettle_get_channelmgr(struct mettle *m);
 
