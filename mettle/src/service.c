@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-int start_service(const char *cmd)
+int fork_service(void)
 {
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -60,4 +60,17 @@ int start_service(const char *cmd)
 	}
 
 	return 0;
+}
+
+int start_service(const char *name, const char *path, const char *args,
+	enum persist_type persist)
+{
+	switch (persist) {
+		case persist_none:
+			return fork_service();
+		case persist_install:
+		case persist_uninstall:
+			return -1;
+	}
+	return -1;
 }

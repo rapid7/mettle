@@ -26,6 +26,8 @@ static void usage(const char *name)
 	printf("  -d, --debug [level]    enable debug output\n");
 	printf("  -o, --out <file>       write debug output to a file\n");
 	printf("  -b, --background [0|1] start as a background service\n");
+	printf("  -p, --persist [none|install|uninstall] manage persistence\n");
+	printf("  -n, --name <name>      name to start as\n");
 	printf("\n");
 	exit(1);
 }
@@ -53,12 +55,16 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		{"uuid", required_argument, NULL, 'U'},
 		{"session-guid", required_argument, NULL, 'G'},
 		{"background", optional_argument, NULL, 'b'},
+		{"persist", required_argument, NULL, 'p'},
+		{"name", required_argument, NULL, 'n'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:G:d::o:b::";
+	const char *short_options = "hu:U:G:d::o:b::p:n:";
 	const char *out = NULL;
+	char *name = strdup("service");
 	bool debug = false;
 	bool background = false;
+	enum persist_type persist = persist_none;
 	int log_level = 0;
 
 	/*
@@ -76,6 +82,19 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 			break;
 		case 'G':
 			mettle_set_session_guid_base64(m, optarg);
+			break;
+		case 'n':
+			free(name);
+			name = strdup(optarg);
+			break;
+		case 'p':
+			if (strcmp("install", optarg) == 0) {
+				persist = persist_install;
+			} else if (strcmp("uninstall", optarg) == 0) {
+				persist = persist_uninstall;
+			} else {
+				persist = persist_none;
+			}
 			break;
 		case 'd':
 			if (optarg) {
@@ -119,22 +138,22 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	}
 
 	if (background) {
-		char *cmd, *new_cmd;
-		if (asprintf(&cmd, "%s -d %u", argv[0], log_level) == -1) {
+		char *args, *new_args;
+		if (asprintf(&args, "%s -d %u", argv[0], log_level) == -1) {
 			return -1;
 		}
 		optind = 1;
 		while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 			if (c == 'u' || c == 'U' || c == 'o') {
-				if (asprintf(&new_cmd, "%s -u %s", cmd, optarg) == -1) {
+				if (asprintf(&new_args, "%s -%c %s", args, c, optarg) == -1) {
 					return -1;
 				}
-				free(cmd);
-				cmd = new_cmd;
+				free(args);
+				args = new_args;
 			}
 		}
-		start_service(cmd);
-		free(cmd);
+		start_service(name, argv[0], args, persist);
+		free(args);
 	}
 
 	return 0;
