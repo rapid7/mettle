@@ -1,1 +1,2 @@
-SUBDIRS = sniffer
+SUBDIRS = common
+SUBDIRS += sniffer

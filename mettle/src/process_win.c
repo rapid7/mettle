@@ -37,6 +37,8 @@ struct process {
 	process_exit_cb_t exit_cb;
 
 	void *cb_arg;
+ 
+	bool is_extension_and_ready;
 
 	UT_hash_handle hh;
 	pid_t pid;

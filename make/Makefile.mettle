@@ -6,6 +6,9 @@ include make/Makefile.libsigar
 include make/Makefile.libz
 include make/Makefile.mbedtls
 
+# used by extensions
+include make/Makefile.libpcap
+
 deps/README.md: make/Makefile.tools
 	git submodule init
 	git submodule update
@@ -40,7 +43,8 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libsigar.a \
-	$(BUILD)/lib/libdnet.a
+	$(BUILD)/lib/libdnet.a \
+	$(BUILD)/lib/libpcap.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \

@@ -359,8 +359,10 @@ struct c2* c2_new(struct ev_loop *loop)
 		ev_timer_init(&c2->transport_timer, transport_cb, 0, 1.0);
 		c2->transport_timer.data = c2;
 
+#ifndef LIBEXTENSION
 		c2_register_http_transports(c2);
 		c2_register_tcp_transports(c2);
+#endif
 	}
 	return c2;
 err:

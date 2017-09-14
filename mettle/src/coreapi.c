@@ -178,18 +178,21 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 	close(fd);
 	fd = -1;
 
-	if (extension_start(m, full_path, NULL) == NULL) {
+	if (extension_start(m, full_path, NULL))
+	{
 		log_error("Failed to start extension '%s'", full_path);
 		goto done;
 	}
 
 	tlv_result = TLV_RESULT_SUCCESS;
+
 done:
 	if (fd != -1) {
 		close(fd);
 	}
 	free(full_path);
 	p = tlv_packet_add_result(p, tlv_result);
+
 	return p;
 }
 

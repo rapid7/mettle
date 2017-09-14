@@ -92,6 +92,11 @@ int tlv_packet_len(struct tlv_packet *p)
 	return ntohl(p->h.len);
 }
 
+int tlv_packet_full_len(struct tlv_packet *p)
+{
+	return ntohl(p->h.len + sizeof(struct tlv_header));
+}
+
 char *tlv_packet_get_buf_str(void * buf, size_t len)
 {
 	char *str = buf;
@@ -431,7 +436,7 @@ int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet
 	return 0;
 }
 
-void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
+void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepend, size_t *len)
 {
 	struct tlv_packet *p = NULL;
 	struct tlv_response *r = td->responses;
@@ -448,14 +453,24 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len)
 
 		void *tlv_buf = tlv_packet_data(p);
 		size_t tlv_len = tlv_packet_len(p);
-		out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
-		if (out_buf) {
-			struct tlv_xor_header *hdr = out_buf;
-			tlv_xor_key(hdr->xor_key);
-			memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
-			memcpy(&hdr->tlv, tlv_buf, tlv_len);
-			tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
-			*len = tlv_len + + TLV_PREPEND_LEN;
+		if (add_prepend) {
+			// usual communications flow between server and target
+			out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
+			if (out_buf) {
+				struct tlv_xor_header *hdr = out_buf;
+				tlv_xor_key(hdr->xor_key);
+				memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
+				memcpy(&hdr->tlv, tlv_buf, tlv_len);
+				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
+				*len = tlv_len + TLV_PREPEND_LEN;
+			}
+		} else {
+			// an extension, which doesn't require the GUID or XOR logic
+			out_buf = calloc(tlv_len, 1);
+			if (out_buf) {
+				memcpy(out_buf, tlv_buf, tlv_len);
+				*len = tlv_len;
+			}
 		}
 
 		tlv_packet_free(p);

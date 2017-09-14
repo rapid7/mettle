@@ -63,6 +63,7 @@ AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 	extensions/Makefile
+	extensions/common/Makefile
 	extensions/sniffer/Makefile
 ])
 
