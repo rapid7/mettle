@@ -4,6 +4,7 @@ i486-linux-musl
 aarch64-linux-musl
 armv5l-linux-musleabi
 armv5b-linux-musleabi
+powerpc-e500v2-linux-musl
 powerpc-linux-muslsf
 powerpc64le-linux-musl
 mips-linux-muslsf
