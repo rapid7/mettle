@@ -4,16 +4,16 @@ LIBCURL_DEPS = build/tools $(BUILD)/lib/libz.a
 LIBCURL_ENV =
 LIBCURL_OPTS =
 
-ifneq (,$(findstring darwin,$(BUILD)))
-    LIBCURL_OPTS += --with-darwinssl
-else
+#ifneq (,$(findstring darwin,$(BUILD)))
+#    LIBCURL_OPTS += --with-darwinssl
+#else
     ifneq (,$(findstring mingw,$(BUILD)))
         LIBCURL_OPTS += --with-ssl --with-winssl
     else
         LIBCURL_DEPS += $(BUILD)/lib/libmbedtls.a
         LIBCURL_OPTS += --without-ssl --with-mbedtls=$(BUILD)
     endif
-endif
+#endif
 
 $(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS)
 	@echo "Unpacking curl for $(TARGET)"
