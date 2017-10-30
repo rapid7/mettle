@@ -8,6 +8,7 @@
 #include <dnet.h>
 #include <pcap.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "ringbuf.h"
 #include "uthash.h"
@@ -15,6 +16,16 @@
 #include "sniffer.h"
 
 #define DEBUG
+
+#define MSF_PACKET_HEADER_SIZE	20
+
+#define PCAP_MAX_PKT_BATCH 100000
+#define PCAP_ACTIVE_PKT_SLEEP_US 1000
+#define PCAP_INACTIVE_PKT_SLEEP_US 100000
+#define PCAP_SNAP_LEN 16000
+#define PCAP_BUFFER_PKTS 1024
+#define PCAP_BUFFER_SIZE (PCAP_SNAP_LEN * PCAP_BUFFER_PKTS)
+#define PCAP_TIMEOUT_MS 10
 
 /*
  * *** NETWORK INTERFACES ***
@@ -260,6 +271,13 @@ static struct capture *find_capture_by_thread(pthread_t thread)
 	return c;
 }
 
+uint64_t time_us(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
+}
+
 /*
  * Callback (via pcap) for each packet captured.
  */
@@ -318,13 +336,33 @@ void *sniff_packets(void *arg)
 	sigaction(SIGUSR1, &action, NULL);
 
 	// Capture loop
+	uint64_t start_us;
+	int ret_val = 0;
 	while (capture->active) {
-		pcap_dispatch(capture->pcap_handle, 20, packet_handler, (unsigned char *)capture);
+		// Measure the time spent processing packets.
+		start_us = time_us();
+
+		ret_val = pcap_dispatch(capture->pcap_handle,
+				PCAP_MAX_PKT_BATCH,
+				packet_handler,
+				(unsigned char *)capture);
 		if (capture->new) {
 			capture->dump = capture->current;
 			capture->current = capture->new;
 			capture->new = NULL;
 			pthread_cond_signal(&capture->sync_cv);
+		}
+
+		/*
+		 * Sleep an duration based on activity (or lack thereof).
+		 *
+		 * Hat-tip to bcook-r7 for this code!
+		 */
+		uint64_t processing_us = time_us() - start_us;
+		if (ret_val > 0 && processing_us < PCAP_ACTIVE_PKT_SLEEP_US) {
+			usleep(PCAP_ACTIVE_PKT_SLEEP_US - processing_us);
+		} else if (ret_val == 0) {
+			usleep(PCAP_INACTIVE_PKT_SLEEP_US);
 		}
 	}
 	return NULL;
@@ -409,13 +447,14 @@ static struct tlv_packet *request_capture_start(struct tlv_handler_ctx *ctx)
 	}
 
 	// Open the interface for "live" packet capturing.
-	pcap_t *handle = pcap_open_live(intf->name, 16000, 0, 500, errbuf);
+	pcap_t *handle = pcap_open_live(intf->name, PCAP_SNAP_LEN, 0, PCAP_TIMEOUT_MS, errbuf);
 	if (handle == NULL) {
 		log_error("Error from pcap_open_live(): %s", errbuf);
 		goto done;
 	} else if (strlen(errbuf)) {
 		log_info("Warning from pcap_open_live(): %s", errbuf);
 	}
+	pcap_set_buffer_size(handle, PCAP_BUFFER_SIZE);
 
 	// Create an associated capture object.
 	struct capture *capture = capture_new(index, handle, maxp);
@@ -445,7 +484,7 @@ static struct tlv_packet *request_capture_start(struct tlv_handler_ctx *ctx)
 	}
 
 	capture->active = true;
-	ret_val = pthread_create(&capture->thread, 0, sniff_packets, capture);
+	ret_val = pthread_create(&capture->thread, NULL, sniff_packets, capture);
 	if (ret_val) {
 		log_error("Error from pthread_create(): %d", ret_val);
 		capture->active = false;
@@ -610,7 +649,7 @@ static struct tlv_packet *request_capture_dump(struct tlv_handler_ctx *ctx)
 	uint64_t id = 1;
 	struct packet *packet;
 	while ((packet = capture_buffer_get_packet(captured_packets->ringbuf))) {
-		if (capture->dump_buffer_len + 20 + packet->header.caplen > buf_size) {
+		if (capture->dump_buffer_len + MSF_PACKET_HEADER_SIZE + packet->header.caplen > buf_size) {
 			// Need to increase out buffer...
 			buf_size += (1024 * 1024);
 			capture->dump_buffer = realloc(capture->dump_buffer, buf_size);
@@ -636,7 +675,7 @@ static struct tlv_packet *request_capture_dump(struct tlv_handler_ctx *ctx)
 		// Add the packet itself.
 		memcpy((u_char *)buf_ptr, packet->data, packet->header.caplen);
 
-		capture->dump_buffer_len += 20 + packet->header.caplen;
+		capture->dump_buffer_len += MSF_PACKET_HEADER_SIZE + packet->header.caplen;
 		capture->dump_packet_cnt++;
 		id++;
 	}
