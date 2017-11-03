@@ -1,4 +1,5 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include/compat
+AM_CPPFLAGS += -I$(top_srcdir)/../util
 
 lib_LTLIBRARIES = libmettle.la
 

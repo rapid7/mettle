@@ -27,7 +27,9 @@ struct process_options {
  * Create a new process
  */
 struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts);
+	const char *file,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts);
 
 void process_set_callbacks(struct process *p,
 	process_read_cb_t stdout_cb,

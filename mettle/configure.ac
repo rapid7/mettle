@@ -70,7 +70,10 @@ AC_CONFIG_FILES([
 AC_ARG_ENABLE([staticpie],
 	AS_HELP_STRING([--enable-staticpie], [Building Static PIE]))
 AS_IF([test "x$enable_staticpie" = "xyes"], [
-	AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])
+		AC_SUBST([PLATFORM_LDADD], ['-static --static -pie']),
+		AM_CONDITIONAL([MAKEBIN],  [true])
+        ], [
+		AM_CONDITIONAL([MAKEBIN],  [false])
 ])
 
 AC_OUTPUT

@@ -11,7 +11,7 @@
 
 #include <arpa/inet.h>
 
-#include "common.h"
+#include "util-common.h"
 #include "elf.h"
 
 #define ENTRYPOINT "_start_c"

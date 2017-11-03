@@ -45,12 +45,10 @@ ifneq "$(HOST)" ""
     CONFIGURE:=$(CONFIGURE) --host=$(HOST)
 endif
 
-# if Debug is enabled, build with debug symbols, otherwise strip the symbol table
+# if Debug is enabled, build with debug symbols
 ifneq (,$(findstring musl,$(TARGET)))
     ifeq "$(D)" "1"
         CFLAGS:=$(CFLAGS) -g
-    else
-        LDFLAGS:=$(LDFLAGS) -s
     endif
 endif
 

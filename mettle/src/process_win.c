@@ -160,7 +160,9 @@ void process_set_callbacks(struct process *p,
 }
 
 struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+	const char *file,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts)
 {
 	struct process *p = calloc(1, sizeof(*p));
 	if (p == NULL) {

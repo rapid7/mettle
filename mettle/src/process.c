@@ -1,3 +1,4 @@
+#include <elf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -20,6 +21,7 @@
 #include "buffer_queue.h"
 #include "uthash.h"
 #include "util.h"
+#include "../util/util-common.h"
 
 struct process_queue {
 	struct ev_io w;
@@ -214,6 +216,44 @@ static void exec_child(struct procmgr *mgr,
 	abort();
 }
 
+static void exec_image(struct procmgr *mgr,
+	const unsigned char *image, size_t image_len,
+	struct process_options *opts)
+{
+	const char *sh = shell_path();
+	char *args = NULL, *proc = NULL;
+
+	ev_loop_fork(EV_DEFAULT);
+	ev_loop_destroy(EV_DEFAULT_UC);
+
+	void (*e_entry)(long *, long *);
+	long stack[9] = {0};
+	long *dynv;
+
+	struct bin_info *image_info = (struct bin_info*)(image + image_len - sizeof(*image_info));
+	e_entry = (void *)(image + image_info->start_function);
+
+	// ARGC, ARGV
+	stack[0] = 1;
+	stack[1] = (intptr_t)"libc.so";
+	stack[2] = 0;
+
+	// ENV
+	stack[3] = (intptr_t)"LANG=C";
+	stack[4] = 0;
+
+	// AUXV
+	stack[5] = AT_BASE; stack[6] = (intptr_t)image; // TODO: maybe let musl calculate?
+	stack[7] = AT_NULL; stack[8] = 0;
+
+	// Dynamic linker info:
+	dynv = (void *)(image + image_info->dynamic_linker_info);
+
+	log_debug("%s: jumping to %p loaded at %p\n", __FUNCTION__, e_entry, image);
+	e_entry(stack, dynv);
+
+	abort();
+}
 static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
 {
 	struct process *process = w->data;
@@ -279,7 +319,9 @@ void process_set_callbacks(struct process *p,
 }
 
 struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+	const char *file,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts)
 {
 	int stdin_pair[2];
 	if (pipe(stdin_pair) == -1) {
@@ -314,7 +356,11 @@ struct process * process_create(struct procmgr *mgr,
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 
-		exec_child(mgr, file, opts);
+		if (bin_image) {
+			exec_image(mgr, bin_image, bin_image_len, opts);
+		} else {
+			exec_child(mgr, file, opts);
+		}
 		return NULL;
 
 	} else if (pid == -1) {

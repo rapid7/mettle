@@ -253,7 +253,7 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		.user = NULL,
 	};
 
-	struct process *p = process_create(pm, path, &opts);
+	struct process *p = process_create(pm, path, NULL, 0, &opts);
 	if (p == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}

@@ -119,7 +119,8 @@ static void extension_err_cb(struct process *p, struct buffer_queue *queue, void
 	}
 }
 
-int extension_start(struct mettle *m, const char *full_path,  const char* args)
+int extension_start(struct mettle *m, const char *full_path,
+	unsigned char *bin_image, size_t bin_image_len, const char* args)
 {
 	int ret_val = -1;
 	struct procmgr *pm = mettle_get_procmgr(m);
@@ -131,8 +132,7 @@ int extension_start(struct mettle *m, const char *full_path,  const char* args)
 		.user = NULL,
 	};
 
-	/* XXX temporary measure of launching process from program on disk. */ 
-	struct process *p = process_create(pm, full_path, &opts);
+	struct process *p = process_create(pm, full_path, bin_image, bin_image_len, &opts);
 	if (p == NULL) {
 		log_error("Failed to start extension '%s'", full_path);
 		goto done;
