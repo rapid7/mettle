@@ -67,9 +67,28 @@ static struct tlv_packet *tlv_send_to_extension(struct tlv_handler_ctx *ctx)
 static void register_extension_commands(struct mettle *m,
 		struct process *p, void *buf, size_t len)
 {
-	char *cmds = malloc(len + 1);
-	strncpy(cmds, (char *)buf, len);
+	char *cmds = NULL;
+	static char *cmds_previous = NULL;
+
+	size_t cmds_copy_offset = 0;
+	if (cmds_previous) {
+		cmds = malloc(strlen(cmds_previous) + len + 1);
+		strncpy(cmds, cmds_previous, strlen(cmds_previous));
+		cmds_copy_offset = strlen(cmds_previous);
+	} else {
+		cmds = malloc(len + 1);
+	}
+	strncpy(&cmds[cmds_copy_offset], (char *)buf, len);
+	len += cmds_copy_offset;
 	cmds[len] = '\0';
+	if (strcmp(&cmds[len-2], "\n\n")) {
+		// Did not receive the full list of commands yet.
+		// Save what we have for now until we get the whole thing.
+		free(cmds_previous);
+		cmds_previous = cmds;
+		goto done_free_buf;
+	}
+
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	char *cmd = strtok(cmds, "\n");
 	do
@@ -81,8 +100,12 @@ static void register_extension_commands(struct mettle *m,
 				strlen(extension_data->command), extension_data);
 		tlv_dispatcher_add_handler(td, cmd, tlv_send_to_extension, m);
 	} while ((cmd = strtok(NULL, "\n")));
+
 	process_set_extension_ready(p);
+	free(cmds_previous);
 	free(cmds);
+
+done_free_buf:
 	free(buf);
 }
 
@@ -119,7 +142,7 @@ static void extension_err_cb(struct process *p, struct buffer_queue *queue, void
 	}
 }
 
-int extension_start(struct mettle *m, const char *full_path,
+static int extension_start(struct mettle *m, const char *full_path,
 	unsigned char *bin_image, size_t bin_image_len, const char* args)
 {
 	int ret_val = -1;
@@ -132,7 +155,12 @@ int extension_start(struct mettle *m, const char *full_path,
 		.user = NULL,
 	};
 
-	struct process *p = process_create(pm, full_path, bin_image, bin_image_len, &opts);
+	struct process *p;
+	if (bin_image) {
+		p = process_create_from_binary_image(pm, bin_image, bin_image_len, &opts);
+	} else {
+		p = process_create_from_executable(pm, full_path, &opts);
+	}
 	if (p == NULL) {
 		log_error("Failed to start extension '%s'", full_path);
 		goto done;
@@ -147,6 +175,18 @@ int extension_start(struct mettle *m, const char *full_path,
 
 done:
 	return ret_val;
+}
+
+int extension_start_executable(struct mettle *m, const char *full_path,
+	const char* args)
+{
+	return extension_start(m, full_path, NULL, 0, args);
+}
+
+int extension_start_binary_image(struct mettle *m, const char *name,
+	unsigned char *bin_image, size_t bin_image_len, const char* args)
+{
+	return extension_start(m, name, bin_image, bin_image_len, args);
 }
 
 void extmgr_free(struct extmgr *mgr)

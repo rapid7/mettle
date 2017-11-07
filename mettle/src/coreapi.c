@@ -168,7 +168,7 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 		}
 		// TODO: free this mem when the extension no longer is running
 		memcpy(extension_copy, extension, extension_len);
-		if (extension_start(m, library_path, extension, extension_len, NULL))
+		if (extension_start_binary_image(m, library_path, extension, extension_len, NULL))
 		{
 			log_error("Failed to start extension from binary image '%s'", library_path);
 			goto done;
@@ -200,7 +200,7 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 		close(fd);
 		fd = -1;
 
-		if (extension_start(m, full_path, NULL, 0, NULL))
+		if (extension_start_executable(m, full_path, NULL))
 		{
 			log_error("Failed to start extension from file '%s'", full_path);
 			goto done;

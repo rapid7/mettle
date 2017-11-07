@@ -26,8 +26,11 @@ struct process_options {
 /*
  * Create a new process
  */
-struct process * process_create(struct procmgr *mgr,
+struct process * process_create_from_executable(struct procmgr *mgr,
 	const char *file,
+	struct process_options *opts);
+
+struct process * process_create_from_binary_image(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
 	struct process_options *opts);
 
