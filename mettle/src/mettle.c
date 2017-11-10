@@ -154,6 +154,8 @@ struct procmgr * mettle_get_procmgr(struct mettle *m)
 void mettle_free(struct mettle *m)
 {
 	if (m) {
+		if (m->pm)
+			procmgr_free(m->pm);
 		if (m->c2)
 			c2_free(m->c2);
 		if (m->cm)
@@ -161,6 +163,19 @@ void mettle_free(struct mettle *m)
 		if (m->td)
 			tlv_dispatcher_free(m->td);
 		free(m);
+	}
+}
+
+static void mettle_signal_handler(struct ev_loop *loop,
+		ev_signal *w, int revents)
+{
+	switch (w->signum) {
+		case SIGINT:
+		case SIGTERM:
+			ev_break(loop, EVBREAK_ALL);
+			break;
+		default:
+			break;
 	}
 }
 
@@ -255,6 +270,13 @@ err:
 
 int mettle_start(struct mettle *m)
 {
+	ev_signal sigint_w, sigterm_w;
+
+	ev_signal_init(&sigint_w, mettle_signal_handler, SIGINT);
+	ev_signal_start(m->loop, &sigint_w);
+	ev_signal_init(&sigterm_w, mettle_signal_handler, SIGTERM);
+	ev_signal_start(m->loop, &sigterm_w);
+
 	tlv_register_coreapi(m);
 
 	tlv_register_channelapi(m);

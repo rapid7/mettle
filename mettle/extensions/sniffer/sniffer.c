@@ -776,13 +776,9 @@ int main(void)
 	int ret_val;
 
 #ifdef DEBUG
-#if 1
-	log_init("/tmp/extension.log");	// Allows extension to log to file
-#else
-	log_init_file(stderr);		// Allows extension to log via mettle
+	extension_log_to_mettle(EXTENSION_LOG_LEVEL_INFO);
 #endif
-	log_set_level(3);
-#endif
+
 	struct extension *e = extension();
 
 	// Register the commands and assocaited handlers this extension provides.

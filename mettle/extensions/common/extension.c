@@ -60,6 +60,19 @@ static void on_read(EV_P_ ev_io *w, int revents)
 	}
 }
 
+static void extension_signal_handler(struct ev_loop *loop,
+               ev_signal *w, int revents)
+{
+	switch (w->signum) {
+		case SIGINT:
+		case SIGTERM:
+			ev_break(loop, EVBREAK_ALL);
+			break;
+		default:
+			break;
+       }
+}
+
 /*
  * Basic initialization for the extension and return a pointer.
  */
@@ -103,6 +116,21 @@ err:
 
 
 /*
+ * Extension logging.
+ */
+void extension_log_to_mettle(int level)
+{
+	log_init_file(stderr);
+	log_set_level(level);
+}
+
+void extension_log_to_file(int level, char const * filename)
+{
+	log_init(filename);
+	log_set_level(level);
+}
+
+/*
  * Add/register the TLV handlers of an extension.
  */
 int extension_add_handler(struct extension *e,
@@ -135,6 +163,13 @@ int extension_start(struct extension *e)
 	fprintf(stdout, "\n");
 	fflush(stdout);
 
+	// Setup signal handling
+	ev_signal sigint_w, sigterm_w;
+	ev_signal_init(&sigint_w, extension_signal_handler, SIGINT);
+	ev_signal_start(e->loop, &sigint_w);
+	ev_signal_init(&sigterm_w, extension_signal_handler, SIGTERM);
+	ev_signal_start(e->loop, &sigterm_w);
+
 	// And GO!!!
 	ev_run(e->loop, 0);
 	return 0;
@@ -146,6 +181,7 @@ int extension_start(struct extension *e)
 void extension_free(struct extension *e)
 {
 	if (e) {
+		ev_io_stop(e->loop, &e->watcher);
 		if (e->td) {
 			tlv_dispatcher_free(e->td);
 		}

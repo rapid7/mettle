@@ -41,25 +41,11 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *core_shutdown(struct tlv_handler_ctx *ctx)
 {
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
-#ifdef SIGKILL
-	/*
-	 * First try to kill ourselves with a signal
-	 */
-	raise(SIGKILL);
-#endif
-
-	/*
-	 * Try to simply exit
-	 */
-	exit(0);
-
-	/*
-	 * Finally, trigger a SIGSEGV
-	 */
-	void (*nada) (void) = NULL;
-	nada();
+	// We're done, allow main() to cleanup...
+	struct mettle *m = ctx->arg;
+	ev_break(mettle_get_loop(m), EVBREAK_ALL);
 
 	return p;
 }

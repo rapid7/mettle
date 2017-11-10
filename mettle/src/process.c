@@ -204,7 +204,6 @@ static void exec_child(struct procmgr *mgr,
 		args = proc;
 	}
 
-
 	if (sh) {
 		execl(sh, sh, "-c", args, (char *)NULL);
 	} else {
