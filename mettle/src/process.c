@@ -132,9 +132,8 @@ static char *shell_path(void)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+    const char *file, struct process_options *opts, bool subshell)
 {
-	const char *sh = shell_path();
 	char *args = NULL, *proc = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
@@ -204,8 +203,11 @@ static void exec_child(struct procmgr *mgr,
 		args = proc;
 	}
 
-	if (sh) {
-		execl(sh, sh, "-c", args, (char *)NULL);
+	if (subshell) {
+		const char *sh = shell_path();
+		if (sh) {
+			execl(sh, sh, "-c", args, (char *)NULL);
+		}
 	} else {
 		size_t argc = 0;
 		char **argv = NULL;
@@ -219,7 +221,6 @@ static void exec_image(struct procmgr *mgr,
 	const unsigned char *image, size_t image_len,
 	struct process_options *opts)
 {
-	const char *sh = shell_path();
 	char *args = NULL, *proc = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
@@ -320,7 +321,7 @@ void process_set_callbacks(struct process *p,
 static struct process * process_create(struct procmgr *mgr,
 	const char *file,
 	const unsigned char *bin_image, size_t bin_image_len,
-	struct process_options *opts)
+	struct process_options *opts, bool subshell)
 {
 	int stdin_pair[2];
 	if (pipe(stdin_pair) == -1) {
@@ -358,7 +359,7 @@ static struct process * process_create(struct procmgr *mgr,
 		if (bin_image) {
 			exec_image(mgr, bin_image, bin_image_len, opts);
 		} else {
-			exec_child(mgr, file, opts);
+			exec_child(mgr, file, opts, subshell);
 		}
 		return NULL;
 
@@ -421,16 +422,16 @@ static struct process * process_create(struct procmgr *mgr,
 
 struct process * process_create_from_executable(struct procmgr *mgr,
 	const char *file,
-	struct process_options *opts)
+	struct process_options *opts, bool subshell)
 {
-	return process_create(mgr, file, NULL, 0, opts);
+	return process_create(mgr, file, NULL, 0, opts, subshell);
 }
 
 struct process * process_create_from_binary_image(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
 	struct process_options *opts)
 {
-	return process_create(mgr, NULL, bin_image, bin_image_len, opts);
+	return process_create(mgr, NULL, bin_image, bin_image_len, opts, false);
 }
 
 int process_kill(struct process* process)
