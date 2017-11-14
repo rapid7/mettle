@@ -260,7 +260,21 @@ int http_request(const char *url, enum http_request req,
 
 	if (data) {
 		for (int i = 0; i < data->num_headers; i++) {
-			conn->request_headers = curl_slist_append(conn->request_headers, data->headers[i]);
+			conn->request_headers =
+				curl_slist_append(conn->request_headers, data->headers[i]);
+		}
+
+		if (data->cookie_list) {
+			curl_easy_setopt(conn->easy_handle, CURLOPT_COOKIEFILE, "");
+			curl_easy_setopt(conn->easy_handle, CURLOPT_COOKIELIST, data->cookie_list);
+		}
+
+		if (data->referer) {
+			curl_easy_setopt(conn->easy_handle, CURLOPT_REFERER, data->referer);
+		}
+
+		if (data->ua) {
+			curl_easy_setopt(conn->easy_handle, CURLOPT_USERAGENT, data->ua);
 		}
 
 		if (data->content) {

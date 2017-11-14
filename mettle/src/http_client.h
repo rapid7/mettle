@@ -33,6 +33,10 @@ struct http_request_data {
 	char * const *headers;
 	int num_headers;
 
+	char *cookie_list;
+	char *referer;
+	char *ua;
+
 #define HTTP_DATA_COMPRESS (1 << 0)
 	unsigned int flags;
 	const char *content_type;
