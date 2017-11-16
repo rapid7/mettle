@@ -167,9 +167,9 @@ static int extension_start(struct mettle *m, const char *full_path,
 
 	struct process *p;
 	if (bin_image) {
-		p = process_create_from_binary_image(pm, bin_image, bin_image_len, &opts);
+		p = process_create_from_binary_image(pm, bin_image, bin_image_len, &opts, 0);
 	} else {
-		p = process_create_from_executable(pm, full_path, &opts, false);
+		p = process_create_from_executable(pm, full_path, &opts, 0);
 	}
 	if (p == NULL) {
 		log_error("Failed to start extension '%s'", full_path);
