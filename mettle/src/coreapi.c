@@ -125,9 +125,9 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response(ctx);
 	int fd = -1;
-	char *full_path = NULL;
 	int tlv_result = TLV_RESULT_FAILURE;
 	const char *library_path = tlv_packet_get_str(ctx->req, TLV_TYPE_LIBRARY_PATH);
+	const char *target_path = tlv_packet_get_str(ctx->req, TLV_TYPE_TARGET_PATH);
 	const unsigned char *extension = tlv_packet_get_raw(ctx->req, TLV_TYPE_DATA, &extension_len);
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_FLAGS, &flags);
@@ -163,32 +163,27 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 		/* This is an executable that needs to be saved to the filesystem. */
 		log_info("Loading extension '%s' from executable file", library_path);
 
-		if (asprintf(&full_path, "/tmp/%s", library_path) <=0) {
-			log_error("Failed to alloc mem");
-			goto done;
-		}
-
-		fd = open(full_path, O_CREAT|O_WRONLY, 0755);
+		fd = open(target_path, O_CREAT|O_WRONLY, 0755);
 		if(fd == -1) {
-			log_error("Failed to open '%s': %s", full_path, strerror(errno));
+			log_error("Failed to open '%s': %s", target_path, strerror(errno));
 			goto done;
 		}
 
 		int ret_val = write(fd, extension, extension_len);
 		if (ret_val == -1) {
-			log_error("Failed to write '%s': %s", full_path, strerror(errno));
+			log_error("Failed to write '%s': %s", target_path, strerror(errno));
 			goto done;
 		}
 		if (ret_val != extension_len) {
-			log_error("Failed to write the entire extension '%s' to disk", full_path);
+			log_error("Failed to write the entire extension '%s' to disk", target_path);
 			goto done;
 		}
 		close(fd);
 		fd = -1;
 
-		if (extension_start_executable(m, full_path, NULL))
+		if (extension_start_executable(m, target_path, NULL))
 		{
-			log_error("Failed to start extension from file '%s'", full_path);
+			log_error("Failed to start extension from file '%s'", target_path);
 			goto done;
 		}
 	}
@@ -199,9 +194,6 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 done:
 	if (fd != -1) {
 		close(fd);
-	}
-	if (full_path) {
-		free(full_path);
 	}
 	p = tlv_packet_add_result(p, tlv_result);
 
