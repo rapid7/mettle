@@ -8,7 +8,7 @@ $(BUILD)/libpcap/configure:
 		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
 		mv libpcap-$(LIBPCAP_VERSION) libpcap
 
-ifneq "$(TARGET)" "native"
+ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
 endif
 
