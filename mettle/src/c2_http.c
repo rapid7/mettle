@@ -79,8 +79,8 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 	if (got_command) {
 		ctx->poll_timer.repeat = 0.1;
 	} else {
-		if (ctx->poll_timer.repeat < 6.4) {
-			ctx->poll_timer.repeat *= 2;
+		if (ctx->poll_timer.repeat < 10.0) {
+			ctx->poll_timer.repeat += 0.1;
 		}
 	}
 }
