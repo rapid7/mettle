@@ -10,7 +10,7 @@ end
 module MetasploitPayloads
   class Mettle
 
-    CMDLINE_MAX = 512
+    CMDLINE_MAX = 2000
     CMDLINE_SIG = 'DEFAULT_OPTS'.freeze
     #
     # Config is a hash. Valid keys are:
