@@ -1,3 +1,39 @@
+/**
+ *
+ * @brief Convert an ELF executable to binary image.
+ * @file elf2bin.c
+ *
+ * This program will take, as input, an ELF executable program and
+ * create a binary image of the ELF executable.  This binary image is
+ * position-independent and suitable for use inside a 'hollowed' process.
+ *
+ * NOTE: For successful ELF to BIN conversion, this program requires
+ *       the ELF executable to have been built to use the musl libc
+ *       implementation, which keeps the code small and POSIX-compliant.
+ *
+ * Example run and output:
+ *   $ ./build/tools/elf2bin build/x86_64-linux-musl/bin/sniffer build/x86_64-linux-musl/bin/sniffer.bin
+ *   data @ 0x7f5f51fc5000, mapping @ 0x7f5f50ad7000
+ *   memcpy(0x7f5f50ad7000, 0x7f5f51fc5000, 0004cd44)
+ *   memcpy(0x7f5f50b24da0, 0x7f5f52011da0, 000017d0)
+ *
+ * For those interested, the code below implements the following flow:
+ *
+ * - ELF file is opened and mmap'd into memory (as 'data')
+ * - memory for new binary image mmap'd (as 'mapping')
+ * - ELF type is identified (e.g. 32 or 64-bit, little or big endian)
+ * - ELF program headers, section headers, and symbol table are located
+ * - ELF program headers are iterated, taking action on the following types:
+ *   - PT_LOAD: segment is copied from offset in 'data' to vaddr location in 'mapping'
+ *   - PT_DYNAMIC: segment location of dynamic linking info is saved ('bin_info.dynamic_linker_info')
+ * - ELF sections are iterated to locate the string table
+ * - ELF symbols are iterated to locate the entry point name ('_start_c') in the string table
+ *   - once located, the location of the entry point is saved ('bin_info.start_function')
+ * - info required for loading by the hollowed out process ('bin_info') is appended to 'mapping'
+ * - binary image is written to disk
+ *
+ */
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -16,6 +52,7 @@
 
 #define ENTRYPOINT "_start_c"
 
+// Copy/save relevant data/info needed for the binary image
 #define MAP(LONG,INT,SHORT) \
 	for(ii = 0; ii < SHORT(ehdr->e_phnum); ii++, phdr++) { \
 		if(INT(phdr->p_type) == PT_LOAD) { \
@@ -64,6 +101,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	// Load input ELF executable into memory
 	fd = open(argv[1], O_RDONLY);
 	if(fd == -1) {
 		printf("Failed to open %s: %s\n", argv[1], strerror(errno));
@@ -83,6 +121,7 @@ int main(int argc, char **argv)
 
 	close(fd);
 
+	// Setup area in memory to contain the new binary image
 	mapping = mmap(NULL, 0x1000000, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 	if(mapping == MAP_FAILED) {
 		printf("Failed to mmap(): %s\n", strerror(errno));
@@ -92,6 +131,7 @@ int main(int argc, char **argv)
 
 	printf("data @ %p, mapping @ %p\n", data, mapping);
 
+	// Locate ELF program and section headers, and also the symbol table
 	arch = (Elf32_Ehdr *)data;
 
 	struct bin_info bin_info = {

@@ -226,10 +226,12 @@ static void exec_image(struct procmgr *mgr,
 	ev_loop_fork(EV_DEFAULT);
 	ev_loop_destroy(EV_DEFAULT_UC);
 
+	// Variables we'll need to get the binary image running
 	void (*e_entry)(long *, long *);
 	long stack[9] = {0};
 	long *dynv;
 
+	// Locate the entry point address for the binary image (stored in the appended image info)
 	struct bin_info *image_info = (struct bin_info*)(image + image_len - sizeof(*image_info));
 	e_entry = (void *)(image + image_info->start_function);
 

@@ -8,7 +8,7 @@ The first extension provided is **sniffer**, which captures packets on a network
 What's a Mettle Extension?
 --------------------------
 
-A Mettle extension is a binary excutable, compiled for the target OS+architecture.  The Mettle `load` command (via msfconsole) will do the following:
+A Mettle extension is a binary executable or image, compiled for the target OS+architecture.  The Mettle `load` command (via msfconsole) will do the following:
 
 * download the extension across the network to the target
   * extensions built as an executable or binary image are both supported
