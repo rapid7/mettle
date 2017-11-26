@@ -62,12 +62,18 @@ CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variab
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
+	extensions/Makefile
+	extensions/common/Makefile
+	extensions/sniffer/Makefile
 ])
 
 AC_ARG_ENABLE([staticpie],
 	AS_HELP_STRING([--enable-staticpie], [Building Static PIE]))
 AS_IF([test "x$enable_staticpie" = "xyes"], [
-	AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])
+		AC_SUBST([PLATFORM_LDADD], ['-static --static -pie']),
+		AM_CONDITIONAL([MAKEBIN],  [true])
+        ], [
+		AM_CONDITIONAL([MAKEBIN],  [false])
 ])
 
 AC_OUTPUT

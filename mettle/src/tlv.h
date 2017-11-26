@@ -128,7 +128,8 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 
 int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p);
 
-void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, size_t *len);
+void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td,
+		bool add_prepend, size_t *len);
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
 		const char *extension,

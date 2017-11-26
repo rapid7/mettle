@@ -38,6 +38,8 @@ struct c2 * mettle_get_c2(struct mettle *m);
 
 struct channelmgr * mettle_get_channelmgr(struct mettle *m);
 
+struct extmgr * mettle_get_extmgr(struct mettle *m);
+
 struct procmgr * mettle_get_procmgr(struct mettle *m);
 
 #endif

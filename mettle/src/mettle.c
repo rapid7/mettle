@@ -13,6 +13,7 @@
 
 #include "base64.h"
 #include "c2.h"
+#include "extensions.h"
 #include "log.h"
 #include "mettle.h"
 #include "process.h"
@@ -22,6 +23,7 @@
 
 struct mettle {
 	struct channelmgr *cm;
+	struct extmgr *em;
 	struct procmgr *pm;
 
 	struct c2 *c2;
@@ -139,6 +141,11 @@ struct channelmgr * mettle_get_channelmgr(struct mettle *m)
 	return m->cm;
 }
 
+struct extmgr * mettle_get_extmgr(struct mettle *m)
+{
+	return m->em;
+}
+
 struct procmgr * mettle_get_procmgr(struct mettle *m)
 {
 	return m->pm;
@@ -147,6 +154,8 @@ struct procmgr * mettle_get_procmgr(struct mettle *m)
 void mettle_free(struct mettle *m)
 {
 	if (m) {
+		if (m->pm)
+			procmgr_free(m->pm);
 		if (m->c2)
 			c2_free(m->c2);
 		if (m->cm)
@@ -157,13 +166,26 @@ void mettle_free(struct mettle *m)
 	}
 }
 
+static void mettle_signal_handler(struct ev_loop *loop,
+		ev_signal *w, int revents)
+{
+	switch (w->signum) {
+		case SIGINT:
+		case SIGTERM:
+			ev_break(loop, EVBREAK_ALL);
+			break;
+		default:
+			break;
+	}
+}
+
 static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 {
 	struct mettle *m = arg;
 	void *buf;
 	size_t len;
 
-	while ((buf = tlv_dispatcher_dequeue_response(td, &len))) {
+	while ((buf = tlv_dispatcher_dequeue_response(td, true, &len))) {
 		c2_write(m->c2, buf, len);
 		free(buf);
 	}
@@ -223,6 +245,8 @@ struct mettle *mettle(void)
 
 	m->pm = procmgr_new(m->loop);
 
+	m->em = extmgr_new();
+
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
@@ -246,6 +270,13 @@ err:
 
 int mettle_start(struct mettle *m)
 {
+	ev_signal sigint_w, sigterm_w;
+
+	ev_signal_init(&sigint_w, mettle_signal_handler, SIGINT);
+	ev_signal_start(m->loop, &sigint_w);
+	ev_signal_init(&sigterm_w, mettle_signal_handler, SIGTERM);
+	ev_signal_start(m->loop, &sigterm_w);
+
 	tlv_register_coreapi(m);
 
 	tlv_register_channelapi(m);

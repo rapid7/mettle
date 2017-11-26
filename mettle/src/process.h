@@ -26,8 +26,17 @@ struct process_options {
 /*
  * Create a new process
  */
-struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts);
+
+// Supported flag values
+#define PROCESS_CREATE_SUBSHELL		0x00000001
+
+struct process * process_create_from_executable(struct procmgr *mgr,
+	const char *file,
+	struct process_options *opts, unsigned int flags);
+
+struct process * process_create_from_binary_image(struct procmgr *mgr,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts, unsigned int flags);
 
 void process_set_callbacks(struct process *p,
 	process_read_cb_t stdout_cb,
@@ -64,5 +73,11 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
  * Returns the PID of the given process
  */
 pid_t process_get_pid(struct process *p);
+
+/*
+ * Get/Set if this process is an extension and if it's ready to accept commands.
+ */
+bool process_get_extension_ready(struct process *process);
+void process_set_extension_ready(struct process *process);
 
 #endif

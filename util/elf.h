@@ -221,7 +221,10 @@ typedef struct {
 #define EM_NUM		192
 #define EM_ALPHA	0x9026
 
-#define EV_NONE		0
+// The following conflicts with a libev define, don't think we're actually
+// using this one right now...
+//#define EV_NONE		0
+#define EV_NOONE	0
 #define EV_CURRENT	1
 #define EV_NUM		2
 

@@ -37,6 +37,8 @@ struct process {
 	process_exit_cb_t exit_cb;
 
 	void *cb_arg;
+ 
+	bool is_extension_and_ready;
 
 	UT_hash_handle hh;
 	pid_t pid;
@@ -158,7 +160,9 @@ void process_set_callbacks(struct process *p,
 }
 
 struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+	const char *file,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts, bool subshell)
 {
 	struct process *p = calloc(1, sizeof(*p));
 	if (p == NULL) {
@@ -219,6 +223,20 @@ struct process * process_create(struct procmgr *mgr,
 	*/
 
 	return p;
+}
+
+struct process * process_create_from_executable(struct procmgr *mgr,
+        const char *file,
+        struct process_options *opts, bool subshell)
+{
+	return process_create(mgr, file, NULL, 0, opts, subshell);
+}
+
+struct process * process_create_from_binary_image(struct procmgr *mgr,
+        const unsigned char *bin_image, size_t bin_image_len,
+        struct process_options *opts)
+{
+	return process_create(mgr, NULL, bin_image, bin_image_len, opts, false);
 }
 
 int process_kill(struct process* process)

@@ -1,3 +1,4 @@
+#include <elf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -20,6 +21,7 @@
 #include "buffer_queue.h"
 #include "uthash.h"
 #include "util.h"
+#include "../util/util-common.h"
 
 struct process_queue {
 	struct ev_io w;
@@ -40,6 +42,8 @@ struct process {
 
 	void *cb_arg;
 
+	bool is_extension_and_ready;
+
 	UT_hash_handle hh;
 	pid_t pid;
 };
@@ -54,6 +58,16 @@ extern char **environ;
 pid_t process_get_pid(struct process *process)
 {
 	return process->pid;
+}
+
+bool process_get_extension_ready(struct process *process)
+{
+	return process->is_extension_and_ready;
+}
+
+void process_set_extension_ready(struct process *process)
+{
+	process->is_extension_and_ready = true;
 }
 
 static void free_process_queue(struct ev_loop *loop, struct process_queue *pipe)
@@ -118,9 +132,8 @@ static char *shell_path(void)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+    const char *file, struct process_options *opts, unsigned int flags)
 {
-	const char *sh = shell_path();
 	char *args = NULL, *proc = NULL;
 
 	ev_loop_fork(EV_DEFAULT);
@@ -190,15 +203,57 @@ static void exec_child(struct procmgr *mgr,
 		args = proc;
 	}
 
-
-	if (sh) {
-		execl(sh, sh, "-c", args, (char *)NULL);
+	if (flags & PROCESS_CREATE_SUBSHELL) {
+		const char *sh = shell_path();
+		if (sh) {
+			execl(sh, sh, "-c", args, (char *)NULL);
+		}
 	} else {
 		size_t argc = 0;
 		char **argv = NULL;
 		argv = argv_split(args, argv, &argc);
 		execvp(file, argv);
 	}
+	abort();
+}
+
+static void exec_image(struct procmgr *mgr,
+	const unsigned char *image, size_t image_len,
+	struct process_options *opts, unsigned int flags)
+{
+	char *args = NULL, *proc = NULL;
+
+	ev_loop_fork(EV_DEFAULT);
+	ev_loop_destroy(EV_DEFAULT_UC);
+
+	// Variables we'll need to get the binary image running
+	void (*e_entry)(long *, long *);
+	long stack[9] = {0};
+	long *dynv;
+
+	// Locate the entry point address for the binary image (stored in the appended image info)
+	struct bin_info *image_info = (struct bin_info*)(image + image_len - sizeof(*image_info));
+	e_entry = (void *)(image + image_info->start_function);
+
+	// ARGC, ARGV
+	stack[0] = 1;
+	stack[1] = (intptr_t)"libc.so";
+	stack[2] = 0;
+
+	// ENV
+	stack[3] = (intptr_t)"LANG=C";
+	stack[4] = 0;
+
+	// AUXV
+	stack[5] = AT_BASE; stack[6] = (intptr_t)image; // TODO: maybe let musl calculate?
+	stack[7] = AT_NULL; stack[8] = 0;
+
+	// Dynamic linker info:
+	dynv = (void *)(image + image_info->dynamic_linker_info);
+
+	log_debug("%s: jumping to %p loaded at %p\n", __FUNCTION__, e_entry, image);
+	e_entry(stack, dynv);
+
 	abort();
 }
 
@@ -266,8 +321,10 @@ void process_set_callbacks(struct process *p,
 	p->cb_arg = cb_arg;
 }
 
-struct process * process_create(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+static struct process * process_create(struct procmgr *mgr,
+	const char *file,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts, unsigned int flags)
 {
 	int stdin_pair[2];
 	if (pipe(stdin_pair) == -1) {
@@ -302,7 +359,11 @@ struct process * process_create(struct procmgr *mgr,
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 
-		exec_child(mgr, file, opts);
+		if (bin_image) {
+			exec_image(mgr, bin_image, bin_image_len, opts, flags);
+		} else {
+			exec_child(mgr, file, opts, flags);
+		}
 		return NULL;
 
 	} else if (pid == -1) {
@@ -360,6 +421,20 @@ struct process * process_create(struct procmgr *mgr,
 	ev_io_start(mgr->loop, &p->err.w);
 
 	return p;
+}
+
+struct process * process_create_from_executable(struct procmgr *mgr,
+	const char *file,
+	struct process_options *opts, unsigned int flags)
+{
+	return process_create(mgr, file, NULL, 0, opts, flags);
+}
+
+struct process * process_create_from_binary_image(struct procmgr *mgr,
+	const unsigned char *bin_image, size_t bin_image_len,
+	struct process_options *opts, unsigned int flags)
+{
+	return process_create(mgr, NULL, bin_image, bin_image_len, opts, flags);
 }
 
 int process_kill(struct process* process)

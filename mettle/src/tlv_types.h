@@ -294,4 +294,9 @@
 #define PROCESS_ARCH_X64        2
 #define PROCESS_ARCH_IA64       3
 
+/*
+ * Custom
+ */
+#define MAKE_CUSTOM_TLV(meta, base, actual) ((base + actual) | meta)
+
 #endif
