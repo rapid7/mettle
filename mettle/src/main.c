@@ -152,7 +152,6 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 				args = new_args;
 			}
 		}
-
 		start_service(name, argv[0], args, persist);
 		free(args);
 	}

@@ -38,7 +38,7 @@ static void on_tlv_response(struct tlv_dispatcher *td, void *arg)
 
 static void on_read(EV_P_ ev_io *w, int revents)
 {
-        unsigned char buf[8192];
+	unsigned char buf[8192];
 	ssize_t n;
 	struct extension *e = w->data;
 
