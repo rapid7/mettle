@@ -13,9 +13,8 @@ Gem::Specification.new do |spec|
   spec.license       = '3-clause (or "modified") BSD'
 
   spec.files         = `git ls-files lib/`.split("\n")
-  spec.files        += Dir['build/*/bin/mettle']
-  spec.files        += Dir['build/*/bin/mettle.exe']
-  spec.files        += Dir['build/*/bin/mettle.bin']
+  spec.files        += Dir['build/*/bin/mettle*']
+  spec.files        += Dir['build/*/bin/sniffer*']
   spec.executables   = []
   spec.require_paths = ['lib']
 
