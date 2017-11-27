@@ -66,8 +66,8 @@
 			bin_info.dynamic_linker_info = LONG(phdr->p_vaddr); \
 		} \
 	} \
-	while (LONG(shdr->sh_type) != SHT_STRTAB) shdr++; \
-	while ((symb < symb_end) && strcmp((char *)((unsigned char *)ehdr + LONG(shdr->sh_offset) + LONG(symb->st_name)), ENTRYPOINT) != 0) symb++; \
+	while (INT(shdr->sh_type) != SHT_STRTAB) shdr++; \
+	while ((symb < symb_end) && strcmp((char *)((unsigned char *)ehdr + LONG(shdr->sh_offset) + INT(symb->st_name)), ENTRYPOINT) != 0) symb++; \
 	if (symb < symb_end) { \
 		bin_info.start_function = LONG(symb->st_value); \
 	}
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 		} else {
 			phdr = (Elf64_Phdr *)(data + bswap64(ehdr->e_phoff));
 			shdr = (Elf64_Shdr *)(data + bswap64(ehdr->e_shoff));
-			while (bswap64(shdr->sh_type) != SHT_SYMTAB) shdr++;
+			while (ntohl(shdr->sh_type) != SHT_SYMTAB) shdr++;
 			symb = (Elf64_Sym *)(data + bswap64(shdr->sh_offset));
 			symb_end = (Elf64_Sym *)((void *)symb + bswap64(shdr->sh_size));
 			MAP_BE64
