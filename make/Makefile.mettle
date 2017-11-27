@@ -9,10 +9,6 @@ include make/Makefile.mbedtls
 # used by extensions
 include make/Makefile.libpcap
 
-deps/README.md: make/Makefile.tools
-	git submodule init
-	git submodule update
-
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
