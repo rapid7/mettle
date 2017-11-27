@@ -12,6 +12,10 @@ ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
 endif
 
+ifneq (,$(findstring -darwin,$(TARGET)))
+    LIBPCAP_CONFIG_FLAGS=--with-pcap=bpf
+endif
+
 $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
