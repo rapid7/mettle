@@ -48,6 +48,7 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 
 $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 	@echo "Building mettle for $(TARGET)"
+	@rm build/$(TARGET_BUILD_DIR)/bin/*
 	@cd $(BUILD)/mettle; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
@@ -61,7 +62,7 @@ METTLEDIR:=$(DATADIR)/mettle
 
 install: mettle
 	@mkdir -p $(METTLEDIR)/$(TARGET_BUILD_DIR)/bin/
-	@cp build/$(TARGET_BUILD_DIR)/bin/mettle* $(METTLEDIR)/$(TARGET_BUILD_DIR)/bin/
+	@cp build/$(TARGET_BUILD_DIR)/bin/* $(METTLEDIR)/$(TARGET_BUILD_DIR)/bin/
 
 uninstall:
 	@rm -rf $(METTLEDIR)/$(TARGET_BUILD_DIR)
