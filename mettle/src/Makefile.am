@@ -7,8 +7,7 @@ libmettle_la_LIBADD = -ldnet
 libmettle_la_LIBADD += -lcurl
 libmettle_la_LIBADD += -leio
 libmettle_la_LIBADD += -lev
-# libmettle_la_LIBADD += -lmbedtls
-# libmettle_la_LIBADD += -lmbedcrypto
+libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
@@ -88,9 +87,12 @@ if !HAVE_STRLCPY
 libmettle_la_SOURCES += compat/strlcpy.c
 endif
 
-bin_PROGRAMS = mettle
+bin_PROGRAMS = mettle msconsole
 
 mettle_SOURCES = main.c
 mettle_LDADD = libmettle.la
-
 mettle_LDFLAGS = $(PLATFORM_LDADD)
+
+msconsole_SOURCES = msconsole.c
+msconsole_LDADD = libmettle.la
+msconsole_LDFLAGS = $(PLATFORM_LDADD) -llinenoise -lstdc++
