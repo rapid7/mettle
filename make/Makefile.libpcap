@@ -12,8 +12,8 @@ ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS=--with-pcap=linux
 endif
 
-ifneq (,$(findstring -darwin,$(TARGET)))
-    LIBPCAP_CONFIG_FLAGS=--with-pcap=bpf
+ifneq (,$(findstring -iphone-,$(TARGET)))
+    LIBPCAP_CONFIG_FLAGS=--with-pcap=bpf --disable-universal
 endif
 
 $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
@@ -24,6 +24,7 @@ $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS
 
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"
+	@wget https://raw.githubusercontent.com/opensource-apple/xnu/master/bsd/net/bpf.h -O $(BUILD)/libpcap/net/bpf.h
 	@cd $(BUILD)/libpcap; \
 		$(MAKE) $(LOGBUILD) ; \
 	       	$(MAKE_INSTALL) $(LOGBUILD)
