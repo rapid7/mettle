@@ -1,5 +1,6 @@
 #include "log.h"
 #include "json.h"
+#include "utlist.h"
 
 #include <errno.h>
 
@@ -194,3 +195,50 @@ int json_get_bool(json_object *json, const char *key, bool *dst)
     }
     return -1;
 }
+
+struct json_rpc {
+	int flags;
+	struct json_method {
+		char *name;
+		char **params;
+		int num_params;
+		json_method_cb *cb;
+		void *arg;
+	} *methods;
+	int num_methods;
+
+	uint64_t next_request_id;
+	struct json_request {
+		json_result_cb cb;
+		void *arg;
+		uint64_t id;
+		struct json_request *next;
+	} *requests;
+};
+
+struct json_rpc * json_rpc(int flags)
+{
+	struct json_rpc *jrpc = calloc(1, sizeof(*jrpc));
+	if (jrpc) {
+		jrpc->flags = flags;
+	}
+	return jrpc;
+}
+
+void json_rpc_free(struct json_rpc *jrpc)
+{
+	if (jrpc) {
+		for (int i = 0; i < jrpc->num_methods; i++) {
+			for (int j = 0; j < jrpc->methods[i].num_params; j++) {
+				free(jrpc->methods[i].params[j]);
+			}
+		}
+		free(jrpc->methods);
+		struct json_request *req, *tmp;
+		LL_FOREACH_SAFE(jrpc->requests, req, tmp) {
+			free(req);
+		}
+	}
+}
+
+void json_rpc_free(struct json_rpc *jrpc);

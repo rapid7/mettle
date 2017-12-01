@@ -11,6 +11,10 @@
 #include <json-c/json.h>
 #include "bufferev.h"
 
+/*
+ * General JSON object methods
+ */
+
 struct json_object *json_read_file(const char *json_file);
 
 struct json_object * json_read_buf(const void *buf, ssize_t buf_len);
@@ -39,5 +43,40 @@ int json_get_int64(json_object *json, const char *key, int64_t *dst);
 int json_get_double(json_object *json, const char *key, double *dst);
 
 int json_get_bool(json_object *json, const char *key, bool *dst);
+
+/*
+ * JSON RPC methods
+ */
+
+#define JSON_RPC_PARSE_ERROR      -32700
+#define JSON_RPC_INVALID_REQUEST  -32600
+#define JSON_RPC_METHOD_NOT_FOUND -32601
+#define JSON_RPC_INVALID_PARAMS   -32603
+#define JSON_RPC_INTERNAL_ERROR   -32693
+
+struct json_method_ctx {
+    const char *method;
+    json_object *params;
+    json_object *id;
+};
+
+typedef json_object *(*json_method_cb)(struct json_method_ctx *ctx, void *arg);
+
+#define JSON_RESULT_IS_ERROR (1 << 0)
+struct json_result_info {
+    int flags;
+    uint64_t id;
+    struct json_object *response;
+};
+typedef void (*json_result_cb)(struct json_result_info *result, void *arg);
+
+struct json_rpc;
+
+#define JSON_RPC_CHECK_VERSION (1 << 0)
+
+struct json_rpc * json_rpc(int flags);
+
+void json_rpc_free(struct json_rpc *jrpc);
+
 
 #endif
