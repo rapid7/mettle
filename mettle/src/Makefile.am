@@ -26,6 +26,7 @@ libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += extension.c
 libmettle_la_SOURCES += extensions.c
 libmettle_la_SOURCES += http_client.c
+libmettle_la_SOURCES += json.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += md5.c
 libmettle_la_SOURCES += network_client.c
