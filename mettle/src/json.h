@@ -12,7 +12,7 @@
 #include "bufferev.h"
 
 /*
- * General JSON object methods
+ * JSON read and dispatch methods
  */
 
 struct json_object *json_read_file(const char *json_file);
@@ -20,6 +20,15 @@ struct json_object *json_read_file(const char *json_file);
 struct json_object * json_read_buf(const void *buf, ssize_t buf_len);
 
 struct json_object *json_read_bufferev(struct bufferev *bev, struct json_tokener *tok);
+
+typedef void (*json_read_cb)(struct json_object *obj, struct bufferev *bev, void *arg);
+
+void json_read_bufferev_cb(struct bufferev *bev, struct json_tokener *tok,
+		json_read_cb cb, void *arg);
+
+/*
+ * General JSON object manipulation methods
+ */
 
 int json_add_str(struct json_object *json, const char *key, const char *val);
 

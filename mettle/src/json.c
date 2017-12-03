@@ -69,6 +69,34 @@ struct json_object *json_read_bufferev(struct bufferev *bev, struct json_tokener
 	return obj;
 }
 
+void json_read_bufferev_cb(struct bufferev *bev, struct json_tokener *tok,
+		json_read_cb cb, void *arg)
+{
+	char buf[4096];
+	size_t buf_len, last_read = 0;
+	struct json_object *obj = NULL;
+	enum json_tokener_error rc = json_tokener_continue;
+	do {
+		buf_len = bufferev_read(bev, buf, sizeof(buf));
+		if (buf_len) {
+			last_read = buf_len;
+			obj = json_tokener_parse_ex(tok, buf, buf_len);
+			rc = json_tokener_get_error(tok);
+			if (obj) {
+				cb(obj, bev, arg);
+			}
+		}
+	} while (buf_len && rc == json_tokener_continue);
+
+	if (tok->char_offset < last_read) {
+		size_t offset = tok->char_offset;
+		while ((obj = json_tokener_parse_ex(tok, buf + offset, last_read - offset))) {
+			offset += tok->char_offset;
+			cb(obj, bev, arg);
+		}
+	}
+}
+
 int json_add_str(struct json_object *json, const char *key, const char *val)
 {
 	if (val) {
