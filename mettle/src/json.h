@@ -48,6 +48,8 @@ int json_get_bool(json_object *json, const char *key, bool *dst);
  * JSON RPC methods
  */
 
+struct json_rpc;
+
 #define JSON_RPC_PARSE_ERROR      -32700
 #define JSON_RPC_INVALID_REQUEST  -32600
 #define JSON_RPC_METHOD_NOT_FOUND -32601
@@ -70,13 +72,45 @@ struct json_result_info {
 };
 typedef void (*json_result_cb)(struct json_result_info *result, void *arg);
 
-struct json_rpc;
-
 #define JSON_RPC_CHECK_VERSION (1 << 0)
-
 struct json_rpc * json_rpc(int flags);
 
 void json_rpc_free(struct json_rpc *jrpc);
 
+struct json_method *json_rpc_find_method(struct json_rpc *jrpc,
+	const char *method_name);
+
+int json_rpc_register_method(struct json_rpc *jrpc,
+	const char *method_name, const char *params, json_method_cb, void *arg);
+
+int json_rpc_register_result_cb(struct json_rpc *jrpc,
+	int64_t id, json_result_cb cb, void *arg);
+
+struct json_object * json_rpc_gen_notification(struct json_rpc *jrpc,
+	const char *method_name, struct json_object *params);
+
+struct json_object * json_rpc_gen_result_json(struct json_rpc *jrpc,
+	struct json_object *id, json_object *result);
+
+struct json_object * json_rpc_gen_result_str(struct json_rpc *jrpc,
+	struct json_object *id, const char *result);
+
+struct json_object * json_rpc_gen_result_int32(struct json_rpc *jrpc,
+    struct json_object *id, int32_t result);
+
+struct json_object * json_rpc_gen_result_int64(struct json_rpc *jrpc,
+    struct json_object *id, int64_t result);
+
+struct json_object * json_rpc_gen_error(struct json_rpc *jrpc,
+	struct json_object *id, int code, const char *message);
+
+struct json_object * json_rpc_gen_method_call(struct json_rpc *jrpc,
+	const char *method_name, int64_t *id, struct json_object *params);
+
+struct json_object * json_rpc_gen_notification(struct json_rpc *jrpc,
+	const char *method_name, struct json_object *params);
+
+struct json_object * json_rpc_gen_result_json(struct json_rpc *jrpc,
+	struct json_object *id, json_object *result);
 
 #endif
