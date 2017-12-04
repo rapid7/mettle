@@ -101,8 +101,3 @@ void ms_start_interactive(void)
 		free(res);
 	} while (1);
 }
-
-int main(int argc, char **argv)
-{
-	ms_start_interactive();
-}

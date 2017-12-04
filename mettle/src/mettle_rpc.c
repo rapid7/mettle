@@ -1,3 +1,11 @@
+#include <string.h>
+
+#include "json.h"
+#include "log.h"
+#include "mettle.h"
+#include "network_server.h"
+#include "utlist.h"
+
 struct mettle_rpc {
 	struct mettle *m;
 	int running;
@@ -12,7 +20,7 @@ struct mettle_rpc {
 };
 
 static struct mettle_rpc_conn * get_conn(struct mettle_rpc *mrpc,
-	struct bufferev *bev);
+	struct bufferev *bev)
 {
 	struct mettle_rpc_conn *conn;
 	LL_FOREACH(mrpc->conns, conn) {
@@ -109,17 +117,17 @@ struct mettle_rpc * mettle_rpc_new(struct mettle *m)
 
 	mrpc->m = m;
 
-	mrpc->jrpc = json_rpc_new();
-	if (m->jrpc == NULL) {
+	mrpc->jrpc = json_rpc_new(JSON_RPC_CHECK_VERSION);
+	if (mrpc->jrpc == NULL) {
 		goto err;
 	}
 
 	mrpc->ns = network_server_new(mettle_get_loop(m));
-	if (network_server_listen_tcp(mrpc->ns, "127.0.0.1", 1337) == -1) {
+	char *host = "127.0.0.1";
+	uint16_t port = 1337;
+	if (network_server_listen_tcp(mrpc->ns, host, port) == -1) {
 		log_info("failed to listen on %s:%d", host, port);
-		network_server_free(mrpc->ns);
-		free(nsc);
-		return -1;
+		goto err;
 	}
 
 	return mrpc;

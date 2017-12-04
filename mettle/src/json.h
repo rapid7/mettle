@@ -82,12 +82,12 @@ struct json_result_info {
 typedef void (*json_result_cb)(struct json_result_info *result, void *arg);
 
 #define JSON_RPC_CHECK_VERSION (1 << 0)
-struct json_rpc * json_rpc(int flags);
+struct json_rpc * json_rpc_new(int flags);
 
 void json_rpc_free(struct json_rpc *jrpc);
 
-struct json_method *json_rpc_find_method(struct json_rpc *jrpc,
-	const char *method_name);
+struct json_object * json_rpc_process(struct json_rpc *jrpc,
+	struct json_object *json);
 
 int json_rpc_register_method(struct json_rpc *jrpc,
 	const char *method_name, const char *params, json_method_cb, void *arg);

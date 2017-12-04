@@ -11,6 +11,8 @@ libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
+libmettle_la_LIBADD += -llinenoise
+libmettle_la_LIBADD += -lstdc++
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += argv_split.c
@@ -29,6 +31,8 @@ libmettle_la_SOURCES += http_client.c
 libmettle_la_SOURCES += json.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += md5.c
+libmettle_la_SOURCES += mettle_console.c
+libmettle_la_SOURCES += mettle_rpc.c
 libmettle_la_SOURCES += network_client.c
 libmettle_la_SOURCES += network_server.c
 libmettle_la_SOURCES += ringbuf.c
@@ -88,12 +92,8 @@ if !HAVE_STRLCPY
 libmettle_la_SOURCES += compat/strlcpy.c
 endif
 
-bin_PROGRAMS = mettle msconsole
+bin_PROGRAMS = mettle
 
 mettle_SOURCES = main.c
 mettle_LDADD = libmettle.la
 mettle_LDFLAGS = $(PLATFORM_LDADD)
-
-msconsole_SOURCES = msconsole.c
-msconsole_LDADD = libmettle.la
-msconsole_LDFLAGS = $(PLATFORM_LDADD) -llinenoise -lstdc++

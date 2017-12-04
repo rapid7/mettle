@@ -17,7 +17,7 @@ void buffer_queue_free(struct buffer_queue *q);
 
 size_t buffer_queue_len(struct buffer_queue *q);
 
-int buffer_queue_add(struct buffer_queue *q, void *data, size_t len);
+int buffer_queue_add(struct buffer_queue *q, const void *data, size_t len);
 
 int buffer_queue_add_str(struct buffer_queue *q, char *str);
 

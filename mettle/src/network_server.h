@@ -12,19 +12,17 @@
 
 struct network_server;
 
-struct network_server * network_server_new(struct ev_loop *loop,
-		const char *host, uint16_t port);
+struct network_server * network_server_new(struct ev_loop *loop);
 
-void network_server_setcbs(struct network_server *be,
+int network_server_listen_tcp(struct network_server *ns,
+	const char *host, uint16_t port);
+
+void network_server_setcbs(struct network_server *ns,
 	bufferev_data_cb read_cb,
 	bufferev_data_cb write_cb,
 	bufferev_event_cb event_cb,
 	void *cb_arg);
 
 void network_server_free(struct network_server *ns);
-
-const char *network_server_get_host(struct network_server *ns);
-
-uint16_t network_server_get_port(struct network_server *ns);
 
 #endif

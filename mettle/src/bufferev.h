@@ -66,7 +66,7 @@ void *bufferev_peek_msg(struct bufferev *be, size_t *len);
 
 size_t bufferev_bytes_available(struct bufferev *be);
 
-ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen);
+ssize_t bufferev_write(struct bufferev *be, const void *buf, size_t buflen);
 
 char * bufferev_get_local_addr(struct bufferev *be, uint16_t *port);
 

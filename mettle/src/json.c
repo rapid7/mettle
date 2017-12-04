@@ -244,7 +244,7 @@ struct json_rpc {
 	} *requests;
 };
 
-struct json_rpc * json_rpc(int flags)
+struct json_rpc * json_rpc_new(int flags)
 {
 	struct json_rpc *jrpc = calloc(1, sizeof(*jrpc));
 	if (jrpc) {
@@ -269,7 +269,7 @@ void json_rpc_free(struct json_rpc *jrpc)
 	}
 }
 
-struct json_method *json_rpc_find_method(struct json_rpc *jrpc,
+static struct json_method *find_method(struct json_rpc *jrpc,
 	const char *method_name)
 {
 	for (int i = 0; i < jrpc->num_methods; i++) {
@@ -283,7 +283,7 @@ struct json_method *json_rpc_find_method(struct json_rpc *jrpc,
 int json_rpc_register_method(struct json_rpc *jrpc,
 	const char *method_name, const char *params, json_method_cb cb, void *arg)
 {
-	struct json_method *m = json_rpc_find_method(jrpc, method_name);
+	struct json_method *m = find_method(jrpc, method_name);
 	if (m || !cb) {
 		return -1;
 	}
@@ -466,7 +466,7 @@ struct json_object *json_rpc_process_single(
 		struct json_request *r;
 		int64_t id;
 		if (json_get_int64(json, "id", &id) || !(r = json_rpc_find_request(jrpc, id))) {
-			log_error("could not find callback for result ID %"PRId64, id);
+			log_error("could not find callback for result ID %lu", (unsigned long)id);
 			return NULL;
 		}
 
@@ -491,7 +491,7 @@ struct json_object *json_rpc_process_single(
 			return json_rpc_gen_error(jrpc, ctx.id, JSON_RPC_INVALID_REQUEST, "Invalid request");
 		}
 
-		struct json_method *m = json_rpc_find_method(jrpc, ctx.method);
+		struct json_method *m = find_method(jrpc, ctx.method);
 		if (!m) {
 			return ctx.id ? json_rpc_gen_error(jrpc, ctx.id, JSON_RPC_METHOD_NOT_FOUND,
 				"Method not found") : NULL;

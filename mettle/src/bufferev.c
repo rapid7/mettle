@@ -94,7 +94,7 @@ void *bufferev_peek_msg(struct bufferev *be, size_t *len)
 	return buffer_queue_peek_msg(be->rx_queue, len);
 }
 
-ssize_t bufferev_write(struct bufferev *be, void *buf, size_t buflen)
+ssize_t bufferev_write(struct bufferev *be, const void *buf, size_t buflen)
 {
 	ssize_t off = 0, rc;
 	ssize_t sent_bytes = 0;
