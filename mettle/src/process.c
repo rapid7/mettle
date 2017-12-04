@@ -42,8 +42,6 @@ struct process {
 
 	void *cb_arg;
 
-	bool is_extension_and_ready;
-
 	UT_hash_handle hh;
 	pid_t pid;
 };
@@ -58,16 +56,6 @@ extern char **environ;
 pid_t process_get_pid(struct process *process)
 {
 	return process->pid;
-}
-
-bool process_get_extension_ready(struct process *process)
-{
-	return process->is_extension_and_ready;
-}
-
-void process_set_extension_ready(struct process *process)
-{
-	process->is_extension_and_ready = true;
 }
 
 static void free_process_queue(struct ev_loop *loop, struct process_queue *pipe)
@@ -443,6 +431,18 @@ int process_kill(struct process* process)
 		return kill(process->pid, SIGINT);
 	}
 	return -1;
+}
+
+void process_set_nonblocking_stdio(void)
+{
+	// Ensure stdin, stdout, and stderr are nonblocking.
+	int flags;
+	flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+	fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+	flags = fcntl(STDOUT_FILENO, F_GETFL, 0);
+	fcntl(STDOUT_FILENO, F_SETFL, flags | O_NONBLOCK);
+	flags = fcntl(STDERR_FILENO, F_GETFL, 0);
+	fcntl(STDERR_FILENO, F_SETFL, flags | O_NONBLOCK);
 }
 
 struct process * process_by_pid(struct procmgr *mgr, pid_t pid)

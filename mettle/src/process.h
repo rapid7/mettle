@@ -60,6 +60,11 @@ ssize_t process_read(struct process *p, void *buf, size_t nbyte);
 int process_kill(struct process* process);
 
 /*
+ * Enable nonblocking stdio on this process
+ */
+void process_set_nonblocking_stdio(void);
+
+/*
  * Returns the managed process for a given PID
  */
 struct process * process_by_pid(struct procmgr *mgr, pid_t pid);
