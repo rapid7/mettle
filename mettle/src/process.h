@@ -79,10 +79,4 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
  */
 pid_t process_get_pid(struct process *p);
 
-/*
- * Get/Set if this process is an extension and if it's ready to accept commands.
- */
-bool process_get_extension_ready(struct process *process);
-void process_set_extension_ready(struct process *process);
-
 #endif
