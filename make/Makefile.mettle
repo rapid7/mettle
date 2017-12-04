@@ -19,9 +19,11 @@ METTLE_TARGETS =
 METTLE_OPTS =
 
 ifneq (,$(findstring darwin,$(BUILD)))
+    METTLE_DEPS += $(BUILD)/lib/libpcap.a
 else
     ifneq (,$(findstring mingw,$(BUILD)))
     else
+        METTLE_DEPS += $(BUILD)/lib/libpcap.a
         ifneq "$(TARGET)" "native"
             METTLE_TARGETS += $(BUILD)/bin/mettle.bin
             METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
@@ -39,8 +41,7 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libsigar.a \
-	$(BUILD)/lib/libdnet.a \
-	$(BUILD)/lib/libpcap.a
+	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \
