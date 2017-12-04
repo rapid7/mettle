@@ -6,8 +6,6 @@ lib_LTLIBRARIES = libextension.la
 
 libextension_la_LIBADD = -lev
 libextension_la_LIBADD += -lpthread
+libextension_la_LIBADD += -lmettle
 
 libextension_la_SOURCES = extension.c
-libextension_la_SOURCES += ../../src/buffer_queue.c
-libextension_la_SOURCES += ../../src/log.c
-libextension_la_SOURCES += ../../src/tlv.c
