@@ -146,16 +146,13 @@ static void extension_err_cb(struct process *p, struct buffer_queue *queue, void
 	if (buf) {
 		buffer_queue_remove(queue, (void *)buf, len);
 		buf[len] = '\0';
-		if (buf[len-1] == '\n') {
-			// remove newlines which were appended by log_XXX()
-			buf[len-1] = '\0';
-#ifdef _WIN32
-			if (buf[len-2] == '\r') {
-				// remove CRs which were appended by log_XXX()
-				buf[len-2] = '\0';
-			}
-#endif
-		}
+
+		/*
+		 * Remove trailing whitespace
+		 */
+		char *end = &buf[len - 1];
+		while (isspace(*end)) *end-- = '\0';
+
 		log_info("extension logged: %s", buf);
 	}
 }
