@@ -58,6 +58,7 @@ AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
 CHECK_LIBC_COMPAT
 
 CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
+CFLAGS="$CFLAGS -DBUILD_TUPLE=\\\"$TARGET\\\""
 
 AC_CONFIG_FILES([
 	Makefile
