@@ -105,7 +105,7 @@ static void register_extension_commands(struct extension_process *ep,
 		struct extension_data *extension_data = extension_data_new(cmd, ep);
 		HASH_ADD_KEYPTR(hh, em->extensions, extension_data->command, \
 				strlen(extension_data->command), extension_data);
-		tlv_dispatcher_add_handler(td, cmd, tlv_send_to_extension, ep);
+		tlv_dispatcher_add_handler(td, cmd, tlv_send_to_extension, ep->m);
 	} while ((cmd = strtok(NULL, "\n")));
 
 	ep->ready = 1;
