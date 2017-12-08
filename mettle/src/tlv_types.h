@@ -195,6 +195,7 @@
 #define TLV_TYPE_ARCHITECTURE          (TLV_META_TYPE_STRING  | 1043)
 #define TLV_TYPE_SID                   (TLV_META_TYPE_STRING  | 1045)
 #define TLV_TYPE_LOCAL_DATETIME        (TLV_META_TYPE_STRING  | 1048)
+#define TLV_TYPE_BUILD_TUPLE           (TLV_META_TYPE_STRING  | 1049)
 
 /*
  * Environment

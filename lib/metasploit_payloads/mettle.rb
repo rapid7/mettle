@@ -92,15 +92,15 @@ module MetasploitPayloads
     #
     # Get the contents of any file packaged in this gem by local path and name.
     #
-    def self.read(triple, format)
+    def self.read(triple, format, filename = "mettle")
       file =
           case format
           when :process_image
-            'mettle.bin'
+            "#{filename}.bin"
           when :exec
-            'mettle'
+            "#{filename}"
           else
-            fail RuntimeError, "unknown mettle format #{format}", caller
+            fail RuntimeError, "unknown format #{format} for #{filename}", caller
           end
       file_path = path("#{triple}", 'bin', file)
       if file_path.nil?
@@ -155,5 +155,34 @@ module MetasploitPayloads
         @local_paths << path
       end
     end
+
+    #
+    # List extensions which are available for loading
+    #
+    def self.available_extensions(platform)
+      dir_path = path("#{platform}", 'bin')
+      if dir_path.nil?
+        full_path = ::File.join([platform, 'bin'])
+        fail RuntimeError, "#{full_path} not found", caller
+      end
+
+      extensions = ::Dir.entries(dir_path)
+      # Only return extensions!
+      extensions - [ '.', '..', 'mettle', 'mettle.bin' ]
+    end
+
+    #
+    # Load and return the contents of an extension as an object
+    #
+    def self.load_extension(platform, name, suffix = '')
+      if suffix == 'bin'
+        format = :process_image
+      else
+        format = :exec
+        name = [name,suffix].join('.') unless suffix.blank?
+      end
+      self.read(platform, format, name)
+    end
+
   end
 end

@@ -82,6 +82,7 @@ struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 	p = tlv_packet_add_fmt(p, TLV_TYPE_OS_NAME, "%s (%s %s)",
 			sys_info.description, sys_info.name, sys_info.version);
 	p = tlv_packet_add_str(p, TLV_TYPE_ARCHITECTURE, sys_info.arch);
+	p = tlv_packet_add_str(p, TLV_TYPE_BUILD_TUPLE, BUILD_TUPLE);
 
 	return p;
 }
