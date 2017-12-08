@@ -6,10 +6,11 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <buffer_queue.h>
 #include <ev.h>
+
+#include "buffer_queue.h"
 #include "extension.h"
+#include "process.h"
 
 struct extension {
 	struct ev_loop *loop;
@@ -88,15 +89,7 @@ struct extension *extension()
 
 	e->loop = ev_default_loop(EVFLAG_NOENV | EVBACKEND_SELECT);
 
-	// Ensure stdin, stdout, and stderr are nonblocking.
-	int flags;
-	flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-	fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-	flags = fcntl(STDOUT_FILENO, F_GETFL, 0);
-	fcntl(STDOUT_FILENO, F_SETFL, flags | O_NONBLOCK);
-	flags = fcntl(STDERR_FILENO, F_GETFL, 0);
-	fcntl(STDERR_FILENO, F_SETFL, flags | O_NONBLOCK);
-
+	process_set_nonblocking_stdio();
 	ev_io_init(&e->watcher, on_read, STDIN_FILENO, EV_READ);
 	e->watcher.data = e;
 

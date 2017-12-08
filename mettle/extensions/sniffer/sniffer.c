@@ -4,12 +4,12 @@
  * @file sniffer.c
  */
 
-#include <common/extension.h>
 #include <dnet.h>
 #include <pcap.h>
 #include <signal.h>
 #include <unistd.h>
 
+#include "extension.h"
 #include "ringbuf.h"
 #include "uthash.h"
 
@@ -57,7 +57,7 @@ static pcap_if_t *get_current_interfaces()
 		log_error("Error returned by pcap_findalldevs: %s", errbuf);
 		current_interfaces.pcap_interfaces = NULL;
 	}
-	
+
 	pcap_if_t *i;
 	for (i = current_interfaces.pcap_interfaces;
 			i != NULL; i = i->next, current_interfaces.count++);
@@ -311,7 +311,7 @@ void sniff_packets_signal_handler(int signal)
 		default:
 			break;
 	}
-	
+
 }
 
 /*
