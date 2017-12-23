@@ -24,14 +24,14 @@ Creating an Extension
 
 * create a new directory for your extension source code in mettle/mettle/extensions/\<your extension name\>
   * create a new automake Makefile in this new directory (e.g. mettle/mettle/extensions/\<your extension name\>/Makefile.am
-  * see mettle/mettle/extensions/sniffer/Makefile.am as an example
+    * see mettle/mettle/extensions/sniffer/Makefile.am as an example
   * create associated source/header files for your extension (see notes below)
 * add your new extension directory to the SUBDIRS variable in mettle/mettle/extensions/Makefile.am
 * add your extension's Makefile to the **AC_CONFIG_FILES** macro in mettle/mettle/configure.ac 
 * now you should be able to build your extension with the *make* command at the top-level mettle directory
-  * the executable of your extension will appear in build/\<OS-arch-tool-etc directory\>/mettle/extensions/\<your extension name\> directory
-* to test your extension, copy it (as filename **ext_server_\<your extension name\>.bin**) to appear alongside other extensions of the metasploit-payloads gem (wherever that is installed on your system)
-  * e.g. I'm using rvm, and my metasploit-payloads gem is installed in ~/.rvm/gems/ruby-2.4.1@metasploit-framework/gems/metasploit-payloads-1.3.0/data/meterpreter/
+  * the executable of your extension will appear in build/\<OS-arch-tool-etc directory\>/bin directory
+* to test your extension, copy it to appear alongside other extensions of the metasploit_payloads-mettle gem's build/\<OS-arch-tool-etc directory\>/bin/ directory (wherever that is installed on your system)
+  * e.g. I'm using rvm, and my metasploit_payloads-mettle gem has its extension installed in ~/.rvm/gems/ruby-2.4.2@metasploit-framework/gems/metasploit-payloads-0.3.2/build/\<OS-arch-tool-etc directory\>/bin/
 * you should now be able to start up `msfconsole`, get a Mettle session, and load your new extension with the `load <your extension name>` command (well, once you have code in Framework's lib/rex/post/meterpreter/extensions/\<your extension name\> directory to work with it, anyhow)
 
 A few things to know when creating your extension:
