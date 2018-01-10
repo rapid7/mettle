@@ -55,6 +55,8 @@ module MetasploitPayloads
         'b'
       when :debug
         'd'
+      when :name
+        'n'
       when :log_file
         'o'
       when :uri
