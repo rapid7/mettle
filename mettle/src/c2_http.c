@@ -34,7 +34,12 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 		if (strcmp(method, "core_patch_url") == 0 && new_uri) {
 			char *old_uri = ctx->uri;
 			char *split = ctx->uri;
-			split = strrchr(old_uri, '/');
+			char *host = strstr(old_uri, "://");
+			if (host) {
+				split = strchr(host + 3, '/');
+			} else {
+				split = strrchr(old_uri, '/');
+			}
 			if (split) {
 				*split = '\0';
 			}
