@@ -34,4 +34,9 @@ long long strtonum(const char *nptr, long long minval,
 		long long maxval, const char **errstr);
 #endif
 
+#ifndef HAVE_SETPROCTITLE
+void compat_init_setproctitle(int argc, char *argv[]);
+void setproctitle(const char *fmt, ...);
+#endif
+
 #endif

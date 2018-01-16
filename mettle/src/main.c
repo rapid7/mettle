@@ -137,6 +137,11 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		start_logger(out);
 	}
 
+	if (name) {
+		log_info("using name: %s", name);
+		setproctitle(name);
+	}
+
 	if (background) {
 		char *args, *new_args;
 		if (asprintf(&args, "%s -d %u", argv[0], log_level) == -1) {
@@ -213,8 +218,19 @@ void parse_default_args(struct mettle *m)
 	}
 }
 
+/* Saves a copy of argv for setproctitle emulation */
+#ifndef HAVE_SETPROCTITLE
+static char **saved_argv;
+#endif
+
+extern char *__progname;
+
+char *get_progname(char *argv0);
+
 int main(int argc, char * argv[])
 {
+	__progname = get_progname(argv[0]);
+
 	/*
 	 * Disable SIGPIPE process aborts.
 	 */
@@ -228,6 +244,16 @@ int main(int argc, char * argv[])
 		log_error("could not initialize");
 		return 1;
 	}
+
+#ifndef HAVE_SETPROCTITLE
+	/* Prepare for later setproctitle emulation */
+	saved_argv = calloc(argc + 1, sizeof(*saved_argv));
+	for (int i = 0; i < argc; i++) {
+		saved_argv[i] = strdup(argv[i]);
+	}
+	compat_init_setproctitle(argc, argv);
+	argv = saved_argv;
+#endif
 
 	/*
 	 * Check to see if we were injected by metasploit

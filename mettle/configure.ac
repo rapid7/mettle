@@ -32,11 +32,13 @@ case $host_os in
 			 AC_DEFINE(HAVE_MIC)
 			 AC_SUBST([PLATFORM_LDADD], ["-framework AppKit $PLATFORM_LDADD -framework Cocoa"])],
 			[HOST_OS=ios])
+		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
 		;;
 	*linux*)
 		HOST_OS=linux
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
 		AC_DEFINE(HAVE_WEBCAM)
+		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
 		;;
 	*mingw*)
 		HOST_OS=win
@@ -56,6 +58,7 @@ AM_CONDITIONAL([HOST_LINUX],   [test x$HOST_OS = xlinux])
 AM_CONDITIONAL([HOST_WIN],     [test x$HOST_OS = xwin])
 
 CHECK_LIBC_COMPAT
+CHECK_PROGNAME
 
 CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
 CFLAGS="$CFLAGS -DBUILD_TUPLE=\\\"$TARGET\\\""
