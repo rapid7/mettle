@@ -3,13 +3,14 @@ AC_DEFUN([CHECK_LIBC_COMPAT], [
 AC_CHECK_HEADERS([err.h readpassphrase.h])
 # Check for general libc functions
 AC_CHECK_FUNCS([asprintf inet_pton memmem readpassphrase reallocarray])
-AC_CHECK_FUNCS([strlcat strlcpy strndup strnlen strsep strtonum])
+AC_CHECK_FUNCS([setproctitle strlcat strlcpy strndup strnlen strsep strtonum])
 AC_CHECK_FUNCS([timegm _mkgmtime])
 AM_CONDITIONAL([HAVE_ASPRINTF_DEF], [test "x$ac_cv_func_asprintf" = xyes])
 AM_CONDITIONAL([HAVE_INET_PTON], [test "x$ac_cv_func_inet_pton" = xyes])
 AM_CONDITIONAL([HAVE_MEMMEM], [test "x$ac_cv_func_memmem" = xyes])
 AM_CONDITIONAL([HAVE_READPASSPHRASE], [test "x$ac_cv_func_readpassphrase" = xyes])
 AM_CONDITIONAL([HAVE_REALLOCARRAY], [test "x$ac_cv_func_reallocarray" = xyes])
+AM_CONDITIONAL([HAVE_SETPROCTITLE], [test "x$ac_cv_func_setproctitle" = xyes])
 AM_CONDITIONAL([HAVE_STRLCAT], [test "x$ac_cv_func_strlcat" = xyes])
 AM_CONDITIONAL([HAVE_STRLCPY], [test "x$ac_cv_func_strlcpy" = xyes])
 AM_CONDITIONAL([HAVE_STRNDUP], [test "x$ac_cv_func_strndup" = xyes])
@@ -17,6 +18,19 @@ AM_CONDITIONAL([HAVE_STRNLEN], [test "x$ac_cv_func_strnlen" = xyes])
 AM_CONDITIONAL([HAVE_STRSEP], [test "x$ac_cv_func_strsep" = xyes])
 AM_CONDITIONAL([HAVE_STRTONUM], [test "x$ac_cv_func_strtonum" = xyes])
 AM_CONDITIONAL([HAVE_TIMEGM], [test "x$ac_cv_func_timegm" = xyes])
+])
+
+AC_DEFUN([CHECK_PROGNAME], [
+AC_CACHE_CHECK([if libc defines __progname], ac_cv_libc_defines___progname, [
+       AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+                [[ extern char *__progname; printf("%s", __progname); ]])],
+        [ ac_cv_libc_defines___progname="yes" ],
+        [ ac_cv_libc_defines___progname="no"
+        ])
+])
+if test "x$ac_cv_libc_defines___progname" = "xyes" ; then
+        AC_DEFINE([HAVE___PROGNAME], [1], [Define if libc defines __progname])
+fi
 ])
 
 AC_DEFUN([CHECK_SYSCALL_COMPAT], [

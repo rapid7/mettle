@@ -56,8 +56,14 @@ if HOST_LINUX
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
 endif
 
+libmettle_la_SOURCES += compat/progname.c
+
 if !HAVE_REALLOCARRAY
 libmettle_la_SOURCES += compat/reallocarray.c
+endif
+
+if !HAVE_SETPROCTITLE
+libmettle_la_SOURCES += compat/setproctitle.c
 endif
 
 if !HAVE_STRTONUM

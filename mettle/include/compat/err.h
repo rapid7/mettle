@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+extern char *__progname;
+
 #if defined(_MSC_VER)
 __declspec(noreturn)
 #else
