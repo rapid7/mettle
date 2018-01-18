@@ -61,7 +61,8 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	};
 	const char *short_options = "hu:U:G:d::o:b::p:n:";
 	const char *out = NULL;
-	char *name = strdup("service");
+	char *name = strdup("mettle");
+	bool name_flag = false;
 	bool debug = false;
 	bool background = false;
 	enum persist_type persist = persist_none;
@@ -86,6 +87,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		case 'n':
 			free(name);
 			name = strdup(optarg);
+			name_flag = true;
 			break;
 		case 'p':
 			if (strcmp("install", optarg) == 0) {
@@ -137,7 +139,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		start_logger(out);
 	}
 
-	if (name) {
+	if (name_flag) {
 		log_info("using name: %s", name);
 		setproctitle(name);
 	}
