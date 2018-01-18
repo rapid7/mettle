@@ -178,10 +178,6 @@ static void exec_child(struct procmgr *mgr,
 		setenv("PATH", def_path, 1);
 	}
 
-	if (proc[0] == '/' && access(proc, X_OK)) {
-		proc = basename(proc);
-	}
-
 	if (opts && opts->args) {
 		if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
 			abort();
@@ -199,6 +195,9 @@ static void exec_child(struct procmgr *mgr,
 		size_t argc = 0;
 		char **argv = NULL;
 		argv = argv_split(args, argv, &argc);
+		if (argv[0][0] == '/' && access(argv[0], X_OK)) {
+			argv[0] = basename(argv[0]);
+		}
 		execvp(file, argv);
 	}
 	abort();

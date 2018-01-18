@@ -60,6 +60,8 @@ void channel_set_ctx(struct channel *c, void *ctx);
 
 struct channel_callbacks * channel_get_callbacks(struct channel *c);
 
+void channel_set_eof(struct channel *c);
+
 void channel_set_interactive(struct channel *c, bool enable);
 
 bool channel_get_interactive(struct channel *c);

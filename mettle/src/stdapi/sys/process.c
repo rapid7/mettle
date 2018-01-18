@@ -173,6 +173,7 @@ struct tlv_packet *sys_process_wait(struct tlv_handler_ctx *ctx)
 struct channelmgr_ctx {
 	struct channelmgr *cm;
 	uint32_t channel_id;
+	bool eof;
 };
 
 /*
@@ -209,10 +210,13 @@ static void process_channel_exit_cb(struct process *p, int exit_status, void *ar
 {
 	struct channelmgr_ctx *cm_ctx = arg;
 	struct channel *c = channelmgr_channel_by_id(cm_ctx->cm, cm_ctx->channel_id);
+	cm_ctx->eof = true;
 	if (c && channel_get_interactive(c)) {
 		channel_send_close_request(c);
+		free(cm_ctx);
+	} else {
+		channel_set_eof(c);
 	}
-	free(cm_ctx);
 }
 
 static void process_channel_read_cb(struct process *p, struct buffer_queue *queue, void *arg)
