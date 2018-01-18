@@ -15,6 +15,7 @@ struct channel {
 	void *ctx;
 	struct buffer_queue *queue;
 	bool interactive;
+	bool eof;
 	bool shutting_down;
 	bool started;
 };
@@ -312,6 +313,11 @@ static struct tlv_packet *channel_close(struct tlv_handler_ctx *ctx)
 	return p;
 }
 
+void channel_set_eof(struct channel *c)
+{
+	c->eof = true;
+}
+
 void channel_set_interactive(struct channel *c, bool enable)
 {
 	if (enable) {
@@ -472,7 +478,11 @@ static struct tlv_packet *channel_read(struct tlv_handler_ctx *ctx)
 
 	channel_postcb(c);
 
-	return p;
+	tlv_dispatcher_enqueue_response(c->cm->td, p);
+	if (c->eof) {
+		channel_send_close_request(c);
+	}
+	return NULL;
 }
 
 static struct tlv_packet *channel_write(struct tlv_handler_ctx *ctx)
