@@ -243,22 +243,6 @@ static void exec_image(struct procmgr *mgr,
 	abort();
 }
 
-static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
-{
-	struct process *process = w->data;
-	struct procmgr *mgr = process->mgr;
-
-	log_debug("child pid %u exited status %u", w->pid, w->rstatus);
-	HASH_DEL(process->mgr->processes, process);
-
-	ev_child_stop(loop, w);
-	if (process->exit_cb) {
-		process->exit_cb(process, w->rstatus, process->cb_arg);
-	}
-
-	free_process(process);
-}
-
 static size_t read_fd_into_queue(int fd, struct buffer_queue *queue)
 {
 	char buf[8192];
@@ -269,8 +253,43 @@ static size_t read_fd_into_queue(int fd, struct buffer_queue *queue)
 		buffer_queue_add(queue, buf, n);
 		len += n;
 	}
+	if (len == 0) {
+		log_debug("nothing on fd %d: %s", fd, strerror(errno));
+	}
 
 	return len;
+}
+
+static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
+{
+	struct process *process = w->data;
+	struct procmgr *mgr = process->mgr;
+
+	log_debug("child pid %u exited status %u", w->pid, w->rstatus);
+	HASH_DEL(process->mgr->processes, process);
+
+	/*
+	 * Read remaining data into the queue
+	 */
+	if (read_fd_into_queue(process->out_fd, process->out.queue) > 0) {
+		if (process->out_cb) {
+			process->out_cb(process, process->out.queue, process->cb_arg);
+		}
+	}
+
+	if (read_fd_into_queue(process->err_fd, process->err.queue) > 0) {
+		if (process->err_cb) {
+			process->err_cb(process, process->err.queue, process->cb_arg);
+		}
+	}
+
+	ev_child_stop(loop, w);
+
+	if (process->exit_cb) {
+		process->exit_cb(process, w->rstatus, process->cb_arg);
+	}
+
+	free_process(process);
 }
 
 static void stdout_cb(struct ev_loop *loop, struct ev_io *w, int events)
