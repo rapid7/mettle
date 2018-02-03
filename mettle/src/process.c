@@ -243,22 +243,6 @@ static void exec_image(struct procmgr *mgr,
 	abort();
 }
 
-static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
-{
-	struct process *process = w->data;
-	struct procmgr *mgr = process->mgr;
-
-	log_debug("child pid %u exited status %u", w->pid, w->rstatus);
-	HASH_DEL(process->mgr->processes, process);
-
-	ev_child_stop(loop, w);
-	if (process->exit_cb) {
-		process->exit_cb(process, w->rstatus, process->cb_arg);
-	}
-
-	free_process(process);
-}
-
 static size_t read_fd_into_queue(int fd, struct buffer_queue *queue)
 {
 	char buf[8192];
@@ -269,8 +253,43 @@ static size_t read_fd_into_queue(int fd, struct buffer_queue *queue)
 		buffer_queue_add(queue, buf, n);
 		len += n;
 	}
+	if (len == 0) {
+		log_debug("nothing on fd %d: %s", fd, strerror(errno));
+	}
 
 	return len;
+}
+
+static void child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
+{
+	struct process *process = w->data;
+	struct procmgr *mgr = process->mgr;
+
+	log_debug("child pid %u exited status %u", w->pid, w->rstatus);
+	HASH_DEL(process->mgr->processes, process);
+
+	/*
+	 * Read remaining data into the queue
+	 */
+	if (read_fd_into_queue(process->out_fd, process->out.queue) > 0) {
+		if (process->out_cb) {
+			process->out_cb(process, process->out.queue, process->cb_arg);
+		}
+	}
+
+	if (read_fd_into_queue(process->err_fd, process->err.queue) > 0) {
+		if (process->err_cb) {
+			process->err_cb(process, process->err.queue, process->cb_arg);
+		}
+	}
+
+	ev_child_stop(loop, w);
+
+	if (process->exit_cb) {
+		process->exit_cb(process, w->rstatus, process->cb_arg);
+	}
+
+	free_process(process);
 }
 
 static void stdout_cb(struct ev_loop *loop, struct ev_io *w, int events)
@@ -389,7 +408,7 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Register stdout watcher
 	 */
-	p->out_fd = stdout_pair[1];
+	p->out_fd = stdout_pair[0];
 	fcntl(stdout_pair[0], F_SETFL, O_NONBLOCK);
 	p->out.queue = buffer_queue_new();
 	p->out.w.data = p;
@@ -399,12 +418,14 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Register stderr watcher
 	 */
-	p->err_fd = stderr_pair[1];
+	p->err_fd = stderr_pair[0];
 	fcntl(stderr_pair[0], F_SETFL, O_NONBLOCK);
 	p->err.queue = buffer_queue_new();
 	p->err.w.data = p;
 	ev_io_init(&p->err.w, stderr_cb, stderr_pair[0], EV_READ);
 	ev_io_start(mgr->loop, &p->err.w);
+
+	log_debug("IO started on fds %d %d", p->out_fd, p->err_fd);
 
 	return p;
 }
