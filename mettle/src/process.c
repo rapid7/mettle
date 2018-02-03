@@ -389,7 +389,7 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Register stdout watcher
 	 */
-	p->out_fd = stdout_pair[1];
+	p->out_fd = stdout_pair[0];
 	fcntl(stdout_pair[0], F_SETFL, O_NONBLOCK);
 	p->out.queue = buffer_queue_new();
 	p->out.w.data = p;
@@ -399,12 +399,14 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Register stderr watcher
 	 */
-	p->err_fd = stderr_pair[1];
+	p->err_fd = stderr_pair[0];
 	fcntl(stderr_pair[0], F_SETFL, O_NONBLOCK);
 	p->err.queue = buffer_queue_new();
 	p->err.w.data = p;
 	ev_io_init(&p->err.w, stderr_cb, stderr_pair[0], EV_READ);
 	ev_io_start(mgr->loop, &p->err.w);
+
+	log_debug("IO started on fds %d %d", p->out_fd, p->err_fd);
 
 	return p;
 }
