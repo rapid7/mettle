@@ -1,16 +1,30 @@
 Mettle
 ======
 
-**This repo has submodules!** Remember to run
-```
-git submodule init; git submodule update
-```
-after cloning.
+This is an implementation of a native-code Meterpreter, designed for
+portability, embeddability, and low resource utilization. It can run on the
+smallest embedded Linux targets to big iron, and targets Android, iOS, macOS,
+Linux, and Windows, but can be ported to almost any POSIX-compliant
+environment.
 
-OSX requirements
+Building on Linux
 ------------
 
-On OSX you will need the following:
+Debain, Ubuntu, and derivatives are most supported for builds. To build, your need at least 5GB of free disk space, and the following packages available:
+
+```
+# Dependencies
+apt get install curl build-essential git autoconf automake libtool bison flex gcc ruby rake bundler git mingw-w64
+```
+
+The Dockerfile under docker/Dockerfile contains a pre-configured build
+environment as well.
+
+Building on macOS
+------------
+
+On macOS you will need the following:
+
 ```
 # Install brew (if you have not already)
 /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -19,7 +33,7 @@ On OSX you will need the following:
 xcode-select --install
 
 # Dependencies
-brew install coreutils m4 automake
+brew install coreutils m4 automake mingw-w64
 ```
 
 Make Targets
@@ -90,7 +104,7 @@ Debian / Ubuntu systems, the `mingw-w64` package will install both toolchains.
 * `x86_64-w64-mingw32`
 * `i686-w64-mingw32`
 
-For macOS/iOS builds, the following triples are added. To target older MacOSX
+For macOS/iOS builds, the following triples are added. To target older macOS/OSX
 versions, see https://github.com/phracker/MacOSX-SDKs to get the appropriate
 SDK folder.
 
