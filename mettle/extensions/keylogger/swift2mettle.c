@@ -70,11 +70,6 @@ static char **current_capture_records(const char *top_level_dir, int *record_lis
 			}
 			DIR *data_capture_dir = opendir(data_capture_dir_name);
 			while ((capture_ent = readdir(data_capture_dir))) {
-#if 0
-				if (!strcmp(capture_ent->d_name, ".") || !strcmp(capture_ent->d_name, "..")) {
-					continue;
-				}
-#endif
 				if (capture_ent->d_type != DT_REG) {
 					// Not a 'regular' file, we're not interested...
 					continue;
