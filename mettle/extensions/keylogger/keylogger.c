@@ -2,6 +2,10 @@
  * Copyright 2018 Rapid7
  * @brief keylogger extension source file
  * @file keylogger.c
+ *
+ * NOTE: THIS FILE IS SIMPLY A PLACEHOLDER FOR ANY FUTURE KEYLOGGER WE MIGHT WANT
+ *       AS AN EXTENSION FOR LINUX OR WINDOWS OR WHATEVER.
+ *
  */
 
 #include "extension.h"
