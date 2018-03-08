@@ -43,7 +43,7 @@ In this example, I will load the sniffer extension on my target MacBook and then
 
 * list the available network interfaces
 * start sniffing on an interface
-* through the sniffed interface I will:
+* on the target, the user will initiate the folloing actions which use the network interface the sniffer estension is monitoring:
   * ping Google's DNS server at 8.8.8.8
   * run curl to load the `archive.org` webpage
 * stop sniffing
