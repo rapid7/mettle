@@ -45,6 +45,8 @@ static void start_logger(const char *out)
 	log_init_flush_thread();
 }
 
+extern void ms_start_interactive(void);
+
 #define PAYLOAD_INJECTED (1 << 0)
 static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int flags)
 {
@@ -64,7 +66,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		{"console", required_argument, NULL, 'c'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:G:d:o:b:p:n:l:c:";
+	const char *short_options = "hu:U:G:d:o:b:p:n:lc:";
 	const char *out = NULL;
 	char *name = strdup("mettle");
 	bool name_flag = false;
@@ -80,6 +82,9 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
+		case 'c':
+			ms_start_interactive();
+			break;
 		case 'u':
 			c2_add_transport_uri(mettle_get_c2(m), optarg);
 			break;
