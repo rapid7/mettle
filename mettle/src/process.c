@@ -389,7 +389,7 @@ static struct process * process_create(struct procmgr *mgr,
 	p->mgr = mgr;
 	HASH_ADD_INT(mgr->processes, pid, p);
 
-	log_debug("child pid %u started", p->pid);
+	log_debug("child pid %lu started", (unsigned long)p->pid);
 
 	/*
 	 * Register exit handler

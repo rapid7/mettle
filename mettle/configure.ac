@@ -49,6 +49,11 @@ case $host_os in
 		LDFLAGS="$LDFLAGS -static-libgcc"
 		AC_SUBST([PLATFORM_LDADD], ['-lws2_32 -lwinpthread -static --static'])
 		;;
+	*solaris*)
+		HOST_OS=solaris
+		CPPFLAGS="$CPPFLAGS -D__EXTENSIONS__ -D_XOPEN_SOURCE=600 -DBSD_COMP -D_POSIX_PTHREAD_SEMANTICS"
+		AC_SUBST([PLATFORM_LDADD], ['-lnsl -lsocket'])
+
 esac
 
 AM_CONDITIONAL([HOST_IOS],     [test x$HOST_OS = xios])
