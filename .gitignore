@@ -18,3 +18,4 @@ build
 *.xz
 pkg/
 mettle.xcodeproj
+Gemfile.lock
