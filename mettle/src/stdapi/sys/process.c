@@ -17,8 +17,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	sigar_proc_state_t pstate;
 	int status = sigar_proc_state_get(sigar, pid, &pstate);
 	if (status != SIGAR_OK) {
-		log_debug("error: %d (%s) proc_state(%d)",
-			status, sigar_strerror(sigar, status), pid);
+		log_debug("error: %d (%s) proc_state(%lu)",
+			status, sigar_strerror(sigar, status), (unsigned long)pid);
 		return NULL;
 	}
 
@@ -52,8 +52,8 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	if (status == SIGAR_OK) {
 		p = tlv_packet_add_str(p, TLV_TYPE_USER_NAME, uname_data.user);
 	} else {
-		log_debug("error: %d (%s) proc_state(%d)",
-			status, sigar_strerror(sigar, status), pid);
+		log_debug("error: %d (%s) proc_state(%lu)",
+			status, sigar_strerror(sigar, status), (unsigned long)pid);
 	}
 
 	return p;

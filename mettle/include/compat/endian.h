@@ -17,6 +17,50 @@
 
 #	include_next <endian.h>
 
+#elif defined(__sun)
+
+#include <sys/byteorder.h>
+#define bswap_16(x) BSWAP_16(x)
+#define bswap_32(x) BSWAP_32(x)
+#define bswap_64(x) BSWAP_64(x)
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN 4321
+
+#ifdef _LITTLE_ENDIAN
+#define __BYTE_ORDER __LITTLE_ENDIAN
+
+#	define htobe16(x) htons(x)
+#	define htole16(x) (x)
+#	define be16toh(x) ntohs(x)
+#	define le16toh(x) (x)
+
+#	define htobe32(x) htonl(x)
+#	define htole32(x) (x)
+#	define be32toh(x) ntohl(x)
+#	define le32toh(x) (x)
+
+#	define htobe64(x) htonll(x)
+#	define htole64(x) (x)
+#	define be64toh(x) ntohll(x)
+#	define le64toh(x) (x)
+#else
+#define __BYTE_ORDER __BIG_ENDIAN
+#	define htobe16(x) (x)
+#	define htole16(x) __builtin_bswap16(x)
+#	define be16toh(x) (x)
+#	define le16toh(x) __builtin_bswap16(x)
+
+#	define htobe32(x) (x)
+#	define htole32(x) __builtin_bswap32(x)
+#	define be32toh(x) (x)
+#	define le32toh(x) __builtin_bswap32(x)
+
+#	define htobe64(x) (x)
+#	define htole64(x) __builtin_bswap64(x)
+#	define be64toh(x) (x)
+#	define le64toh(x) __builtin_bswap64(x)
+#endif
+
 #elif defined(__APPLE__)
 
 #	include <libkern/OSByteOrder.h>

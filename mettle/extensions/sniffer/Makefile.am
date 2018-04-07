@@ -3,8 +3,8 @@ bin_PROGRAMS = sniffer
 endif
 
 sniffer_LDADD = -ldnet
-sniffer_LDADD += -lmettle
 sniffer_LDADD += -lpcap
+sniffer_LDADD += $(abs_top_builddir)/src/libmettle.la
 sniffer_SOURCES = sniffer.c
 
 sniffer_CFLAGS = -I$(top_srcdir)/src
