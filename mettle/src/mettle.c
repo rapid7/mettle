@@ -24,6 +24,7 @@
 struct mettle {
 	struct channelmgr *cm;
 	struct extmgr *em;
+	struct modulemgr *mm;
 	struct procmgr *pm;
 
 	struct c2 *c2;
@@ -85,6 +86,11 @@ int start_heartbeat(struct mettle *m)
 struct c2 * mettle_get_c2(struct mettle *m)
 {
 	return m->c2;
+}
+
+struct modulemgr * mettle_get_modulemgr(struct mettle *m)
+{
+	return m->mm;
 }
 
 struct ev_loop * mettle_get_loop(struct mettle *m)
@@ -257,6 +263,11 @@ struct mettle *mettle(void)
 
 	m->cm = channelmgr_new(m->td);
 	if (m->cm == NULL) {
+		goto err;
+	}
+
+	m->mm = modulemgr_new();
+	if (m->mm == NULL) {
 		goto err;
 	}
 

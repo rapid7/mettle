@@ -27,6 +27,7 @@ static void usage(const char *name)
 	printf("  -o, --out <file>       write debug output to a file\n");
 	printf("  -b, --background <0|1> start as a background service (0 disable, 1 enable)\n");
 	printf("  -p, --persist [none|install|uninstall] manage persistence\n");
+	printf("  -m, --modules <path>   add modules from path\n");
 	printf("  -n, --name <name>      name to start as\n");
 	printf("  -l, --listen\n");
 	printf("  -c, --console\n");
@@ -45,8 +46,6 @@ static void start_logger(const char *out)
 	log_init_flush_thread();
 }
 
-extern void ms_start_interactive(void);
-
 #define PAYLOAD_INJECTED (1 << 0)
 static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int flags)
 {
@@ -63,15 +62,17 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		{"persist", required_argument, NULL, 'p'},
 		{"name", required_argument, NULL, 'n'},
 		{"listen", required_argument, NULL, 'l'},
-		{"console", required_argument, NULL, 'c'},
+		{"console", no_argument, NULL, 'c'},
+		{"modules", required_argument, NULL, 'm'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:G:d:o:b:p:n:lc:";
+	const char *short_options = "hu:U:G:d:o:b:p:n:lcm:";
 	const char *out = NULL;
 	char *name = strdup("mettle");
 	bool name_flag = false;
 	bool debug = false;
 	bool background = false;
+	bool interactive = false;
 	enum persist_type persist = persist_none;
 	int log_level = 0;
 
@@ -83,7 +84,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
 		case 'c':
-			ms_start_interactive();
+			interactive = true;
 			break;
 		case 'u':
 			c2_add_transport_uri(mettle_get_c2(m), optarg);
@@ -93,6 +94,9 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 			break;
 		case 'G':
 			mettle_set_session_guid_base64(m, optarg);
+			break;
+		case 'm':
+			modulemgr_load_path(mettle_get_modulemgr(m), optarg);
 			break;
 		case 'n':
 			free(name);
@@ -142,6 +146,10 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 
 	if (debug) {
 		start_logger(out);
+	}
+
+	if (interactive) {
+		mettle_console_start_interactive(m);
 	}
 
 	/*

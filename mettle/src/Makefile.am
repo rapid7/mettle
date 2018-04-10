@@ -11,7 +11,6 @@ libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
-libmettle_la_LIBADD += -llinenoise
 libmettle_la_LIBADD += -lstdc++
 
 libmettle_la_SOURCES = mettle.c
@@ -31,6 +30,7 @@ libmettle_la_SOURCES += http_client.c
 libmettle_la_SOURCES += json.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += md5.c
+libmettle_la_SOURCES += module.c
 libmettle_la_SOURCES += mettle_console.c
 libmettle_la_SOURCES += mettle_rpc.c
 libmettle_la_SOURCES += network_client.c
@@ -44,7 +44,9 @@ libmettle_la_SOURCES += inet_ntop.c inet_pton.c
 libmettle_la_SOURCES += posix_win.c
 libmettle_la_SOURCES += process_win.c
 libmettle_la_SOURCES += service_win.c
+libmettle_la_LIBADD += -llinenoise
 else
+libmettle_la_SOURCES += linenoise.c
 libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += service.c
 endif

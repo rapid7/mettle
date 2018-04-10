@@ -4,100 +4,143 @@
 
 #include <linenoise.h>
 
-struct ms {
+#include "mettle.h"
+
+struct console {
+	struct mettle *m;
+	struct modulemgr *mm;
+	const char *name;
+	char *prompt;
 	struct cmd {
 		const char *name;
-		void (*cb)(struct ms *);
+		void (*cb)(const char *line);
 	} *cmds;
 	int num_cmds;
-} ms = {0};
+} console = {0};
 
-struct cmd * ms_get_cmd(const char *name)
+struct cmd * console_get_cmd(const char *line)
 {
-	for (int i = 0; i < ms.num_cmds; i++) {
-		if (strcmp(ms.cmds[i].name, name) == 0) {
-			return &ms.cmds[i];
+	char *cmd_name = strdup(line);
+	char *space = strchr(cmd_name, ' ');
+	if (space) {
+		*space = '\0';
+	}
+	struct cmd *cmd = NULL;
+	for (int i = 0; i < console.num_cmds; i++) {
+		if (strcmp(console.cmds[i].name, cmd_name) == 0) {
+			cmd = &console.cmds[i];
+			break;
 		}
 	}
-	return NULL;
+	free(cmd_name);
+	return cmd;
 }
 
-int ms_register_cmd(const char *name, void (*cb)(struct ms *))
+int console_register_cmd(const char *name, void (*cb)(const char *))
 {
-	struct cmd *cmd = ms_get_cmd(name);
+	struct cmd *cmd = console_get_cmd(name);
 	if (cmd == NULL) {
-		ms.cmds = reallocarray(ms.cmds, ms.num_cmds + 1, sizeof(struct cmd));
-		if (ms.cmds == NULL) {
+		console.cmds = reallocarray(console.cmds,
+			console.num_cmds + 1, sizeof(struct cmd));
+		if (console.cmds == NULL) {
 			return -1;
 		}
-		cmd = &ms.cmds[ms.num_cmds];
+		cmd = &console.cmds[console.num_cmds];
 		cmd->name = name;
-		ms.num_cmds++;
+		console.num_cmds++;
 	}
 	cmd->cb = cb;
 	return 0;
 }
 
-static void completion_hook(char const *prefix, linenoiseCompletions *lc)
+static void complete_use(char const *prefix, linenoiseCompletions *lc)
 {
-	for (int i = 0; i < ms.num_cmds; i++) {
-		if (strncmp(prefix, ms.cmds[i].name, strlen(prefix)) == 0) {
-			linenoiseAddCompletion(lc, ms.cmds[i].name);
+	const char *pattern = prefix + 4;
+	int num_modules = 0;
+	struct module **modules = modulemgr_find_modules(
+		console.mm, pattern, &num_modules);
+	for (int i = 0; i < num_modules; i++) {
+		char completion[128];
+		snprintf(completion, 128, "use %s", module_name(modules[i]));
+		linenoiseAddCompletion(lc, completion);
+	}
+	free(modules);
+}
+
+static void complete_line(char const *prefix, linenoiseCompletions *lc)
+{
+	for (int i = 0; i < console.num_cmds; i++) {
+		if (strncmp(prefix, console.cmds[i].name, strlen(prefix)) == 0) {
+			linenoiseAddCompletion(lc, console.cmds[i].name);
+		} else if (strncmp(prefix, "use ", 4) == 0) {
+			complete_use(prefix, lc);
 		}
 	}
 }
 
-void ms_handle_eol(struct ms *ms)
+static void set_prompt(const char *fmt, ...)
+{
+	char *prompt = NULL;
+	va_list va;
+	va_start(va, fmt);
+	vasprintf(&prompt, fmt, va);
+	va_end(va);
+
+	if (prompt) {
+		free(console.prompt);
+		console.prompt = prompt;
+	}
+}
+
+static void handle_exit(const char *line)
 {
 	exit(0);
 }
 
-void ms_handle_break(struct ms *ms)
-{
-}
-
-void ms_handle_exit(struct ms *ms)
-{
-	exit(0);
-}
-
-void ms_handle_clear(struct ms *ms)
+static void handle_clear(const char *line)
 {
 	linenoiseClearScreen();
 }
 
-void ms_start_interactive(void)
+static void handle_use(const char *line)
 {
-	linenoiseInstallWindowChangeHandler();
+	const char *name = line + 4;
+	set_prompt("%s (%s) > ", console.name, name);
+}
+
+static void handle_back(const char *line)
+{
+	const char *name = line + 4;
+	set_prompt("%s > ", console.name);
+}
+
+void mettle_console_start_interactive(struct mettle *m)
+{
+	console.name = "mettle";
+	console.m = m;
+	console.mm = mettle_get_modulemgr(m);
+	// linenoiseInstallWindowChangeHandler();
 	linenoiseHistoryLoad(".mshistory");
-	linenoiseSetCompletionCallback(completion_hook);
+	linenoiseSetCompletionCallback(complete_line);
 
-	ms_register_cmd("exit", ms_handle_exit);
-	ms_register_cmd("quit", ms_handle_exit);
-	ms_register_cmd("clear", ms_handle_clear);
+	console_register_cmd("exit", handle_exit);
+	console_register_cmd("quit", handle_exit);
+	console_register_cmd("clear", handle_clear);
+	console_register_cmd("back", handle_back);
+	console_register_cmd("use", handle_use);
 
-	const char *prompt = "\x1b[1;32mmettle\x1b[0m> ";
-	do {
-		char *res = linenoise(prompt);
-		if (res == NULL || *res == '\0') {
-			if (res == NULL) {
-				int key = linenoiseKeyType();
-				if (key == 1) {
-					ms_handle_break(&ms);
-				} else if (key == 2) {
-					ms_handle_eol(&ms);
-				}
-			}
-			free(res);
-			continue;
-		} else {
-			struct cmd *cmd = ms_get_cmd(res);
+	set_prompt("%s > ", console.name);
+	char *line;
+	while ((line = linenoise(console.prompt)) != NULL) {
+		if (line[0] != '\0' && line[0] != '/') {
+			struct cmd *cmd = console_get_cmd(line);
 			if (cmd) {
-				cmd->cb(&ms);
+				cmd->cb(line);
+			} else {
 			}
+			linenoiseHistoryAdd(line);
+			linenoiseHistorySave(".mshistory");
 		}
-
-		linenoiseHistoryAdd(res);
-		free(res);
-	} while (1);
+		free(line);
+	}
 }

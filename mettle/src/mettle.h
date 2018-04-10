@@ -9,6 +9,7 @@
 
 #include "c2.h"
 #include "channel.h"
+#include "module.h"
 #include "process.h"
 
 #include <ev.h>
@@ -41,5 +42,9 @@ struct channelmgr * mettle_get_channelmgr(struct mettle *m);
 struct extmgr * mettle_get_extmgr(struct mettle *m);
 
 struct procmgr * mettle_get_procmgr(struct mettle *m);
+
+struct modulemgr * mettle_get_modulemgr(struct mettle *m);
+
+void mettle_console_start_interactive(struct mettle *m);
 
 #endif
