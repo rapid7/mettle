@@ -101,8 +101,10 @@ static void log(const char *prefix, const char *fmt, va_list va)
 	vasprintf(&msg, fmt, va);
 
 	if (msg) {
-		printf("\r\033[K%s%s", prefix, msg);
-		printf("\r\033[K%s\033[u\033[B", console.prompt);
+		printf("\033[s"); /* Save cursor position */
+		printf("\r\033[K%s%s", prefix, msg); /* Log message */
+		printf("\r\033[K%s\033[u\033[B", console.prompt); /* Restore prompt */
+		printf("\033[u\033[B"); /* Restore cursor position, move down one line */
 		fflush(stdout);
 		free(msg);
 	}
