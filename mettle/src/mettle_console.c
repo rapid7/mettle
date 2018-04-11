@@ -16,10 +16,15 @@ struct console {
 	char *prompt;
 	struct cmd {
 		const char *name;
+		const char *desc;
 		void (*cb)(const char *line);
 	} *cmds;
 	int num_cmds;
-} console = {0};
+	pthread_t thread;
+	pthread_mutex_t mutex;
+} console = {
+	.mutex = PTHREAD_MUTEX_INITIALIZER
+};
 
 struct cmd * console_get_cmd(const char *line)
 {
@@ -39,7 +44,17 @@ struct cmd * console_get_cmd(const char *line)
 	return cmd;
 }
 
-int console_register_cmd(const char *name, void (*cb)(const char *))
+static void handle_help(const char *line)
+{
+	printf("Available commands:\n");
+	for (int i = 0; i < console.num_cmds; i++) {
+		if (console.cmds[i].desc) {
+			printf("  %s\t%s\n", console.cmds[i].name, console.cmds[i].desc);
+		}
+	}
+}
+
+int console_register_cmd(const char *name, void (*cb)(const char *), const char *desc)
 {
 	struct cmd *cmd = console_get_cmd(name);
 	if (cmd == NULL) {
@@ -50,6 +65,7 @@ int console_register_cmd(const char *name, void (*cb)(const char *))
 		}
 		cmd = &console.cmds[console.num_cmds];
 		cmd->name = name;
+		cmd->desc = desc;
 		console.num_cmds++;
 	}
 	cmd->cb = cb;
@@ -95,21 +111,36 @@ static void set_prompt(const char *fmt, ...)
 	}
 }
 
+#define CURSOR_SAVE    "\033[s"
+#define CURSOR_RESTORE "\033[u"
+#define LINE_RESET     "\r\033[K"
+#define LINE_DOWN      "\033[B"
+#define COLOR_RED      "\033[31m"
+#define COLOR_GREEN    "\033[32m"
+#define COLOR_YELLOW   "\033[33m"
+#define COLOR_BLUE     "\033[34m"
+#define COLOR_MAGENTA  "\033[35m"
+#define COLOR_CYAN     "\033[36m"
+#define COLOR_RESET    "\033[0m"
+
 static void log(const char *prefix, const char *fmt, va_list va)
 {
-	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 	char *msg = NULL;
 	vasprintf(&msg, fmt, va);
 
 	if (msg) {
-		pthread_mutex_lock(&mutex);
-		printf("\033[s"); /* Save cursor position */
-		printf("\r\033[K%s%s\n", prefix, msg); /* Log message */
-		printf("\r\033[K%s\033[u\033[B", console.prompt); /* Restore prompt */
-		printf("\033[u\033[B"); /* Restore cursor position, move down one line */
+		pthread_mutex_lock(&console.mutex);
+		if (console.thread == pthread_self()) {
+			printf("%s%s\n", prefix, msg);
+		} else {
+			printf(CURSOR_SAVE);
+			printf(LINE_RESET "%s%s\n", prefix, msg);
+			printf(LINE_RESET "%s", console.prompt);
+			printf(CURSOR_RESTORE LINE_DOWN);
+		}
 		fflush(stdout);
 		free(msg);
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&console.mutex);
 	}
 }
 
@@ -125,7 +156,7 @@ static void console_log_info(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log("[*] ", fmt, va);
+	log(COLOR_BLUE "[*] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
@@ -133,7 +164,7 @@ static void console_log_good(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log("[+] ", fmt, va);
+	log(COLOR_GREEN "[+] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
@@ -141,7 +172,7 @@ static void console_log_bad(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log("[-] ", fmt, va);
+	log(COLOR_RED "[-] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
@@ -204,6 +235,7 @@ static void handle_back(const char *line)
 void *console_thread(void *arg)
 {
 	char *line;
+	printf(COLOR_BLUE "mettle ¯\\(º_o)/¯" COLOR_RESET "\n");
 	while ((line = linenoise(console.prompt)) != NULL) {
 		if (line[0] != '\0' && line[0] != '/') {
 			struct cmd *cmd = console_get_cmd(line);
@@ -229,13 +261,14 @@ void mettle_console_start_interactive(struct mettle *m)
 	linenoiseHistoryLoad(console.histfile);
 	linenoiseSetCompletionCallback(complete_line);
 
-	console_register_cmd("exit", handle_exit);
-	console_register_cmd("quit", handle_exit);
-	console_register_cmd("clear", handle_clear);
-	console_register_cmd("back", handle_back);
-	console_register_cmd("use", handle_use);
-	console_register_cmd("run", handle_run);
-	console_register_cmd("info", handle_info);
+	console_register_cmd("exit", handle_exit, "Exit the console");
+	console_register_cmd("quit", handle_exit, NULL);
+	console_register_cmd("clear", handle_clear, "Clear the screen");
+	console_register_cmd("back", handle_back, "Clear the current context");
+	console_register_cmd("use", handle_use, "Use a module");
+	console_register_cmd("run", handle_run, "Run a module");
+	console_register_cmd("info", handle_info, "Get info on a module");
+	console_register_cmd("help", handle_help, NULL);
 
 	modulemgr_register_log_cbs(console.modulemgr,
 		console_log_line, console_log_info, console_log_good, console_log_bad
@@ -246,6 +279,5 @@ void mettle_console_start_interactive(struct mettle *m)
 	log_init_cb(log_cb);
 	log_init_flush_thread();
 
-	pthread_t thread;
-	pthread_create(&thread, NULL, console_thread, NULL);
+	pthread_create(&console.thread, NULL, console_thread, NULL);
 }

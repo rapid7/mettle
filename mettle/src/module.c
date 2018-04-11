@@ -93,7 +93,7 @@ static int scan_module_path(const char *path,
 	if (flag == FTW_F && s->st_mode & S_IXUSR) {
 		struct module *m = module_new(_mm, path);
 		HASH_ADD_STR(_mm->modules, name, m);
-		fprintf(stderr, "found %s\n", m->name);
+		log_info("found %s\n", m->name);
 	}
 
 	return 0;
@@ -102,7 +102,7 @@ static int scan_module_path(const char *path,
 int modulemgr_load_path(struct modulemgr *mm, const char *path)
 {
 	_mm = mm;
-	fprintf(stderr, "adding modules from %s\n", path);
+	log_info("adding modules from %s\n", path);
 	return (nftw(path, scan_module_path, 10, 0));
 }
 
@@ -145,6 +145,15 @@ static void module_read_error(struct process *p, struct buffer_queue *queue, voi
 	struct module *m = arg;
 	struct modulemgr *mm = m->mm;
 	mm->log.bad("got error from module %s", m->name);
+	void *data = NULL;
+	ssize_t msg_len = buffer_queue_remove_all(queue, &data);
+	if (data) {
+		char *line = strtok(data, "\n");
+		do {
+			mm->log.bad("%s", line);
+		} while ((line = strtok(NULL, "\n")));
+	}
+	free(data);
 }
 
 int module_log_info(struct module *m)
