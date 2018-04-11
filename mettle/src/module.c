@@ -2,8 +2,10 @@
 #include <string.h>
 #include <ftw.h>
 
+#include "json.h"
 #include "log.h"
 #include "module.h"
+#include "process.h"
 #include "uthash.h"
 
 struct module
@@ -24,6 +26,8 @@ struct modulemgr
 		void (*bad)(const char *fmt, ...);
 	} log;
 	struct ev_loop *loop;
+	struct procmgr *procmgr;
+	struct json_rpc *jrpc;
 };
 
 void modulemgr_free(struct modulemgr *mm)
@@ -36,6 +40,12 @@ void modulemgr_free(struct modulemgr *mm)
 				free(module->path);
 			}
 		}
+		if (mm->procmgr) {
+			procmgr_free(mm->procmgr);
+		}
+		if (mm->jrpc) {
+			json_rpc_free(mm->jrpc);
+		}
 		free(mm);
 	}
 }
@@ -44,6 +54,8 @@ struct modulemgr * modulemgr_new(struct ev_loop *loop)
 {
 	struct modulemgr *mm = calloc(1, sizeof(*mm));
 	mm->loop = loop;
+	mm->procmgr = procmgr_new(loop);
+	mm->jrpc = json_rpc_new(JSON_RPC_CHECK_VERSION);
 	return mm;
 }
 
@@ -117,9 +129,41 @@ const char *module_name(struct module *m)
 	return m->name;
 }
 
-char *module_info(struct module *m)
+static void module_exit(struct process *p, int exit_status, void *arg)
 {
-	return NULL;
+}
+
+static void module_read_json(struct process *p, struct buffer_queue *queue, void *arg)
+{
+	struct module *m = arg;
+	struct modulemgr *mm = m->mm;
+	mm->log.info("got data from module %s", m->name);
+}
+
+static void module_read_error(struct process *p, struct buffer_queue *queue, void *arg)
+{
+	struct module *m = arg;
+	struct modulemgr *mm = m->mm;
+	mm->log.bad("got error from module %s", m->name);
+}
+
+int module_log_info(struct module *m)
+{
+	struct modulemgr *mm = m->mm;
+	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
+	struct process *p = process_create_from_executable(mm->procmgr, m->path, &opts);
+	process_set_callbacks(p, module_read_json, module_read_error, module_exit, m);
+
+	int64_t id;
+	struct json_object *call = json_rpc_gen_method_call(mm->jrpc,
+		"describe", &id, NULL);
+	const char *msg = json_object_to_json_string_ext(call, 0);
+	process_write(p, msg, strlen(msg));
+
+	mm->log.info("Module info: %s", m->name);
+	mm->log.info("sending: %s", msg);
+
+	return 0;
 }
 
 int module_run(struct module *m)

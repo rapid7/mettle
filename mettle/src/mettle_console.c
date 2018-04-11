@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include <linenoise.h>
 
+#include "log.h"
 #include "mettle.h"
 
 struct console {
@@ -99,7 +101,9 @@ static void log(const char *prefix, const char *fmt, va_list va)
 	vasprintf(&msg, fmt, va);
 
 	if (msg) {
-		printf("%s%s\n", prefix, msg);
+		printf("\r\033[K%s%s", prefix, msg);
+		printf("\r\033[K%s\033[u\033[B", console.prompt);
+		fflush(stdout);
 		free(msg);
 	}
 }
@@ -108,7 +112,7 @@ static void console_log_line(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	vprintf(fmt, va);
+	log("", fmt, va);
 	va_end(va);
 }
 
@@ -134,6 +138,11 @@ static void console_log_bad(const char *fmt, ...)
 	va_start(va, fmt);
 	log("[-] ", fmt, va);
 	va_end(va);
+}
+
+static void log_cb(const char *msg)
+{
+	console_log_good("%s", msg);
 }
 
 static void handle_exit(const char *line)
@@ -174,7 +183,7 @@ static void handle_run(const char *line)
 static void handle_info(const char *line)
 {
 	if (console.module) {
-		console_log_info("Module info: %s", module_name(console.module));
+		module_log_info(console.module);
 	} else {
 		console_log_bad("No module selected");
 	}
@@ -185,6 +194,24 @@ static void handle_back(const char *line)
 	const char *name = line + 4;
 	set_prompt("%s > ", console.name);
 	console.module = NULL;
+}
+
+void *console_thread(void *arg)
+{
+	char *line;
+	while ((line = linenoise(console.prompt)) != NULL) {
+		if (line[0] != '\0' && line[0] != '/') {
+			struct cmd *cmd = console_get_cmd(line);
+			if (cmd) {
+				cmd->cb(line);
+			} else {
+			}
+			linenoiseHistoryAdd(line);
+			linenoiseHistorySave(console.histfile);
+		}
+		free(line);
+	}
+	return NULL;
 }
 
 void mettle_console_start_interactive(struct mettle *m)
@@ -208,20 +235,12 @@ void mettle_console_start_interactive(struct mettle *m)
 	modulemgr_register_log_cbs(console.modulemgr,
 		console_log_line, console_log_info, console_log_good, console_log_bad
 	);
-		
 
 	set_prompt("%s > ", console.name);
-	char *line;
-	while ((line = linenoise(console.prompt)) != NULL) {
-		if (line[0] != '\0' && line[0] != '/') {
-			struct cmd *cmd = console_get_cmd(line);
-			if (cmd) {
-				cmd->cb(line);
-			} else {
-			}
-			linenoiseHistoryAdd(line);
-			linenoiseHistorySave(console.histfile);
-		}
-		free(line);
-	}
+
+	log_init_cb(log_cb);
+	log_init_flush_thread();
+
+	pthread_t thread;
+	pthread_create(&thread, NULL, console_thread, NULL);
 }

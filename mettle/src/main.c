@@ -144,14 +144,6 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		}
 	}
 
-	if (debug) {
-		start_logger(out);
-	}
-
-	if (interactive) {
-		mettle_console_start_interactive(m);
-	}
-
 	/*
 	 * Only rename if we were not injected, since currently we do not know
 	 * where the real argv is. This is fixable, but possibly not useful to
@@ -160,6 +152,15 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	if (name_flag && !(flags & PAYLOAD_INJECTED)) {
 		log_info("using name: %s", name);
 		setproctitle(name);
+	}
+
+	if (interactive) {
+		mettle_console_start_interactive(m);
+		return 0;
+	}
+
+	if (debug) {
+		start_logger(out);
 	}
 
 	if (background) {
