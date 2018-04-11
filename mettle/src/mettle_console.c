@@ -97,16 +97,19 @@ static void set_prompt(const char *fmt, ...)
 
 static void log(const char *prefix, const char *fmt, va_list va)
 {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 	char *msg = NULL;
 	vasprintf(&msg, fmt, va);
 
 	if (msg) {
+		pthread_mutex_lock(&mutex);
 		printf("\033[s"); /* Save cursor position */
-		printf("\r\033[K%s%s", prefix, msg); /* Log message */
+		printf("\r\033[K%s%s\n", prefix, msg); /* Log message */
 		printf("\r\033[K%s\033[u\033[B", console.prompt); /* Restore prompt */
 		printf("\033[u\033[B"); /* Restore cursor position, move down one line */
 		fflush(stdout);
 		free(msg);
+		pthread_mutex_unlock(&mutex);
 	}
 }
 
@@ -144,7 +147,7 @@ static void console_log_bad(const char *fmt, ...)
 
 static void log_cb(const char *msg)
 {
-	console_log_good("%s", msg);
+	console_log_info("%s", msg);
 }
 
 static void handle_exit(const char *line)

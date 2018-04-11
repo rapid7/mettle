@@ -47,6 +47,7 @@ static void _zlog_flush_buffer()
 	}
 	if (zlog_cb != NULL) {
 		for (int i = 0; i < _zlog_buffer_size; i++) {
+			_zlog_buffer[i][strlen(_zlog_buffer[i]) - 1] = '\0';
 			zlog_cb(_zlog_buffer[i]);
 		}
 	}
