@@ -252,12 +252,10 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct process_options opts = {
 		.process_name = path,
 		.args = args,
-		.env = NULL,
-		.cwd = NULL,
-		.user = NULL,
+		.flags = PROCESS_CREATE_SUBSHELL
 	};
 
-	struct process *p = process_create_from_executable(pm, path, &opts, PROCESS_CREATE_SUBSHELL);
+	struct process *p = process_create_from_executable(pm, path, &opts);
 	if (p == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
