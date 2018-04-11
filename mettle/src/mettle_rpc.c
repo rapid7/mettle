@@ -46,8 +46,7 @@ static struct mettle_rpc_conn * get_conn(struct mettle_rpc *mrpc,
 	return conn;
 }
 
-static void handle_rpc(struct json_object *obj,
-	struct bufferev *bev, void *arg)
+static void handle_rpc(struct json_object *obj, void *arg)
 {
 	struct mettle_rpc_conn *conn = arg;
 
@@ -64,7 +63,7 @@ static void handle_rpc(struct json_object *obj,
 	}
 	if (response) {
 		const char *str = json_object_to_json_string_ext(response, 0);
-		bufferev_write(bev, str, strlen(str));
+		bufferev_write(conn->bev, str, strlen(str));
 		json_object_put(response);
 	}
 	json_object_put(obj);

@@ -3,6 +3,7 @@
 #include "utlist.h"
 
 #include <errno.h>
+#include <inttypes.h>
 
 struct json_object *json_read_file(const char *filename)
 {
@@ -83,7 +84,7 @@ void json_read_bufferev_cb(struct bufferev *bev, struct json_tokener *tok,
 			obj = json_tokener_parse_ex(tok, buf, buf_len);
 			rc = json_tokener_get_error(tok);
 			if (obj) {
-				cb(obj, bev, arg);
+				cb(obj, arg);
 			}
 		}
 	} while (buf_len && rc == json_tokener_continue);
@@ -92,7 +93,36 @@ void json_read_bufferev_cb(struct bufferev *bev, struct json_tokener *tok,
 		size_t offset = tok->char_offset;
 		while ((obj = json_tokener_parse_ex(tok, buf + offset, last_read - offset))) {
 			offset += tok->char_offset;
-			cb(obj, bev, arg);
+			cb(obj, arg);
+		}
+	}
+}
+
+void json_read_buffer_queue_cb(struct buffer_queue *queue, struct json_tokener *tok,
+		json_read_cb cb, void *arg)
+{
+	void *buf;
+	size_t buf_len, last_read = 0;
+	struct json_object *obj = NULL;
+	enum json_tokener_error rc = json_tokener_continue;
+	do {
+		buf_len = buffer_queue_remove_all(queue, &buf);
+		if (buf_len) {
+			last_read = buf_len;
+			obj = json_tokener_parse_ex(tok, buf, buf_len);
+			rc = json_tokener_get_error(tok);
+			if (obj) {
+				cb(obj, arg);
+			}
+			free(buf);
+		}
+	} while (buf_len && rc == json_tokener_continue);
+
+	if (tok->char_offset < last_read) {
+		size_t offset = tok->char_offset;
+		while ((obj = json_tokener_parse_ex(tok, buf + offset, last_read - offset))) {
+			offset += tok->char_offset;
+			cb(obj, arg);
 		}
 	}
 }
@@ -461,6 +491,8 @@ struct json_object *json_rpc_process_single(
 	}
 
 	struct json_object *result = json_object_object_get(json, "result");
+	if (result == NULL)
+		result = json_object_object_get(json, "response");
 	struct json_object *error = json_object_object_get(json, "error");
 	if (result || error) {
 		struct json_request *r;
@@ -517,6 +549,7 @@ struct json_object *json_rpc_process_single(
 	}
 
 	log_info("Neither a request nor a response found in JSON message");
+	puts(json_object_to_json_string_ext(json, 0));
 	return NULL;
 }
 

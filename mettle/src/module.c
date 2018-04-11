@@ -27,7 +27,6 @@ struct modulemgr
 	} log;
 	struct ev_loop *loop;
 	struct procmgr *procmgr;
-	struct json_rpc *jrpc;
 };
 
 void modulemgr_free(struct modulemgr *mm)
@@ -43,9 +42,6 @@ void modulemgr_free(struct modulemgr *mm)
 		if (mm->procmgr) {
 			procmgr_free(mm->procmgr);
 		}
-		if (mm->jrpc) {
-			json_rpc_free(mm->jrpc);
-		}
 		free(mm);
 	}
 }
@@ -55,7 +51,6 @@ struct modulemgr * modulemgr_new(struct ev_loop *loop)
 	struct modulemgr *mm = calloc(1, sizeof(*mm));
 	mm->loop = loop;
 	mm->procmgr = procmgr_new(loop);
-	mm->jrpc = json_rpc_new(JSON_RPC_CHECK_VERSION);
 	return mm;
 }
 
@@ -129,49 +124,88 @@ const char *module_name(struct module *m)
 	return m->name;
 }
 
+struct module_ctx {
+	struct json_tokener *tok;
+	struct json_rpc *jrpc;
+	struct module *m;
+	struct modulemgr *mm;
+};
+
+struct module_ctx * module_ctx_new(struct module *m)
+{
+	struct module_ctx *ctx = calloc(1, sizeof(*ctx));
+	if (ctx) {
+		ctx->tok = json_tokener_new();
+		ctx->jrpc = json_rpc_new(JSON_RPC_CHECK_VERSION);
+		ctx->m = m;
+		ctx->mm = m->mm;
+	}
+	return ctx;
+}
+
+void module_ctx_free(struct module_ctx *ctx)
+{
+	if (ctx) {
+		json_tokener_free(ctx->tok);
+		json_rpc_free(ctx->jrpc);
+		free(ctx);
+	}
+}
+
 static void module_exit(struct process *p, int exit_status, void *arg)
 {
+	struct module_ctx *ctx = arg;
+	module_ctx_free(ctx);
 }
 
-static void module_read_json(struct process *p, struct buffer_queue *queue, void *arg)
+static void module_read_json(struct json_object *obj, void *arg)
 {
-	struct module *m = arg;
-	struct modulemgr *mm = m->mm;
-	mm->log.info("got data from module %s", m->name);
+	struct module_ctx *ctx = arg;
+	json_rpc_process(ctx->jrpc, obj);
 }
 
-static void module_read_error(struct process *p, struct buffer_queue *queue, void *arg)
+static void module_read_stdout(struct process *p, struct buffer_queue *queue, void *arg)
 {
-	struct module *m = arg;
-	struct modulemgr *mm = m->mm;
-	mm->log.bad("got error from module %s", m->name);
+	struct module_ctx *ctx = arg;
+	json_read_buffer_queue_cb(queue, ctx->tok, module_read_json, arg);
+}
+
+static void module_read_stderr(struct process *p, struct buffer_queue *queue, void *arg)
+{
+	struct module_ctx *ctx = arg;
+	ctx->mm->log.bad("got error from module %s", ctx->m->name);
 	void *data = NULL;
 	ssize_t msg_len = buffer_queue_remove_all(queue, &data);
 	if (data) {
 		char *line = strtok(data, "\n");
 		do {
-			mm->log.bad("%s", line);
+			ctx->mm->log.bad("%s", line);
 		} while ((line = strtok(NULL, "\n")));
 	}
 	free(data);
 }
 
+void module_log_info_cb(struct json_result_info *result, void *arg)
+{
+	struct module_ctx *ctx = arg;
+	ctx->mm->log.info("got a response");
+}
+
 int module_log_info(struct module *m)
 {
-	struct modulemgr *mm = m->mm;
+	struct module_ctx *ctx = module_ctx_new(m);
 	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
-	struct process *p = process_create_from_executable(mm->procmgr, m->path, &opts);
-	process_set_callbacks(p, module_read_json, module_read_error, module_exit, m);
+	struct process *p = process_create_from_executable(
+		ctx->mm->procmgr, ctx->m->path, &opts);
+	process_set_callbacks(p, module_read_stdout, module_read_stderr, module_exit, ctx);
 
 	int64_t id;
-	struct json_object *call = json_rpc_gen_method_call(mm->jrpc,
-		"describe", &id, NULL);
+	struct json_object *call = json_rpc_gen_method_call(ctx->jrpc, "describe", &id, NULL);
+	json_rpc_register_result_cb(ctx->jrpc, id, module_log_info_cb, ctx);
 	const char *msg = json_object_to_json_string_ext(call, 0);
 	process_write(p, msg, strlen(msg));
 
-	mm->log.info("Module info: %s", m->name);
-	mm->log.info("sending: %s", msg);
-
+	ctx->mm->log.info("sent a request");
 	return 0;
 }
 

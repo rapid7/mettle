@@ -14,16 +14,18 @@
 /*
  * JSON read and dispatch methods
  */
-
 struct json_object *json_read_file(const char *json_file);
 
 struct json_object * json_read_buf(const void *buf, ssize_t buf_len);
 
 struct json_object *json_read_bufferev(struct bufferev *bev, struct json_tokener *tok);
 
-typedef void (*json_read_cb)(struct json_object *obj, struct bufferev *bev, void *arg);
+typedef void (*json_read_cb)(struct json_object *obj, void *arg);
 
 void json_read_bufferev_cb(struct bufferev *bev, struct json_tokener *tok,
+		json_read_cb cb, void *arg);
+
+void json_read_buffer_queue_cb(struct buffer_queue *queue, struct json_tokener *tok,
 		json_read_cb cb, void *arg);
 
 /*

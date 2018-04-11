@@ -235,7 +235,7 @@ static void handle_back(const char *line)
 void *console_thread(void *arg)
 {
 	char *line;
-	printf(COLOR_BLUE "mettle ¯\\(º_o)/¯" COLOR_RESET "\n");
+	console_log_good("mettlesploit! ¯\\(º_o)/¯");
 	while ((line = linenoise(console.prompt)) != NULL) {
 		if (line[0] != '\0' && line[0] != '/') {
 			struct cmd *cmd = console_get_cmd(line);
