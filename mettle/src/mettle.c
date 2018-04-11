@@ -266,7 +266,7 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
-	m->mm = modulemgr_new();
+	m->mm = modulemgr_new(m->loop);
 	if (m->mm == NULL) {
 		goto err;
 	}

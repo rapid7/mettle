@@ -17,6 +17,13 @@ struct module
 struct modulemgr
 {
 	struct module *modules;
+	struct {
+		void (*line)(const char *fmt, ...);
+		void (*info)(const char *fmt, ...);
+		void (*good)(const char *fmt, ...);
+		void (*bad)(const char *fmt, ...);
+	} log;
+	struct ev_loop *loop;
 };
 
 void modulemgr_free(struct modulemgr *mm)
@@ -33,10 +40,23 @@ void modulemgr_free(struct modulemgr *mm)
 	}
 }
 
-struct modulemgr * modulemgr_new(void)
+struct modulemgr * modulemgr_new(struct ev_loop *loop)
 {
 	struct modulemgr *mm = calloc(1, sizeof(*mm));
+	mm->loop = loop;
 	return mm;
+}
+
+void modulemgr_register_log_cbs(struct modulemgr *mm,
+	void (*line)(const char *fmt, ...),
+	void (*info)(const char *fmt, ...),
+	void (*good)(const char *fmt, ...),
+	void (*bad)(const char *fmt, ...))
+{
+	mm->log.line = line;
+	mm->log.info = info;
+	mm->log.good = good;
+	mm->log.bad = bad;
 }
 
 struct module * module_new(struct modulemgr *mm, const char *path)
@@ -95,4 +115,14 @@ struct module ** modulemgr_find_modules(struct modulemgr *mm,
 const char *module_name(struct module *m)
 {
 	return m->name;
+}
+
+char *module_info(struct module *m)
+{
+	return NULL;
+}
+
+int module_run(struct module *m)
+{
+	return 0;
 }

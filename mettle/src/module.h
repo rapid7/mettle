@@ -6,11 +6,18 @@
 #ifndef _MODULE_H_
 #define _MODULE_H_
 
-struct module;
+#include <ev.h>
 
+struct module;
 struct modulemgr;
 
-struct modulemgr * modulemgr_new(void);
+struct modulemgr * modulemgr_new(struct ev_loop *loop);
+
+void modulemgr_register_log_cbs(struct modulemgr *mm,
+	void (*line)(const char *fmt, ...),
+	void (*info)(const char *fmt, ...),
+	void (*good)(const char *fmt, ...),
+	void (*bad)(const char *fmt, ...));
 
 int modulemgr_load_path(struct modulemgr *mm, const char *path);
 
@@ -18,5 +25,9 @@ struct module ** modulemgr_find_modules(struct modulemgr *mm,
 	const char *pattern, int *num_modules);
 
 const char *module_name(struct module *m);
+
+char *module_info(struct module *m);
+
+int module_run(struct module *m);
 
 #endif

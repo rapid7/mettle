@@ -7,9 +7,10 @@
 #include "mettle.h"
 
 struct console {
-	struct mettle *m;
-	struct modulemgr *mm;
-	const char *name;
+	struct mettle *mettle;
+	struct modulemgr *modulemgr;
+	struct module *module;
+	const char *name, *histfile;
 	char *prompt;
 	struct cmd {
 		const char *name;
@@ -58,7 +59,7 @@ static void complete_use(char const *prefix, linenoiseCompletions *lc)
 	const char *pattern = prefix + 4;
 	int num_modules = 0;
 	struct module **modules = modulemgr_find_modules(
-		console.mm, pattern, &num_modules);
+		console.modulemgr, pattern, &num_modules);
 	for (int i = 0; i < num_modules; i++) {
 		char completion[128];
 		snprintf(completion, 128, "use %s", module_name(modules[i]));
@@ -92,6 +93,49 @@ static void set_prompt(const char *fmt, ...)
 	}
 }
 
+static void log(const char *prefix, const char *fmt, va_list va)
+{
+	char *msg = NULL;
+	vasprintf(&msg, fmt, va);
+
+	if (msg) {
+		printf("%s%s\n", prefix, msg);
+		free(msg);
+	}
+}
+
+static void console_log_line(const char *fmt, ...)
+{
+	va_list va;
+	va_start(va, fmt);
+	vprintf(fmt, va);
+	va_end(va);
+}
+
+static void console_log_info(const char *fmt, ...)
+{
+	va_list va;
+	va_start(va, fmt);
+	log("[*] ", fmt, va);
+	va_end(va);
+}
+
+static void console_log_good(const char *fmt, ...)
+{
+	va_list va;
+	va_start(va, fmt);
+	log("[+] ", fmt, va);
+	va_end(va);
+}
+
+static void console_log_bad(const char *fmt, ...)
+{
+	va_list va;
+	va_start(va, fmt);
+	log("[-] ", fmt, va);
+	va_end(va);
+}
+
 static void handle_exit(const char *line)
 {
 	exit(0);
@@ -104,23 +148,53 @@ static void handle_clear(const char *line)
 
 static void handle_use(const char *line)
 {
+	int num_modules = 0;
 	const char *name = line + 4;
-	set_prompt("%s (%s) > ", console.name, name);
+	struct module **modules = modulemgr_find_modules(
+		console.modulemgr, name, &num_modules);
+	if (num_modules == 1) {
+		console.module = modules[0];
+		set_prompt("%s (%s) > ", console.name, name);
+	} else {
+		console_log_bad("module %s not found", name);
+	}
+	free(modules);
+}
+
+static void handle_run(const char *line)
+{
+	if (console.module) {
+		console_log_info("Running %s", module_name(console.module));
+		module_run(console.module);
+	} else {
+		console_log_bad("No module selected");
+	}
+}
+
+static void handle_info(const char *line)
+{
+	if (console.module) {
+		console_log_info("Module info: %s", module_name(console.module));
+	} else {
+		console_log_bad("No module selected");
+	}
 }
 
 static void handle_back(const char *line)
 {
 	const char *name = line + 4;
 	set_prompt("%s > ", console.name);
+	console.module = NULL;
 }
 
 void mettle_console_start_interactive(struct mettle *m)
 {
 	console.name = "mettle";
-	console.m = m;
-	console.mm = mettle_get_modulemgr(m);
+	console.histfile = ".mshistory";
+	console.mettle = m;
+	console.modulemgr = mettle_get_modulemgr(m);
 	// linenoiseInstallWindowChangeHandler();
-	linenoiseHistoryLoad(".mshistory");
+	linenoiseHistoryLoad(console.histfile);
 	linenoiseSetCompletionCallback(complete_line);
 
 	console_register_cmd("exit", handle_exit);
@@ -128,6 +202,13 @@ void mettle_console_start_interactive(struct mettle *m)
 	console_register_cmd("clear", handle_clear);
 	console_register_cmd("back", handle_back);
 	console_register_cmd("use", handle_use);
+	console_register_cmd("run", handle_run);
+	console_register_cmd("info", handle_info);
+
+	modulemgr_register_log_cbs(console.modulemgr,
+		console_log_line, console_log_info, console_log_good, console_log_bad
+	);
+		
 
 	set_prompt("%s > ", console.name);
 	char *line;
@@ -139,7 +220,7 @@ void mettle_console_start_interactive(struct mettle *m)
 			} else {
 			}
 			linenoiseHistoryAdd(line);
-			linenoiseHistorySave(".mshistory");
+			linenoiseHistorySave(console.histfile);
 		}
 		free(line);
 	}
