@@ -183,10 +183,22 @@ void module_describe_cb(struct json_result_info *result, void *arg)
 	json_get_str(m->metadata, "date", &m->date);
 	json_get_str_def(m->metadata, "license", &m->license, "MSF_LICENSE");
 	json_get_str_def(m->metadata, "rank", &m->rank, "Excellent");
+
+	json_object *options = json_object_object_get(m->metadata, "options");
+	json_object_object_foreach(options, key, val) {
+		struct module_option *option = calloc(1, sizeof(*option));
+		option->name = key;
+		json_get_str(val, "description", &option->type);
+		json_get_str_def(val, "type", &option->type, "string");
+		HASH_ADD_STR(m->options, name, option);
+	}
 }
 
 int module_get_metadata(struct module *m)
 {
+	if (m->metadata != NULL)
+		return 0;
+
 	struct module_ctx *ctx = module_ctx_new(m);
 	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
 	struct process *p = process_create_from_executable(
@@ -212,6 +224,7 @@ void module_log_info(struct module *m)
 	log_line("       Rank: %s", m->rank);
 	log_line("       Date: %s", m->date);
 	log_line("");
+	log_line("Description: %s", m->description);
 }
 
 static struct modulemgr *_mm;
