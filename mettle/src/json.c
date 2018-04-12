@@ -329,6 +329,7 @@ int json_rpc_register_method(struct json_rpc *jrpc,
 	jrpc->methods = reallocarray(jrpc->methods,
 		jrpc->num_methods + 1, sizeof(struct json_method));
 	m = &jrpc->methods[jrpc->num_methods];
+	memset(m, 0, sizeof(struct json_method));
 	m->name = strdup(method_name);
 	m->cb = cb;
 	m->arg = arg;
