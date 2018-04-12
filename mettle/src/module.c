@@ -11,6 +11,7 @@
 struct module_option
 {
 	const char *name, *type, *description, *def;
+	char *value;
 	UT_hash_handle hh;
 };
 
@@ -188,8 +189,10 @@ void module_describe_cb(struct json_result_info *result, void *arg)
 	json_object_object_foreach(options, key, val) {
 		struct module_option *option = calloc(1, sizeof(*option));
 		option->name = key;
-		json_get_str(val, "description", &option->type);
+		json_get_str(val, "description", &option->description);
 		json_get_str_def(val, "type", &option->type, "string");
+		json_get_str(val, "default", &option->def);
+		option->value = option->def ? strdup(option->def) : NULL;
 		HASH_ADD_STR(m->options, name, option);
 	}
 }
@@ -217,12 +220,21 @@ int module_get_metadata(struct module *m)
 void module_log_info(struct module *m)
 {
 	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
+
 	log_line("");
 	log_line("       Name: %s", m->name);
 	log_line("     Module: %s", m->fullname);
 	log_line("    License: %s", m->license);
 	log_line("       Rank: %s", m->rank);
 	log_line("       Date: %s", m->date);
+
+	log_line("");
+	log_line("Basic options:");
+	struct module_option *option, *tmp;
+	HASH_ITER(hh, m->options, option, tmp) {
+		log_line("  %s = %s", option->name, option->value);
+	}
+
 	log_line("");
 	log_line("Description: %s", m->description);
 }
