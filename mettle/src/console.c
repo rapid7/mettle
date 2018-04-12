@@ -219,7 +219,7 @@ static void handle_use(const char *line)
 	if (num_modules == 1) {
 		console.module = modules[0];
 		module_get_metadata(console.module);
-		set_prompt("%s (" COLOR_RED "%s" COLOR_RESET ") > ", console.name, name);
+		set_prompt("%s (%s) > ", console.name, name);
 	} else {
 		console_log_bad("module %s not found", name);
 	}
