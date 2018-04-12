@@ -144,9 +144,14 @@ int module_option_set(struct module *module, const char *name, const char *value
 	if (num_options >= 1) {
 		free(options[0]->value);
 		options[0]->value = strdup(value);
-		return 0;
+	} else {
+		struct module_option *option = calloc(1, sizeof(*option));
+		option->name = strdup(name);
+		option->type = "string";
+		option->value = strdup(value);
+		HASH_ADD_STR(module->options, name, option);
 	}
-	return -1;
+	return 0;
 }
 
 struct module_ctx {
@@ -163,7 +168,11 @@ static json_object *handle_message(struct json_method_ctx *json_ctx, void *arg)
 	const char *message, *level;
 	json_get_str(json_ctx->params, "message", &message);
 	json_get_str_def(json_ctx->params, "level", &level, "debug");
-	ctx->mm->log.info("(%s) %s", ctx->m->fullname, message);
+	if (strcmp(level, "error") == 0) {
+		ctx->mm->log.bad("[%s] %s", ctx->m->fullname, message);
+	} else {
+		ctx->mm->log.info("[%s] %s", ctx->m->fullname, message);
+	}
 	return NULL;
 }
 
@@ -274,7 +283,7 @@ void module_run_cb(struct json_result_info *result, void *arg)
 {
 	struct module_ctx *ctx = arg;
 	struct module *m = ctx->m;
-	m->mm->log.info("finished");
+	m->mm->log.info("[%s] Finished", m->fullname);
 }
 
 int module_run(struct module *m)
@@ -288,6 +297,7 @@ int module_run(struct module *m)
 		json_add_str(params, option->name, option->value);
 	}
 	module_send_command(m, "run", params, module_run_cb);
+	m->mm->log.info("[%s] Running", m->fullname);
 	return 0;
 }
 

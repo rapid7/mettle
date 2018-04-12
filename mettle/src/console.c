@@ -256,7 +256,6 @@ static void handle_set(const char *line)
 static void handle_run(const char *line)
 {
 	if (console.module) {
-		console_log_info("Running %s", module_name(console.module));
 		module_run(console.module);
 	} else {
 		console_log_bad("No module selected");
