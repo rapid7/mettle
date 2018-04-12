@@ -148,7 +148,6 @@ int module_option_set(struct module *module, const char *name, const char *value
 	return -1;
 }
 
-
 struct module_ctx {
 	struct json_tokener *tok;
 	struct json_rpc *jrpc;
@@ -156,12 +155,23 @@ struct module_ctx {
 	struct modulemgr *mm;
 };
 
+static json_object *handle_message(struct json_method_ctx *json_ctx, void *arg)
+{
+	struct module_ctx *ctx = arg;
+	const char *message, *level;
+	json_get_str(json_ctx->params, "message", &message);
+	json_get_str_def(json_ctx->params, "level", &level, "debug");
+	ctx->mm->log.info("(%s) %s", ctx->m->fullname, message);
+	return NULL;
+}
+
 struct module_ctx * module_ctx_new(struct module *m)
 {
 	struct module_ctx *ctx = calloc(1, sizeof(*ctx));
 	if (ctx) {
 		ctx->tok = json_tokener_new();
 		ctx->jrpc = json_rpc_new(JSON_RPC_CHECK_VERSION);
+		json_rpc_register_method(ctx->jrpc, "message", "message,level", handle_message, ctx);
 		ctx->m = m;
 		ctx->mm = m->mm;
 	}
