@@ -31,6 +31,8 @@ int module_get_metadata(struct module *m);
 
 void module_log_metadata(struct module *m);
 
+void module_log_options(struct module *m);
+
 struct module_option ** module_find_options(struct module *m,
 	const char *pattern, int *num_options);
 

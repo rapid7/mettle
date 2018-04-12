@@ -103,6 +103,12 @@ static void complete_set(char const *prefix, linenoiseCompletions *lc)
 	}
 }
 
+static void complete_show(char const *prefix, linenoiseCompletions *lc)
+{
+	linenoiseAddCompletion(lc, "show options");
+	linenoiseAddCompletion(lc, "show info");
+}
+
 static void complete_line(char const *prefix, linenoiseCompletions *lc)
 {
 	for (int i = 0; i < console.num_cmds; i++) {
@@ -112,6 +118,8 @@ static void complete_line(char const *prefix, linenoiseCompletions *lc)
 			complete_use(prefix, lc);
 		} else if (strncmp(prefix, "set ", 4) == 0) {
 			complete_set(prefix, lc);
+		} else if (strncmp(prefix, "show ", 5) == 0) {
+			complete_show(prefix, lc);
 		}
 	}
 }
@@ -258,7 +266,11 @@ static void handle_run(const char *line)
 static void handle_info(const char *line)
 {
 	if (console.module) {
-		module_log_metadata(console.module);
+		if (strcmp(line, "show info") == 0 || strcmp(line, "info") == 0) {
+			module_log_metadata(console.module);
+		} else if (strcmp(line, "show options") == 0) {
+			module_log_options(console.module);
+		}
 	} else {
 		console_log_bad("No module selected");
 	}
@@ -308,6 +320,7 @@ void mettle_console_start_interactive(struct mettle *m)
 	console_register_cmd("set", handle_set, "Set a module option");
 	console_register_cmd("run", handle_run, "Run a module");
 	console_register_cmd("info", handle_info, "Get info on a module");
+	console_register_cmd("show", handle_info, "Show info on a module");
 	console_register_cmd("help", handle_help, NULL);
 
 	modulemgr_register_log_cbs(console.modulemgr,

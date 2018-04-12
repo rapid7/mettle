@@ -275,6 +275,18 @@ void module_log_metadata(struct module *m)
 	log_line("Description: %s", m->description);
 }
 
+void module_log_options(struct module *m)
+{
+	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
+
+	log_line("");
+	log_line("Module options (%s)", m->fullname);
+	struct module_option *option, *tmp;
+	HASH_ITER(hh, m->options, option, tmp) {
+		log_line("  %s = %s", option->name, option->value);
+	}
+}
+
 static struct modulemgr *_mm;
 static int scan_module_path(const char *path,
 	const struct stat *s, int flag, struct FTW *f)
