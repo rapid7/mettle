@@ -210,6 +210,22 @@ static void module_read_stderr(struct process *p, struct buffer_queue *queue, vo
 	free(data);
 }
 
+static void module_send_command(struct module *m,
+		const char *method, struct json_object *params, json_result_cb cb)
+{
+	struct module_ctx *ctx = module_ctx_new(m);
+	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
+	struct process *p = process_create_from_executable(
+		ctx->mm->procmgr, ctx->m->path, &opts);
+	process_set_callbacks(p, module_read_stdout, module_read_stderr, module_exit, ctx);
+
+	int64_t id;
+	struct json_object *call = json_rpc_gen_method_call(ctx->jrpc, method, &id, params);
+	json_rpc_register_result_cb(ctx->jrpc, id, cb, ctx);
+	const char *msg = json_object_to_json_string_ext(call, 0);
+	process_write(p, msg, strlen(msg));
+}
+
 void module_describe_cb(struct json_result_info *result, void *arg)
 {
 	struct module_ctx *ctx = arg;
@@ -235,21 +251,30 @@ void module_describe_cb(struct json_result_info *result, void *arg)
 
 int module_get_metadata(struct module *m)
 {
-	if (m->metadata != NULL)
-		return 0;
+	if (m->metadata == NULL) {
+		module_send_command(m, "describe", NULL, module_describe_cb);
+	}
+	return 0;
+}
 
-	struct module_ctx *ctx = module_ctx_new(m);
-	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
-	struct process *p = process_create_from_executable(
-		ctx->mm->procmgr, ctx->m->path, &opts);
-	process_set_callbacks(p, module_read_stdout, module_read_stderr, module_exit, ctx);
+void module_run_cb(struct json_result_info *result, void *arg)
+{
+	struct module_ctx *ctx = arg;
+	struct module *m = ctx->m;
+	m->mm->log.info("finished");
+}
 
-	int64_t id;
-	struct json_object *call = json_rpc_gen_method_call(ctx->jrpc, "describe", &id, NULL);
-	json_rpc_register_result_cb(ctx->jrpc, id, module_describe_cb, ctx);
-	const char *msg = json_object_to_json_string_ext(call, 0);
-	process_write(p, msg, strlen(msg));
-
+int module_run(struct module *m)
+{
+	if (m->metadata == NULL) {
+		return -1;
+	}
+	struct json_object *params = json_object_new_object();
+	struct module_option *option, *tmp;
+	HASH_ITER(hh, m->options, option, tmp) {
+		json_add_str(params, option->name, option->value);
+	}
+	module_send_command(m, "run", params, module_run_cb);
 	return 0;
 }
 
@@ -305,7 +330,3 @@ int modulemgr_load_path(struct modulemgr *mm, const char *path)
 	return (nftw(path, scan_module_path, 10, 0));
 }
 
-int module_run(struct module *m)
-{
-	return 0;
-}
