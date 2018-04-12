@@ -199,6 +199,7 @@ static void handle_use(const char *line)
 		console.modulemgr, name, &num_modules);
 	if (num_modules == 1) {
 		console.module = modules[0];
+		module_get_metadata(console.module);
 		set_prompt("%s (%s) > ", console.name, name);
 	} else {
 		console_log_bad("module %s not found", name);

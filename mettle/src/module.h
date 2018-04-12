@@ -26,6 +26,8 @@ struct module ** modulemgr_find_modules(struct modulemgr *mm,
 
 const char *module_name(struct module *m);
 
+int module_get_metadata(struct module *m);
+
 void module_log_info(struct module *m);
 
 int module_run(struct module *m);

@@ -8,11 +8,19 @@
 #include "process.h"
 #include "uthash.h"
 
+struct module_option
+{
+	const char *name, *type, *description, *def;
+	UT_hash_handle hh;
+};
+
 struct module
 {
 	struct modulemgr *mm;
 	char *path, *fullname;
 	const char *name, *description, *date, *license, *rank;
+	struct module_option *options;
+	struct json_object *metadata;
 	UT_hash_handle hh;
 };
 
@@ -169,24 +177,15 @@ void module_describe_cb(struct json_result_info *result, void *arg)
 {
 	struct module_ctx *ctx = arg;
 	struct module *m = ctx->m;
-	struct json_object *res = result->response;
-	json_get_str(res, "name", &m->name);
-	json_get_str(res, "description", &m->description);
-	json_get_str(res, "date", &m->date);
-	json_get_str_def(res, "license", &m->license, "Metasploit Framework License (BSD)");
-	json_get_str_def(res, "rank", &m->rank, "Excellent");
-
-	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
-	log_line("");
-	log_line("       Name: %s", m->name);
-	log_line("     Module: %s", m->fullname);
-	log_line("    License: %s", m->license);
-	log_line("       Rank: %s", m->rank);
-	log_line("       Date: %s", m->date);
-	log_line("");
+	m->metadata = result->response;
+	json_get_str(m->metadata, "name", &m->name);
+	json_get_str(m->metadata, "description", &m->description);
+	json_get_str(m->metadata, "date", &m->date);
+	json_get_str_def(m->metadata, "license", &m->license, "MSF_LICENSE");
+	json_get_str_def(m->metadata, "rank", &m->rank, "Excellent");
 }
 
-int module_describe(struct module *m)
+int module_get_metadata(struct module *m)
 {
 	struct module_ctx *ctx = module_ctx_new(m);
 	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
@@ -205,7 +204,14 @@ int module_describe(struct module *m)
 
 void module_log_info(struct module *m)
 {
-	module_describe(m);
+	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
+	log_line("");
+	log_line("       Name: %s", m->name);
+	log_line("     Module: %s", m->fullname);
+	log_line("    License: %s", m->license);
+	log_line("       Rank: %s", m->rank);
+	log_line("       Date: %s", m->date);
+	log_line("");
 }
 
 static struct modulemgr *_mm;
