@@ -5,6 +5,7 @@
 
 #include <linenoise.h>
 
+#include "argv_split.h"
 #include "log.h"
 #include "mettle.h"
 
@@ -86,6 +87,22 @@ static void complete_use(char const *prefix, linenoiseCompletions *lc)
 	free(modules);
 }
 
+static void complete_set(char const *prefix, linenoiseCompletions *lc)
+{
+	if (console.module) {
+		const char *pattern = prefix + 4;
+		int num_options = 0;
+		struct module_option **options = module_find_options(
+			console.module, pattern, &num_options);
+		for (int i = 0; i < num_options; i++) {
+			char completion[128];
+			snprintf(completion, 128, "set %s", module_option_name(options[i]));
+			linenoiseAddCompletion(lc, completion);
+		}
+		free(options);
+	}
+}
+
 static void complete_line(char const *prefix, linenoiseCompletions *lc)
 {
 	for (int i = 0; i < console.num_cmds; i++) {
@@ -93,6 +110,8 @@ static void complete_line(char const *prefix, linenoiseCompletions *lc)
 			linenoiseAddCompletion(lc, console.cmds[i].name);
 		} else if (strncmp(prefix, "use ", 4) == 0) {
 			complete_use(prefix, lc);
+		} else if (strncmp(prefix, "set ", 4) == 0) {
+			complete_set(prefix, lc);
 		}
 	}
 }
@@ -200,11 +219,30 @@ static void handle_use(const char *line)
 	if (num_modules == 1) {
 		console.module = modules[0];
 		module_get_metadata(console.module);
-		set_prompt("%s (%s) > ", console.name, name);
+		set_prompt("%s (" COLOR_RED "%s" COLOR_RESET ") > ", console.name, name);
 	} else {
 		console_log_bad("module %s not found", name);
 	}
 	free(modules);
+}
+
+static void handle_set(const char *line)
+{
+	if (console.module) {
+		size_t argc = 0;
+		char **argv = NULL;
+		char *buf = strdup(line);
+		argv = argv_split(buf, argv, &argc);
+		if (argv && argc == 3) {
+			console_log_line("%s => %s", argv[1], argv[2]);
+			module_option_set(console.module, argv[1], argv[2]);
+		} else {
+			console_log_bad("Invalid assignment");
+		}
+		free(buf);
+	} else {
+		console_log_bad("No module selected");
+	}
 }
 
 static void handle_run(const char *line)
@@ -220,7 +258,7 @@ static void handle_run(const char *line)
 static void handle_info(const char *line)
 {
 	if (console.module) {
-		module_log_info(console.module);
+		module_log_metadata(console.module);
 	} else {
 		console_log_bad("No module selected");
 	}
@@ -229,7 +267,7 @@ static void handle_info(const char *line)
 static void handle_back(const char *line)
 {
 	const char *name = line + 4;
-	set_prompt("%s > ", console.name);
+	set_prompt("%s> ", console.name);
 	console.module = NULL;
 }
 
@@ -267,6 +305,7 @@ void mettle_console_start_interactive(struct mettle *m)
 	console_register_cmd("clear", handle_clear, "Clear the screen");
 	console_register_cmd("back", handle_back, "Clear the current context");
 	console_register_cmd("use", handle_use, "Use a module");
+	console_register_cmd("set", handle_set, "Set a module option");
 	console_register_cmd("run", handle_run, "Run a module");
 	console_register_cmd("info", handle_info, "Get info on a module");
 	console_register_cmd("help", handle_help, NULL);
@@ -275,7 +314,7 @@ void mettle_console_start_interactive(struct mettle *m)
 		console_log_line, console_log_info, console_log_good, console_log_bad
 	);
 
-	set_prompt("%s > ", console.name);
+	set_prompt("%s> ", console.name);
 
 	log_init_cb(log_cb);
 	log_init_flush_thread();

@@ -113,6 +113,42 @@ const char *module_name(struct module *m)
 	return m->fullname;
 }
 
+const char *module_option_name(struct module_option *option)
+{
+	return option->name;
+}
+
+struct module_option ** module_find_options(struct module *m,
+	const char *pattern, int *num_options)
+{
+	*num_options = 0;
+	struct module_option *option, *tmp;
+	struct module_option **results = NULL;
+	HASH_ITER(hh, m->options, option, tmp) {
+		if (strncmp(pattern, option->name, strlen(pattern)) == 0) {
+			results = reallocarray(results, *num_options + 1, sizeof(struct module_option *));
+			if (results) {
+				results[*num_options] = option;
+				(*num_options)++;
+			}
+		}
+	}
+	return results;
+}
+
+int module_option_set(struct module *module, const char *name, const char *value)
+{
+	int num_options = 0;
+	struct module_option **options = module_find_options(module, name, &num_options);
+	if (num_options >= 1) {
+		free(options[0]->value);
+		options[0]->value = strdup(value);
+		return 0;
+	}
+	return -1;
+}
+
+
 struct module_ctx {
 	struct json_tokener *tok;
 	struct json_rpc *jrpc;
@@ -217,7 +253,7 @@ int module_get_metadata(struct module *m)
 	return 0;
 }
 
-void module_log_info(struct module *m)
+void module_log_metadata(struct module *m)
 {
 	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
 
