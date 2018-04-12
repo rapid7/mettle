@@ -296,9 +296,7 @@ void json_rpc_free(struct json_rpc *jrpc)
 {
 	if (jrpc) {
 		for (int i = 0; i < jrpc->num_methods; i++) {
-			for (int j = 0; j < jrpc->methods[i].num_params; j++) {
-				free(jrpc->methods[i].params[j]);
-			}
+			free(jrpc->methods[i].params);
 		}
 		free(jrpc->methods);
 		struct json_request *req, *tmp;
