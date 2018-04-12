@@ -511,6 +511,15 @@ ssize_t process_write(struct process *process, const void *buf, size_t buf_len)
 	return len > 0 ? len : -1;
 }
 
+void procmgr_iter_processes(struct procmgr *mgr,
+		void (*cb)(struct process *, void *process_arg, void *arg), void *arg)
+{
+	struct process *process, *tmp;
+	HASH_ITER(hh, mgr->processes, process, tmp) {
+		cb(process, process->cb_arg, arg);
+	}
+}
+
 void procmgr_free(struct procmgr *mgr)
 {
 	if (mgr->processes) {

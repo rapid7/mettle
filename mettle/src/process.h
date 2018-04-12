@@ -76,4 +76,10 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
  */
 pid_t process_get_pid(struct process *p);
 
+/*
+ * Iterate over all managed processes
+ */
+void procmgr_iter_processes(struct procmgr *mgr,
+		void (*cb)(struct process *, void *process_arg, void *arg), void *arg);
+
 #endif

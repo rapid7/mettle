@@ -276,6 +276,21 @@ static void handle_info(const char *line)
 	}
 }
 
+static void handle_jobs(const char *line)
+{
+	size_t argc = 0;
+	char *buf = strdup(line);
+	char **argv = argv_split(buf, NULL, &argc);
+	if (argc == 1) {
+		modulemgr_log_jobs(console.modulemgr);
+	} else if (argc == 3 && strcmp("-k", argv[1]) == 0) {
+		int job_id = strtol(argv[2], NULL, 10);
+		modulemgr_kill_job(console.modulemgr, job_id);
+	} else if (argc == 2 && strcmp("-K", argv[1]) == 0) {
+		modulemgr_kill_all_jobs(console.modulemgr);
+	}
+}
+
 static void handle_back(const char *line)
 {
 	const char *name = line + 4;
@@ -321,6 +336,7 @@ void mettle_console_start_interactive(struct mettle *m)
 	console_register_cmd("run", handle_run, "Run a module");
 	console_register_cmd("info", handle_info, "Get info on a module");
 	console_register_cmd("show", handle_info, "Show info on a module");
+	console_register_cmd("jobs", handle_jobs, "Job management");
 	console_register_cmd("help", handle_help, NULL);
 
 	modulemgr_register_log_cbs(console.modulemgr,

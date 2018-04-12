@@ -34,6 +34,7 @@ struct modulemgr
 		void (*good)(const char *fmt, ...);
 		void (*bad)(const char *fmt, ...);
 	} log;
+	int next_job_id;
 	struct ev_loop *loop;
 	struct procmgr *procmgr;
 };
@@ -153,6 +154,7 @@ struct module_ctx {
 	struct json_rpc *jrpc;
 	struct module *m;
 	struct modulemgr *mm;
+	int job_id;
 };
 
 static json_object *handle_message(struct json_method_ctx *json_ctx, void *arg)
@@ -174,6 +176,7 @@ struct module_ctx * module_ctx_new(struct module *m)
 		json_rpc_register_method(ctx->jrpc, "message", "message,level", handle_message, ctx);
 		ctx->m = m;
 		ctx->mm = m->mm;
+		ctx->job_id = ctx->mm->next_job_id++;
 	}
 	return ctx;
 }
@@ -308,6 +311,45 @@ void module_log_metadata(struct module *m)
 
 	log_line("");
 	log_line("Description: %s", m->description);
+}
+
+static void log_job(struct process *p, void *process_arg, void *arg)
+{
+	struct module_ctx *ctx = process_arg;
+	ctx->mm->log.line("  %u (%s)", ctx->job_id, ctx->m->fullname);
+}
+
+void modulemgr_log_jobs(struct modulemgr *mm)
+{
+	mm->log.line("Running jobs:");
+	procmgr_iter_processes(mm->procmgr, log_job, NULL);
+}
+
+static void kill_job(struct process *p, void *process_arg, void *arg)
+{
+	int job_id = *(int *)(arg);
+	struct module_ctx *ctx = process_arg;
+	if (ctx->job_id == job_id) {
+		ctx->mm->log.info("Killed job %u (%s)", ctx->job_id, ctx->m->fullname);
+		process_kill(p);
+	}
+}
+
+void modulemgr_kill_job(struct modulemgr *mm, int job_id)
+{
+	procmgr_iter_processes(mm->procmgr, kill_job, &job_id);
+}
+
+static void kill_all_job(struct process *p, void *process_arg, void *arg)
+{
+	struct module_ctx *ctx = process_arg;
+	ctx->mm->log.info("Killed job %u (%s)", ctx->job_id, ctx->m->fullname);
+	process_kill(p);
+}
+
+void modulemgr_kill_all_jobs(struct modulemgr *mm)
+{
+	procmgr_iter_processes(mm->procmgr, kill_all_job, NULL);
 }
 
 void module_log_options(struct module *m)

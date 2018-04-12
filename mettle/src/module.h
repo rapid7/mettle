@@ -25,6 +25,12 @@ int modulemgr_load_path(struct modulemgr *mm, const char *path);
 struct module ** modulemgr_find_modules(struct modulemgr *mm,
 	const char *pattern, int *num_modules);
 
+void modulemgr_log_jobs(struct modulemgr *mm);
+
+void modulemgr_kill_job(struct modulemgr *mm, int job_id);
+
+void modulemgr_kill_all_jobs(struct modulemgr *mm);
+
 const char *module_name(struct module *m);
 
 int module_get_metadata(struct module *m);
