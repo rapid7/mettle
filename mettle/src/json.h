@@ -47,6 +47,8 @@ int json_add_bool(struct json_object *json, const char *key, bool val);
 
 int json_get_str(json_object *json, const char *key, const char **dst);
 
+int json_get_str_def(json_object *json, const char *key, const char **dst, const char *def);
+
 int json_get_int32(json_object *json, const char *key, int32_t *dst);
 
 int json_get_int64(json_object *json, const char *key, int64_t *dst);

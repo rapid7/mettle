@@ -199,11 +199,20 @@ int json_get_str(json_object *json, const char *key, const char **dst)
 	struct json_object *obj = json_object_object_get(json, key);
 	if (obj) {
 		*dst = json_object_get_string(obj);
-		if (errno != EINVAL) {
-			return 0;
+	}
+	return *dst ? 0 : -1;
+}
+
+int json_get_str_def(json_object *json, const char *key, const char **dst, const char *def)
+{
+	struct json_object *obj = json_object_object_get(json, key);
+	if (obj) {
+		*dst = json_object_get_string(obj);
+		if (*dst == NULL) {
+			*dst = def;
 		}
 	}
-	return -1;
+	return *dst ? 0 : -1;
 }
 
 int json_get_int32(json_object *json, const char *key, int32_t *dst)

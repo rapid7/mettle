@@ -11,8 +11,8 @@
 struct module
 {
 	struct modulemgr *mm;
-	char *path;
-	char *name;
+	char *path, *fullname;
+	const char *name, *description, *date, *license, *rank;
 	UT_hash_handle hh;
 };
 
@@ -72,33 +72,13 @@ struct module * module_new(struct modulemgr *mm, const char *path)
 	if (m) {
 		m->mm = mm;
 		m->path = strdup(path);
-		m->name = strdup(strstr(path, "modules") + 8);
-		char *ext = strchr(m->name, '.');
+		m->fullname = strdup(strstr(path, "modules") + 8);
+		char *ext = strchr(m->fullname, '.');
 		if (ext) {
 			*ext = '\0';
 		}
 	}
 	return m;
-}
-
-static struct modulemgr *_mm;
-static int scan_module_path(const char *path,
-	const struct stat *s, int flag, struct FTW *f)
-{
-	if (flag == FTW_F && s->st_mode & S_IXUSR) {
-		struct module *m = module_new(_mm, path);
-		HASH_ADD_STR(_mm->modules, name, m);
-		log_info("found %s\n", m->name);
-	}
-
-	return 0;
-}
-
-int modulemgr_load_path(struct modulemgr *mm, const char *path)
-{
-	_mm = mm;
-	log_info("adding modules from %s\n", path);
-	return (nftw(path, scan_module_path, 10, 0));
 }
 
 struct module ** modulemgr_find_modules(struct modulemgr *mm,
@@ -121,7 +101,7 @@ struct module ** modulemgr_find_modules(struct modulemgr *mm,
 
 const char *module_name(struct module *m)
 {
-	return m->name;
+	return m->fullname;
 }
 
 struct module_ctx {
@@ -173,7 +153,7 @@ static void module_read_stdout(struct process *p, struct buffer_queue *queue, vo
 static void module_read_stderr(struct process *p, struct buffer_queue *queue, void *arg)
 {
 	struct module_ctx *ctx = arg;
-	ctx->mm->log.bad("got error from module %s", ctx->m->name);
+	ctx->mm->log.bad("got error from module %s", ctx->m->fullname);
 	void *data = NULL;
 	ssize_t msg_len = buffer_queue_remove_all(queue, &data);
 	if (data) {
@@ -185,13 +165,29 @@ static void module_read_stderr(struct process *p, struct buffer_queue *queue, vo
 	free(data);
 }
 
-void module_log_info_cb(struct json_result_info *result, void *arg)
+void module_describe_cb(struct json_result_info *result, void *arg)
 {
 	struct module_ctx *ctx = arg;
-	ctx->mm->log.info("got a response");
+	struct module *m = ctx->m;
+	struct json_object *res = result->response;
+	json_get_str(res, "name", &m->name);
+	json_get_str(res, "description", &m->description);
+	json_get_str(res, "date", &m->date);
+	json_get_str_def(res, "license", &m->license, "Metasploit Framework License (BSD)");
+	json_get_str_def(res, "rank", &m->rank, "Excellent");
+
+	m->mm->log.line(
+		"\n"
+		"       Name: %s\n"
+		"     Module: %s\n"
+		"    License: %s\n"
+		"       Rank: %s\n"
+		"       Date: %s\n"
+		"\n",
+		m->name, m->fullname, m->license, m->rank, m->date);
 }
 
-int module_log_info(struct module *m)
+int module_describe(struct module *m)
 {
 	struct module_ctx *ctx = module_ctx_new(m);
 	struct process_options opts = {.flags = PROCESS_CREATE_SUBSHELL};
@@ -201,12 +197,34 @@ int module_log_info(struct module *m)
 
 	int64_t id;
 	struct json_object *call = json_rpc_gen_method_call(ctx->jrpc, "describe", &id, NULL);
-	json_rpc_register_result_cb(ctx->jrpc, id, module_log_info_cb, ctx);
+	json_rpc_register_result_cb(ctx->jrpc, id, module_describe_cb, ctx);
 	const char *msg = json_object_to_json_string_ext(call, 0);
 	process_write(p, msg, strlen(msg));
 
-	ctx->mm->log.info("sent a request");
 	return 0;
+}
+
+void module_log_info(struct module *m)
+{
+	module_describe(m);
+}
+
+static struct modulemgr *_mm;
+static int scan_module_path(const char *path,
+	const struct stat *s, int flag, struct FTW *f)
+{
+	if (flag == FTW_F && s->st_mode & S_IXUSR) {
+		struct module *m = module_new(_mm, path);
+		HASH_ADD_STR(_mm->modules, fullname, m);
+	}
+	return 0;
+}
+
+int modulemgr_load_path(struct modulemgr *mm, const char *path)
+{
+	_mm = mm;
+	log_info("adding modules from %s\n", path);
+	return (nftw(path, scan_module_path, 10, 0));
 }
 
 int module_run(struct module *m)
