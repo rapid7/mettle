@@ -88,7 +88,7 @@ struct module ** modulemgr_find_modules(struct modulemgr *mm,
 	struct module *module, *tmp;
 	struct module **results = NULL;
 	HASH_ITER(hh, mm->modules, module, tmp) {
-		if (strncmp(pattern, module->name, strlen(pattern)) == 0) {
+		if (strncmp(pattern, module->fullname, strlen(pattern)) == 0) {
 			results = reallocarray(results, *num_modules + 1, sizeof(struct module *));
 			if (results) {
 				results[*num_modules] = module;
@@ -176,15 +176,14 @@ void module_describe_cb(struct json_result_info *result, void *arg)
 	json_get_str_def(res, "license", &m->license, "Metasploit Framework License (BSD)");
 	json_get_str_def(res, "rank", &m->rank, "Excellent");
 
-	m->mm->log.line(
-		"\n"
-		"       Name: %s\n"
-		"     Module: %s\n"
-		"    License: %s\n"
-		"       Rank: %s\n"
-		"       Date: %s\n"
-		"\n",
-		m->name, m->fullname, m->license, m->rank, m->date);
+	void (*log_line)(const char *fmt, ...) = m->mm->log.line;
+	log_line("");
+	log_line("       Name: %s", m->name);
+	log_line("     Module: %s", m->fullname);
+	log_line("    License: %s", m->license);
+	log_line("       Rank: %s", m->rank);
+	log_line("       Date: %s", m->date);
+	log_line("");
 }
 
 int module_describe(struct module *m)

@@ -208,9 +208,9 @@ int json_get_str_def(json_object *json, const char *key, const char **dst, const
 	struct json_object *obj = json_object_object_get(json, key);
 	if (obj) {
 		*dst = json_object_get_string(obj);
-		if (*dst == NULL) {
-			*dst = def;
-		}
+	}
+	if (*dst == NULL) {
+		*dst = def;
 	}
 	return *dst ? 0 : -1;
 }

@@ -123,7 +123,7 @@ static void set_prompt(const char *fmt, ...)
 #define COLOR_CYAN     "\033[36m"
 #define COLOR_RESET    "\033[0m"
 
-static void log(const char *prefix, const char *fmt, va_list va)
+static void console_log(const char *prefix, const char *fmt, va_list va)
 {
 	char *msg = NULL;
 	vasprintf(&msg, fmt, va);
@@ -148,7 +148,7 @@ static void console_log_line(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log("", fmt, va);
+	console_log("", fmt, va);
 	va_end(va);
 }
 
@@ -156,7 +156,7 @@ static void console_log_info(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log(COLOR_BLUE "[*] " COLOR_RESET, fmt, va);
+	console_log(COLOR_BLUE "[*] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
@@ -164,7 +164,7 @@ static void console_log_good(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log(COLOR_GREEN "[+] " COLOR_RESET, fmt, va);
+	console_log(COLOR_GREEN "[+] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
@@ -172,7 +172,7 @@ static void console_log_bad(const char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	log(COLOR_RED "[-] " COLOR_RESET, fmt, va);
+	console_log(COLOR_RED "[-] " COLOR_RESET, fmt, va);
 	va_end(va);
 }
 
