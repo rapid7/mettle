@@ -70,10 +70,26 @@ tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 	}
 }
 
+static bool
+host_is_ipv6_address(const char *dst_host) {
+	bool is_ipv6 = false;
+	struct addrinfo *resolved_host = NULL;
+	struct addrinfo hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_flags = AI_NUMERICHOST,
+	};
+	
+	if (getaddrinfo(dst_host, NULL, &hints, &resolved_host) == 0) {
+		is_ipv6 = resolved_host->ai_family == AF_INET6;
+		freeaddrinfo(resolved_host);
+	}
+	return is_ipv6;
+}
+
 static int
 tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
-	const char *src_host, *dst_host;
+	const char *src_host, *dst_host, *uri_fmt;
 	uint32_t src_port = 0, dst_port = 0;
 	struct mettle *m = ctx->arg;
 	uint32_t retries = 0;
@@ -100,8 +116,9 @@ tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 		goto err;
 	}
 
-	if (asprintf(&uri, "tcp://%s:%u", dst_host, dst_port) == -1 ||
-	        network_client_add_uri(tcc->nc, uri) == -1) {
+	uri_fmt = host_is_ipv6_address(dst_host) ? "tcp://[%s]:%u" : "tcp://%s:%u";
+	if (asprintf(&uri, uri_fmt, dst_host, dst_port) == -1 ||
+			network_client_add_uri(tcc->nc, uri) == -1) {
 		goto err;
 	}
 
@@ -243,7 +260,7 @@ udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 static int
 udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 {
-	const char *src_host, *dst_host;
+	const char *src_host, *dst_host, *uri_fmt;
 	uint32_t src_port = 0, dst_port = 0;
 	struct mettle *m = ctx->arg;
 	char *uri = NULL;
@@ -267,8 +284,9 @@ udp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 		goto err;
 	}
 
-	if (asprintf(&uri, "udp://%s:%u", dst_host, dst_port) == -1 ||
-	        network_client_add_uri(uc->nc, uri) == -1) {
+	uri_fmt = host_is_ipv6_address(dst_host) ? "udp://[%s]:%u" : "udp://%s:%u";
+	if (asprintf(&uri, uri_fmt, dst_host, dst_port) == -1 ||
+			network_client_add_uri(uc->nc, uri) == -1) {
 		goto err;
 	}
 
