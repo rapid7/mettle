@@ -9,6 +9,9 @@ include make/Makefile.mbedtls
 # used by extensions
 include make/Makefile.libpcap
 
+# used by lua extension
+include make/Makefile.lua
+
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
@@ -41,7 +44,8 @@ $(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
 	$(BUILD)/lib/libsigar.a \
-	$(BUILD)/lib/libdnet.a
+	$(BUILD)/lib/libdnet.a \
+	$(BUILD)/lib/liblua.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@cd $(BUILD)/mettle; \
