@@ -14,7 +14,7 @@ Debain, Ubuntu, and derivatives are most supported for builds. To build, your ne
 
 ```
 # Dependencies
-apt get install curl build-essential git autoconf automake libtool bison flex gcc ruby rake bundler git mingw-w64
+apt-get install curl build-essential git autoconf automake libtool bison flex gcc ruby rake bundler git mingw-w64
 ```
 
 The Dockerfile under docker/Dockerfile contains a pre-configured build
