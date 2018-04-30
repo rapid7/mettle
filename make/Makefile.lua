@@ -11,7 +11,7 @@ $(BUILD)/lua/Makefile: build/tools
 $(BUILD)/lib/liblua.a: $(BUILD)/lua/Makefile
 	@echo "Building lua for $(TARGET)"
 	@cd $(BUILD)/lua; \
-		$(MAKE) generic $(LOGBUILD); \
+		$(MAKE) generic MYCFLAGS="-fPIC -U_FORTIFY_SOURCE" $(LOGBUILD); \
 		$(MAKE_INSTALL) INSTALL_TOP=$(BUILD) $(LOGBUILD)
 
 lua: $(BUILD)/lib/liblua.a
