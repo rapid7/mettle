@@ -23,6 +23,7 @@
 #include "uthash.h"
 #include "utlist.h"
 #include "mettle.h"
+#include "crypttlv.h"
 
 struct tlv_header {
 	int32_t len;
@@ -400,6 +401,7 @@ struct tlv_dispatcher {
 	size_t uuid_len;
 
 	char session_guid[SESSION_GUID_LEN];
+	struct tlv_encryption_ctx *enc_ctx;
 };
 
 struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
@@ -457,12 +459,23 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 			// usual communications flow between server and target
 			out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
 			if (out_buf) {
+				size_t length = 0;
 				struct tlv_xor_header *hdr = out_buf;
 				tlv_xor_key(hdr->xor_key);
 				memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
 				memcpy(&hdr->tlv, tlv_buf, tlv_len);
-				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
-				*len = tlv_len + TLV_PREPEND_LEN;
+				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20); // was this a bug or intentional
+				// I think encrypt should happen here
+				if (td->enc_ctx != NULL) {
+					unsigned char *result = malloc(tlv_len + (tlv_len % 16)); // make this 16 byte boundary for AES change process have this vary later?
+					if ((length = encrypt_tlv(td->enc_ctx, (unsigned char *)&p->buf, tlv_len, result)) > 0) {
+						memcpy(&hdr->tlv, result, length);
+						free(result);
+						*len = length + TLV_PREPEND_LEN;
+					}
+				} else {
+					*len = tlv_len + TLV_PREPEND_LEN;
+				}
 			}
 		} else {
 			// an extension, which doesn't require the GUID or XOR logic
@@ -507,6 +520,11 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 
 	HASH_ADD_STR(td->handlers, method, handler);
 	return 0;
+}
+
+void tlv_dispather_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx)
+{
+	td->enc_ctx = ctx;
 }
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
@@ -589,7 +607,7 @@ bool tlv_found_first_packet(struct buffer_queue *q)
 	while (buffer_queue_len(q) >= 571) {
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
-		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key));
+		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key)); // this just locates a header
 		size_t len = ntohl(h.tlv.len);
 		if (len == (547) && h.tlv.type == 0) {
 			found = true;
@@ -601,7 +619,7 @@ bool tlv_found_first_packet(struct buffer_queue *q)
 	return found;
 }
 
-struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
+struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , struct buffer_queue *q)
 {
 	/*
 	 * Ensure we have enough bytes for an xor key, packet header and length
@@ -615,7 +633,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 * Ensure there are enough bytes for the rest of the packet
 	 */
 	buffer_queue_copy(q, &h, sizeof(h));
-	tlv_xor_bytes(h.xor_key, &h.tlv, sizeof(h.tlv));
+	tlv_xor_bytes(h.xor_key, &h.tlv, sizeof(h.tlv)); // this is just checking length of read no enc applies
 	size_t len = ntohl(h.tlv.len);
 	if (len > INT_MAX || len < TLV_MIN_LEN
 			|| buffer_queue_len(q) < (len + TLV_PREPEND_LEN)) {
@@ -632,6 +650,18 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 		len -= TLV_MIN_LEN;
 		buffer_queue_remove(q, p->buf, len);
 		tlv_xor_bytes(h.xor_key, p->buf, len);
+		if (h.encryption_flags == ENC_AES256 && td != NULL) {
+			size_t decrypted_len = 0;
+			// modify a the buffer based on expectation that encrypted PKCS1 data
+			// will always be on a 16 byte boundary and the resulting data may be smaller
+			unsigned char *result = malloc(len);
+			if ((decrypted_len = decrypt_tlv(td->enc_ctx, (unsigned char *)p->buf, len, result)) > 0) {
+				memset(p->buf, 0, len);
+				memcpy(result, p->buf, decrypted_len);
+				free(result);
+				h.tlv.len = htonl(decrypted_len);
+			}
+		}
 	}
 
 	/*
@@ -695,6 +725,8 @@ void tlv_dispatcher_free(struct tlv_dispatcher *td)
 		HASH_ITER(hh, td->handlers, h, h_tmp) {
 			free(h);
 		}
+		if (td->enc_ctx)
+			free_tlv_encryption_ctx(td->enc_ctx);
 		free(td);
 	}
 }

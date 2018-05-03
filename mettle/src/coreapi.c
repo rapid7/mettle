@@ -125,14 +125,17 @@ static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *
 
 	if (pkey_len > 0) {
 		unsigned char aes_key[32];
-		if (generate_aes_key(aes_key) == 0)
+		struct tlv_encryption_ctx* enc_ctx = create_tlv_context(ENC_AES256);
+		if (enc_ctx->key != NULL)
 		{
-			char buf[MBEDTLS_MPI_MAX_SIZE];
+			unsigned char buf[MBEDTLS_MPI_MAX_SIZE];
 			int enc_len = 0;
-			if ((enc_len = rsa_encrypt_pkcs(pkey, pkey_len, aes_key, 32, buf)) > 0)
+			if ((enc_len = rsa_encrypt_pkcs(pkey, pkey_len, enc_ctx->key, AES_KEY_LEN, buf)) > 0)
 			{
 				struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-				return tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, buf, enc_len);
+				struct tlv_packet *r = tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, buf, enc_len);
+				tlv_dispather_add_encryption(td, enc_ctx);
+				return r;
 			}
 		}
 	}
