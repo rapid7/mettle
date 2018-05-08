@@ -40,4 +40,11 @@ meterpreter > lua_dostring "msf"
 [-] lua_dostring: Operation failed: 1
 ```
 
-Executing valid code: **is timing out for some reason**.
+Executing valid code:
+```
+meterpreter > lua_dostring "msf = 1"
+meterpreter > 
+```
+
+> A note on using **stdout or stdin** related functions: **DON'T DO THAT** or the extension will cause a segfault as `mettle`
+> uses *stdin* and *stdout* in order to communicate with its extensions.
