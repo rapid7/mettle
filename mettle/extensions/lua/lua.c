@@ -38,7 +38,7 @@ static struct tlv_packet *request_execute_code(struct tlv_handler_ctx *ctx)
 
 
 /*
- * Sniffer module starts here!
+ * Lua module starts here!
  */
 int main(void)
 {
