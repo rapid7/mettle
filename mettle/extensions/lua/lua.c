@@ -22,7 +22,7 @@ static struct tlv_packet *request_execute_code(struct tlv_handler_ctx *ctx)
 
 	char *execute_me = tlv_packet_get_str(ctx->req, TLV_TYPE_LUA_CODE);
 	if (luaL_dostring(lua, execute_me) == 0) {
-		r = TLV_RESULT_SUCCESS;
+		tlv_result = TLV_RESULT_SUCCESS;
 	}
 
 	// We could use lua_gettop and lua_tostring to send the
