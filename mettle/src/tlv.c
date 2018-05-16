@@ -462,7 +462,6 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 			// usual communications flow between server and target
 			size_t out_size = enc_size + AES_IV_LEN + TLV_PREPEND_LEN;
 			out_buf = calloc(out_size, 1);
-			log_info("out_buf allocated as %lu", (long unsigned int)out_size);
 			if (out_buf) {
 				size_t length = 0;
 				struct tlv_xor_header *hdr = out_buf;
@@ -476,37 +475,19 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 					memset(result, 0, enc_size);
 					if (td->enc_ctx->initialized){
 						hdr->encryption_flags = htonl(td->enc_ctx->flag);
-						log_info("tlv_dispatcher_dequeue_response: encrypting %lu bytes in buffer size %lu", (long unsigned int)tlv_len, (long unsigned int)enc_size);
 						unsigned char iv[AES_IV_LEN];
 						memcpy(iv, td->enc_ctx->iv, AES_IV_LEN); // grab iv before enc manipulates it.
 						if ((length = encrypt_tlv(td->enc_ctx, tlv_data, enc_size, result)) > 0) {
-							log_info("tlv_dispatcher_dequeue_response: successful encryption in %lu.", (long unsigned int)length);
 							memcpy(tlv_data, iv, AES_IV_LEN);
-							log_info("tlv_dispatcher_dequeue_response: injected IV");
 							memcpy(tlv_data + AES_IV_LEN, result, length);
-							log_info("tlv_dispatcher_dequeue_response: injected encrypted result");
 							tlv_len = length + AES_IV_LEN + TLV_MIN_LEN;
 							hdr->tlv.len = htonl(tlv_len);
-							log_info("tlv_dispatcher_dequeue_response: updated length to %lu", (long unsigned int)tlv_len);
-							log_info("tlv_dispatcher_dequeue_response: encrpyted segment loaded into TLV");
-							unsigned char dec_test[length + AES_IV_LEN];
-							if (decrypt_tlv(td->enc_ctx, tlv_data, length + AES_IV_LEN, dec_test) > 0)
-							{
-								log_info("tlv_dispatcher_dequeue_response: local decrypt is valid");
-							} else {
-								log_info("tlv_dispatcher_dequeue_response: failed local decrypt ********");
-							}
 						}
 					} else {
 						td->enc_ctx->initialized = true;
-						log_info("tlv_dispatcher_dequeue_response: Sending XOR only encryption has not yet initialized.");
 					}
-				} else {
-					log_info("tlv_dispatcher_dequeue_response: Sending XOR only no encryption context exists.");
 				}
-				log_info("tlv_dispatcher_dequeue_response: XOR tlv for output");
-				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20); // was this a bug or intentional
-				log_info("tlv_dispatcher_dequeue_response: completed XOR of TLV");
+				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + TLV_PREPEND_LEN - sizeof(hdr->xor_key));
 				*len = tlv_len + TLV_PREPEND_LEN;
 			}
 		} else {
@@ -519,7 +500,6 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 		}
 
 		tlv_packet_free(p);
-		log_info("tlv_dispatcher_dequeue_response: successfully free response packet");
 	}
 
 	return out_buf;
@@ -558,7 +538,6 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 void tlv_dispather_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx)
 {
 	td->enc_ctx = ctx;
-	log_info("set dispatcher encryption context");
 }
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
@@ -592,11 +571,9 @@ void tlv_handler_ctx_free(struct tlv_handler_ctx *ctx)
 
 int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet *p)
 {
-	log_info("tlv_dispatcher_process_request entered");
 	struct tlv_handler_ctx *ctx = calloc(1, sizeof(*ctx));
 
 	if (ctx == NULL) {
-		log_info("tlv_dispatcher_process_request called without a context");
 		return -1;
 	}
 
@@ -606,17 +583,13 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	ctx->id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID);
 
 	if (ctx->method == NULL) {
-		log_info("tlv_dispatcher_process_request missing TLV_TYPE_METHOD.");
 		tlv_handler_ctx_free(ctx);
 		return -1;
 	}
 
 	if (ctx->id == NULL) {
-		log_info("tlv_dispatcher_process_request missing TLV_TYPE_REQUEST_ID.");
 		ctx->id = "none";
 	}
-	log_info("tlv_dispatcher_process_request TLV_TYPE_METHOD: %s", ctx->method);
-	log_info("tlv_dispatcher_process_request TLV_TYPE_REQUEST_ID: %s", ctx->id);
 
 	struct tlv_packet *response = NULL;
 	struct tlv_handler *handler = find_handler(td, ctx->method);
@@ -668,7 +641,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 	if (buffer_queue_len(q) < sizeof(h)) {
 		return NULL;
 	}
-	log_info("tlv_packet_read_buffer_queue entered");
+
 	/*
 	 * Ensure there are enough bytes for the rest of the packet
 	 * This hack will soon need to die
@@ -678,7 +651,6 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 	size_t len = ntohl(h.tlv.len);
 	if (len > INT_MAX || len < TLV_MIN_LEN
 			|| buffer_queue_len(q) < (len + TLV_PREPEND_LEN)) {
-		log_info("tlv_packet_read_buffer_queue returned with no tlv found");
 		return NULL;
 	}
 
@@ -692,15 +664,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 		len -= TLV_MIN_LEN;
 		buffer_queue_remove(q, p->buf, len);
 		tlv_xor_bytes(h.xor_key, p->buf, len);
-		if (td == NULL) {
-			log_info("tlv_packet_read_buffer_queue executed with no tlv_dispatcher.");
-		}
-		else {
-			if (td->enc_ctx != NULL && ntohl(h.encryption_flags) != td->enc_ctx->flag)
-				log_info("tlv_packet_read_buffer_queue found encryption flags 0x%X.", h.encryption_flags);
-		}
 		if (td != NULL && td->enc_ctx != NULL && ntohl(h.encryption_flags) == td->enc_ctx->flag) {
-			log_info("tlv_packet_read_buffer_queue found an ENC_AES256 packet.");
 			size_t decrypted_len = 0;
 			// modify a the buffer based on expectation that encrypted PKCS1 data
 			// will always be on a 16 byte boundary and the resulting data may be smaller
@@ -712,9 +676,6 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 				len = decrypted_len;
 				h.tlv.len = htonl(decrypted_len);
 			}
-			log_info("tlv_packet_read_buffer_queue successfully decrypted a packet.");
-		} else {
-			log_info("tlv_packet_read_buffer_queue found a standard packet.");
 		}
 	}
 
@@ -734,23 +695,21 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 		 */
 		if ((tlv_len > (len - offset) || tlv_len < TLV_MIN_LEN)) {
 			if (!found_tlv) {
-				log_info("tlv_packet_read_buffer_queue bailed in sub-TLV.");
 				free(p);
 				return NULL;
 			}
 			else {
+				// If a full packet can't be decoded then truncate and move on.
 				break;
 			}
 		}
 		found_tlv = true;
-		log_info("tlv_packet_read_buffer_queue found a sub-TLV.");
 		offset += tlv_len;
 		if (tlv_len == 0) {
 			break;
 		}
 	}
 
-	log_info("tlv_packet_read_buffer_queue returning sanity checked packet.");
 	return p;
 }
 

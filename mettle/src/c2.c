@@ -176,12 +176,10 @@ choose_next_transport(struct c2 *c2)
 
 static void transport_tx(struct c2 *c2)
 {
-	log_info("transport_tx: started");
 	struct c2_transport *t = c2->curr_transport;
 	if (t->type->cbs.egress) {
 		t->type->cbs.egress(t, t->c2->egress);
 	}
-	log_info("transport_tx: completed");
 }
 
 ssize_t c2_read(struct c2 *c2, void *buf, size_t buflen)
@@ -191,12 +189,10 @@ ssize_t c2_read(struct c2 *c2, void *buf, size_t buflen)
 
 ssize_t c2_write(struct c2 *c2, void *buf, size_t buflen)
 {
-	log_info("c2_write: starting push of packet length %lu.", (long unsigned int)buflen);
 	ssize_t len = buffer_queue_add(c2->egress, buf, buflen) == 0 ? buflen : 0;
 	if (len) {
 		transport_tx(c2);
 	}
-	log_info("c2_write: completed push of packet");
 	return len;
 }
 
