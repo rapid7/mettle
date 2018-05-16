@@ -93,11 +93,10 @@ void tlv_packet_free(struct tlv_packet *p);
 struct channel;
 struct tlv_encryption_ctx {
 	unsigned char *key;
-	size_t key_len;
 	unsigned char *iv;
-	size_t iv_len;
 
-	unsigned int flag;
+	uint32_t flag;
+	bool initialized;
 };
 
 struct tlv_handler_ctx {

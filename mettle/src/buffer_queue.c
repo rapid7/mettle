@@ -9,6 +9,7 @@
 #include "buffer_queue.h"
 #include "utlist.h"
 #include "util.h"
+#include "log.h"
 
 struct buffer_queue {
 	struct buffer {
@@ -57,6 +58,7 @@ size_t buffer_queue_len(struct buffer_queue *q)
 int buffer_queue_add(struct buffer_queue *q, void *data, size_t len)
 {
 	struct buffer *buf = calloc(1, sizeof(*buf));
+	log_info("buffer_queue_add: starting push of packet");
 	if (buf == NULL) {
 		return -1;
 	}
@@ -65,13 +67,14 @@ int buffer_queue_add(struct buffer_queue *q, void *data, size_t len)
 		free_buf(buf);
 		return -1;
 	}
-
+	log_info("buffer_queue_add: malloc obtained for data");
 	memcpy(buf->data, data, len);
 	buf->offset = 0;
 	buf->len = len;
-
+	log_info("buffer_queue_add: memcopy completed");
 	LL_APPEND(q->head, buf);
 	q->bytes += len;
+	log_info("buffer_queue_add: add completed");
 	return 0;
 }
 

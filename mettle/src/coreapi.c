@@ -116,6 +116,7 @@ static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
 static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
 {
 #ifndef __MINGW32__
+	log_info("core_negotiate_tlv_encryption entered");
 	size_t guid_len = 0;
 	size_t pkey_len = 0;
 	struct mettle *m = ctx->arg;
@@ -124,18 +125,26 @@ static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *
 	unsigned char *pkey = tlv_packet_get_raw(ctx->req, TLV_TYPE_RSA_PUB_KEY, &pkey_len);;
 
 	if (pkey_len > 0) {
+		log_info("core_negotiate_tlv_encryption found the private key");
 		unsigned char aes_key[32];
 		struct tlv_encryption_ctx* enc_ctx = create_tlv_context(ENC_AES256);
 		if (enc_ctx->key != NULL)
 		{
-			unsigned char buf[MBEDTLS_MPI_MAX_SIZE];
+			log_info("core_negotiate_tlv_encryption new aes key created");
+			unsigned char buf[MBEDTLS_MPI_MAX_SIZE] = { '\0' };
 			int enc_len = 0;
 			if ((enc_len = rsa_encrypt_pkcs(pkey, pkey_len, enc_ctx->key, AES_KEY_LEN, buf)) > 0)
 			{
+				if (enc_len < MBEDTLS_MPI_MAX_SIZE)
+				{
+					log_info("core_negotiate_tlv_encryption had extra space in the buffer");
+				}
+				log_info("core_negotiate_tlv_encryption dispatched key");
 				struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-				struct tlv_packet *r = tlv_packet_add_raw(p, TLV_TYPE_SESSION_GUID, buf, enc_len);
+				tlv_packet_add_u32(p, TLV_TYPE_SYM_KEY_TYPE, ENC_AES256);
+				tlv_packet_add_raw(p, TLV_TYPE_ENC_SYM_KEY, buf, enc_len);
 				tlv_dispather_add_encryption(td, enc_ctx);
-				return r;
+				return p;
 			}
 		}
 	}

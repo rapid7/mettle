@@ -18,7 +18,7 @@
 #define ENC_NONE 0
 #define ENC_AES256 1
 #define AES_KEY_LEN 32
-#define AES_IV "zrgrecergre vavg" // 'meterpreter init' rot13 :-)
+#define AES_IV_LEN 16
 
 
 /**
