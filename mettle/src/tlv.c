@@ -25,21 +25,6 @@
 #include "mettle.h"
 #include "crypttlv.h"
 
-struct tlv_header {
-	int32_t len;
-	uint32_t type;
-} __attribute__((packed));
-
-struct tlv_xor_header {
-	char xor_key[4];
-	uint8_t session_guid[SESSION_GUID_LEN];
-	uint32_t encryption_flags;
-	struct tlv_header tlv;
-} __attribute__((packed));
-
-#define TLV_PREPEND_LEN 24
-#define TLV_MIN_LEN 8
-
 struct tlv_packet {
 	struct tlv_header h;
 	char buf[];
@@ -455,38 +440,14 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 
 		void *tlv_buf = tlv_packet_data(p);
 		size_t tlv_len = tlv_packet_len(p);
-		size_t value_len = tlv_len - sizeof(struct tlv_header);
-		size_t enc_size = ((value_len / AES_IV_LEN) + 1) * AES_IV_LEN ;
-		size_t pad_len = enc_size - value_len;
 		if (add_prepend) {
 			// usual communications flow between server and target
-			size_t out_size = enc_size + AES_IV_LEN + TLV_PREPEND_LEN;
-			out_buf = calloc(out_size, 1);
+			out_buf = encrypt_tlv(td->enc_ctx, p, tlv_len);
 			if (out_buf) {
-				size_t length = 0;
 				struct tlv_xor_header *hdr = out_buf;
 				tlv_xor_key(hdr->xor_key);
+				tlv_len = ntohl(hdr->tlv.len);
 				memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
-				memcpy(&hdr->tlv, tlv_buf, tlv_len);
-				unsigned char *tlv_data = out_buf + sizeof(struct tlv_xor_header);
-				memset(tlv_data + value_len, pad_len, pad_len);
-				if (td->enc_ctx != NULL) {
-					unsigned char result[enc_size]; // make this 16 byte boundary for AES change process have this vary later?
-					memset(result, 0, enc_size);
-					if (td->enc_ctx->initialized){
-						hdr->encryption_flags = htonl(td->enc_ctx->flag);
-						unsigned char iv[AES_IV_LEN];
-						memcpy(iv, td->enc_ctx->iv, AES_IV_LEN); // grab iv before enc manipulates it.
-						if ((length = encrypt_tlv(td->enc_ctx, tlv_data, enc_size, result)) > 0) {
-							memcpy(tlv_data, iv, AES_IV_LEN);
-							memcpy(tlv_data + AES_IV_LEN, result, length);
-							tlv_len = length + AES_IV_LEN + TLV_MIN_LEN;
-							hdr->tlv.len = htonl(tlv_len);
-						}
-					} else {
-						td->enc_ctx->initialized = true;
-					}
-				}
 				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + TLV_PREPEND_LEN - sizeof(hdr->xor_key));
 				*len = tlv_len + TLV_PREPEND_LEN;
 			}
@@ -665,16 +626,11 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , str
 		buffer_queue_remove(q, p->buf, len);
 		tlv_xor_bytes(h.xor_key, p->buf, len);
 		if (td != NULL && td->enc_ctx != NULL && ntohl(h.encryption_flags) == td->enc_ctx->flag) {
-			size_t decrypted_len = 0;
-			// modify a the buffer based on expectation that encrypted PKCS1 data
-			// will always be on a 16 byte boundary and the resulting data may be smaller
-			unsigned char *result = calloc(len, 1);
-			if ((decrypted_len = decrypt_tlv(td->enc_ctx, (unsigned char *)p->buf, len, result)) > 0) {
+			void *result = decrypt_tlv(td->enc_ctx, p, len + TLV_MIN_LEN);
+			if (result) {
 				memset(p->buf, 0, len);
-				memcpy(p->buf, result, decrypted_len);
+				memcpy(p->buf, result, len);
 				free(result);
-				len = decrypted_len;
-				h.tlv.len = htonl(decrypted_len);
 			}
 		}
 	}

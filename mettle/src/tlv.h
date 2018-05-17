@@ -16,9 +16,26 @@
 #include "buffer_queue.h"
 #include "tlv_types.h"
 
+#define SESSION_GUID_LEN 16
+#define TLV_PREPEND_LEN 24
+#define TLV_MIN_LEN 8
+
 /*
  * TLV Packets
  */
+
+struct tlv_header {
+	int32_t len;
+	uint32_t type;
+} __attribute__((packed));
+
+struct tlv_xor_header {
+	char xor_key[4];
+	uint8_t session_guid[SESSION_GUID_LEN];
+	uint32_t encryption_flags;
+	struct tlv_header tlv;
+} __attribute__((packed));
+
 struct tlv_packet;
 struct tlv_dispatcher;
 
@@ -148,7 +165,6 @@ const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len);
 
 int tlv_dispatcher_set_uuid(struct tlv_dispatcher *td, char *uuid, size_t len);
 
-#define SESSION_GUID_LEN 16
 const char *tlv_dispatcher_get_session_guid(struct tlv_dispatcher *td);
 int tlv_dispatcher_set_session_guid(struct tlv_dispatcher *td, char *uuid);
 

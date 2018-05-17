@@ -89,46 +89,76 @@ void free_tlv_encryption_ctx(struct tlv_encryption_ctx *ctx)
 	return free(ctx);
 }
 
-size_t decrypt_tlv(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
+void * decrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len)
 {
-	/**
-	 * TODO: consider taking result_len as a parameter for bounds check inside this method
-	 * may also be valuable for malloc result buffer here
-	 **/
-	size_t length = 0;
-	switch (ctx->flag) {
-		case ENC_AES256:
-			if ((length = aes_decrypt(ctx, data, data_len, result)) > 0) {
-				return length;
-			}
-		case ENC_NONE:
-			result = malloc(data_len);
-			memcpy(result, data, data_len);
-			return data_len;
-		default:
-			return -1;
-
+	size_t tlv_len = tlv_packet_len(p);
+	if (tlv_len > buf_len)
+		return NULL;
+	tlv_len -= TLV_MIN_LEN;
+	void *result = calloc(tlv_len, 1);
+	if (ctx && result) {
+		switch (ctx->flag) {
+			case ENC_AES256:
+				if (aes_decrypt(ctx, p + sizeof(struct tlv_header), tlv_len, result) > 0)
+					break;
+			case ENC_NONE:
+			default:
+				memcpy(result, p, tlv_len);
+		}
 	}
+	return result;
 }
 
-size_t encrypt_tlv(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
+void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len)
 {
-	/**
-	 * TODO: consider taking result_len as a parameter for bounds check inside this method
-	 * may also be valuable for malloc result buffer here
-	 **/
-	size_t length = 0;
-	switch (ctx->flag) {
-		case ENC_AES256:
-			if ((length = aes_encrypt(ctx, data, data_len, result)) > 0) {
-				return length;
+	void *out_buf = NULL;
+	void *tlv_buf = tlv_packet_data(p);
+	size_t tlv_len = tlv_packet_len(p);
+	if (tlv_len > buf_len)
+		return NULL;
+	size_t value_len = tlv_len - sizeof(struct tlv_header);
+	if (ctx) {
+		switch (ctx->flag) {
+			case ENC_AES256: {
+				size_t enc_size = ((value_len / AES_IV_LEN) + 1) * AES_IV_LEN;
+				size_t pad_len = enc_size - value_len;
+				size_t out_size = enc_size + AES_IV_LEN + TLV_PREPEND_LEN;
+				out_buf = calloc(out_size, 1);
+				if (out_buf) {
+					size_t length = 0;
+					struct tlv_xor_header *hdr = out_buf;
+					memcpy(&hdr->tlv, tlv_buf, tlv_len);
+					unsigned char *tlv_data = out_buf + sizeof(struct tlv_xor_header);
+					memset(tlv_data + value_len, pad_len, pad_len);
+					unsigned char result[enc_size];
+					memset(result, 0, enc_size);
+					if (ctx->initialized) {
+						hdr->encryption_flags = htonl(ctx->flag);
+						unsigned char iv[AES_IV_LEN];
+						memcpy(iv, ctx->iv, AES_IV_LEN); // grab iv before enc manipulates it.
+						if ((length = aes_encrypt(ctx, tlv_data, enc_size, result)) > 0) {
+							memcpy(tlv_data, iv, AES_IV_LEN);
+							memcpy(tlv_data + AES_IV_LEN, result, length);
+							tlv_len = length + AES_IV_LEN + TLV_MIN_LEN;
+							hdr->tlv.len = htonl(tlv_len);
+							break;
+						}
+					} else {
+						free(out_buf);
+						ctx->initialized = true;
+					}
+				}
 			}
-		case ENC_NONE:
-			memcpy(result, data, data_len);
-			return data_len;
-		default:
-			return -1;
+			case ENC_NONE:
+			default:
+				out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
+				if (out_buf) {
+					struct tlv_xor_header *hdr = out_buf;
+					memcpy(&hdr->tlv, tlv_buf, tlv_len);
+				}
+		}
 	}
+	return out_buf;
 }
 
 size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, const unsigned char* data, size_t data_len, unsigned char* result)

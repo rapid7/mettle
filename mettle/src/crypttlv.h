@@ -29,16 +29,18 @@ struct tlv_encryption_ctx* create_tlv_context(unsigned int enc_flag);
 void free_tlv_encryption_ctx(struct tlv_encryption_ctx *ctx);
 
 /**
- * decrypt data with TLV data with on context passed
- * returns 0 on success
+ * decrypt TLV data with the context passed
+ * returns a pointer to the decrypted data with same
+ * provided in the tlv_header len as provided in the tlv header
  */
-size_t decrypt_tlv(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result);
+void * decrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len);
 
 /**
- * encrypt data with TLV data with on context passed
- * returns 0 on success
+ * encrypt data with TLV data with the context passed
+ * returns a pointer to a new buffer containing a new tlv_header, iv and
+ * encrypted data offset TLV_PREPEND_LEN - TLV_MIN_LEN
  */
-size_t encrypt_tlv(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result);
+void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len);
 
 /**
  * Accepts a string rsa private and a value to encrypt into the result buffer
