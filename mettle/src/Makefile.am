@@ -54,6 +54,7 @@ libmettle_la_SOURCES += stdapi/audio/apple_mic.m
 endif
 if HOST_LINUX
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
+libmettle_la_SOURCES += stdapi/audio/linux_output.c
 endif
 
 libmettle_la_SOURCES += compat/progname.c
