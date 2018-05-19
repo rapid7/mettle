@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <mettle.h>
 #include "channel.h"
@@ -8,7 +9,7 @@
 
 typedef struct context {
     size_t size;
-    char *buffer;
+    void *buffer;
 } context;
 
 int new_audio_file(struct tlv_handler_ctx *tlv_ctx, struct channel *c)
@@ -30,17 +31,13 @@ ssize_t write_audio_file(struct channel *c, void *buf, size_t len)
     context *ctx = channel_get_ctx(c);
 
     ctx->size += len;
-    ctx->buffer = (char *)realloc(ctx->buffer, ctx->size);
+    ctx->buffer = realloc(ctx->buffer, ctx->size);
+
     if (ctx->buffer == NULL) {
         return -1;
     }
 
-    // Copy buffer
-    // No need to use memcpy or whatever, let's use the barebone solution
-    for (size_t i = ctx->size - len; i < ctx->size; i++) {
-        size_t pos_in_buffer = i - ctx->size - len;
-        ctx->buffer[i] = ((char *)buf)[pos_in_buffer];
-    }
+    memcpy(ctx->buffer + (ctx->size - len), buf, len);
 
     return len; // On success return the number of bytes written
 }
