@@ -7,18 +7,21 @@
 #include "output.h"
 
 typedef struct context {
-    void *buffer;
-    size_t current_size;
+    size_t size;
+    char *buffer;
 } context;
 
 int new_audio_file(struct tlv_handler_ctx *tlv_ctx, struct channel *c)
 {
-    context ctx;
+    context *ctx = malloc(sizeof(context));
+    if (ctx == NULL) {
+        return -1;
+    }
 
-    ctx.buffer = NULL;
-    ctx.current_size = 0;
+    ctx->buffer = NULL;
+    ctx->size = 0;
 
-    channel_set_ctx(c, &ctx);
+    channel_set_ctx(c, ctx);
     return 0;
 }
 
@@ -26,23 +29,20 @@ ssize_t write_audio_file(struct channel *c, void *buf, size_t len)
 {
     context *ctx = channel_get_ctx(c);
 
-    size_t bigger = ctx->current_size + len;
-    void *buffer = realloc(ctx->buffer, bigger);
-    if (buffer == NULL) {
+    ctx->size += len;
+    ctx->buffer = (char *)realloc(ctx->buffer, ctx->size);
+    if (ctx->buffer == NULL) {
         return -1;
     }
 
-    ctx->current_size += len;
-    ctx->buffer = buffer;
-
     // Copy buffer
     // No need to use memcpy or whatever, let's use the barebone solution
-    for (uint i = ctx->current_size - len; i < ctx->current_size; i++) {
-        uint pos_in_buffer = i - ctx->current_size - len;
-        ((char *)ctx->buffer)[i] = ((char *)buf)[pos_in_buffer];
+    for (size_t i = ctx->size - len; i < ctx->size; i++) {
+        size_t pos_in_buffer = i - ctx->size - len;
+        ctx->buffer[i] = ((char *)buf)[pos_in_buffer];
     }
 
-    return 0;
+    return len; // On success return the number of bytes written
 }
 
 int terminate_audio_file(struct channel *c)
@@ -57,13 +57,13 @@ int terminate_audio_file(struct channel *c)
         return -1;
     }
 
-    if (fwrite(ctx->buffer, 1, ctx->current_size, pipe_fp) != ctx->current_size) {
+    if (fwrite(ctx->buffer, 1, ctx->size, pipe_fp) != ctx->size) {
         return -1;
     }
 
     pclose(pipe_fp);
     free(ctx->buffer);
-    ctx->current_size = 0;
+    free(ctx);
 
     return 0;
 }
