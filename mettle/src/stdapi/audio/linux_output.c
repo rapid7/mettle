@@ -49,7 +49,7 @@ int terminate_audio_file(struct channel *c)
 
     // Open pipe, we will send the content to the aplay command
     // Similar to `cat test.wav | aplay`
-    FILE *pipe_fp = popen("aplay", "w");
+    FILE *pipe_fp = popen("aplay -q", "w");
     if (pipe_fp == NULL) {
         return -1;
     }
