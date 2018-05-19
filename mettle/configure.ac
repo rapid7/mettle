@@ -19,6 +19,7 @@ case $host_os in
 		HOST_OS=apple
 		OBJCFLAGS="$OBJCFLAGS -fobjc-arc"
 		AC_DEFINE(HAVE_WEBCAM)
+		AC_DEFINE(HAVE_AUDIO_OUTPUT)
 		AC_SUBST([PLATFORM_LDADD], ['-framework CoreMedia -framework QuartzCore -framework AVFoundation -framework ImageIO'])
 		AC_EGREP_CPP(yes,
 			[#import <TargetConditionals.h>
