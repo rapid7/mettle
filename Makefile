@@ -32,7 +32,7 @@ endef
 
 $(foreach a, $(ARCHES), $(eval $(call rules_for_each_arch, $(strip $(a)))))
 
-all-parallel: $(patsubst %,%.build,$(ARCHES))
+all-parallel: $(TOOLS) $(patsubst %,%.build,$(ARCHES))
 
 clean-parallel: $(patsubst %,%.clean,$(ARCHES))
 

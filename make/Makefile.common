@@ -53,7 +53,7 @@ ifneq (,$(findstring musl,$(TARGET)))
     endif
 endif
 
-ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
+ENV=ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"
@@ -62,13 +62,3 @@ endif
 ifeq "$(VERBOSE)" "1"
     LOGBUILD:=
 endif
-
-ifeq "$(shell uname -s)" "Darwin"
-    ELLCC_HOST=osx
-    ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
-        $(info "Gnu install is not found, try 'brew install coreutils")
-    else
-        export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
-    endif
-endif
-

@@ -1,17 +1,22 @@
 ROOT=$(shell pwd)
-TOOLS=build/tools
+TOOLS=$(ROOT)/build/tools
 TOOLS_BIN=$(TOOLS)/bin
+TOOLS_ENV=ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(TOOLS)/lib -L$(TOOLS)/lib64" CFLAGS="-I$(TOOLS)/include -g -O2"
+TOOLS_CONFIGURE=$(TOOLS_ENV) ./configure --prefix=$(TOOLS) ac_cv_path_PKGCONFIG=$(ROOT)/deps/pkg-config --disable-shared
 BUILD_HOST=linux
 TOOLCHAIN_VERSION=6
 INSTALL=install
+TAR=tar
+TOOLS_DEPS=libtool automake bison flex
+export PATH:=$(TOOLS)/musl-cross/bin:$(TOOLS_BIN):$(PATH)
 
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring musl,$(TARGET)))
-        CC=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-gcc
-        CPP=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-cpp
-        AR=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ar
-        LD=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ld
-        RANLIB=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ranlib
+        CC=$(TOOLS)/musl-cross/bin/$(TARGET)-gcc
+        CPP=$(TOOLS)/musl-cross/bin/$(TARGET)-cpp
+        AR=$(TOOLS)/musl-cross/bin/$(TARGET)-ar
+        LD=$(TOOLS)/musl-cross/bin/$(TARGET)-ld
+        RANLIB=$(TOOLS)/musl-cross/bin/$(TARGET)-ranlib
     endif
     ifneq (,$(findstring mingw,$(TARGET)))
         CC=$(TARGET)-gcc
@@ -42,27 +47,160 @@ ifneq "$(TARGET)" "native"
         CC=gcc
         AR=gar
         INSTALL=ginstall
+        TOOLS_DEPS:=$(TOOLS_DEPS) coreutils m4
     endif
 endif
 
-TAR=tar
-ELF2BIN=$(TOOLS_BIN)/elf2bin
+ifneq (,$(findstring musl,$(TARGET)))
+    TOOLS_DEPS:=$(TOOLS_DEPS) $(TOOLS)/musl-cross/.unpacked elf2bin
+endif
 
-$(ELF2BIN): util/elf2bin.c
-	@mkdir -p $(TOOLS_BIN)
-	@cc -g -o $(ELF2BIN) $<
-
-export PATH:=$(ROOT)/build/tools/musl-cross/bin:$(PATH)
-INSTALL=install
-export PATH:=$(ROOT)/$(TOOLS)/musl-cross/bin:$(ROOT)/$(TOOLS_BIN):$(PATH)
 ifeq "$(shell uname -s)" "Darwin"
     BUILD_HOST=osx
-    ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
-        $(info "Gnu install is not found, try 'brew install coreutils")
-    else
-        export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
-    endif
+    TOOLS_DEPS:=$(TOOLS_DEPS) coreutils
 endif
+
+LOGTOOLBUILD:=>>$(TOOLS)/build.log 2>&1
+ifeq "$(V)" "1"
+    LOGTOOLBUILD:=
+endif
+ifeq "$(VERBOSE)" "1"
+    LOGTOOLBUILD:=
+endif
+
+$(TOOLS)/bin/elf2bin: util/elf2bin.c
+	@mkdir -p $(TOOLS_BIN)
+	@cc -g -o $(TOOLS)/bin/elf2bin $<
+
+elf2bin: $(TOOLS)/bin/elf2bin
+
+$(TOOLS)/libtool/Makefile: $(ROOT)/deps/libtool-2.4.6.tar.gz
+	@echo "Configuring libtool"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+		rm -fr libtool; \
+		$(TAR) xf $(ROOT)/deps/libtool-2.4.6.tar.gz; \
+		mv libtool-2.4.6 libtool; \
+		cd libtool; \
+		$(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/libtool: $(TOOLS)/libtool/Makefile
+	@echo "Building libtool"
+	@cd $(TOOLS)/libtool; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+libtool: $(TOOLS)/bin/libtool
+
+$(TOOLS)/m4/Makefile: $(ROOT)/deps/m4-1.4.18.tar.gz
+	@echo "Configuring m4"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr m4; \
+        $(TAR) xf $(ROOT)/deps/m4-1.4.18.tar.gz; \
+        mv m4-1.4.18 m4; \
+        cd m4; \
+        sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' lib/*.c; \
+        echo "#define _IO_IN_BACKUP 0x100" >> lib/stdio-impl.h; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/m4: $(TOOLS)/m4/Makefile
+	@echo "Building m4"
+	@cd $(TOOLS)/m4; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+m4: $(TOOLS)/bin/m4
+
+$(TOOLS)/autoconf/Makefile: $(ROOT)/deps/autoconf-2.69.tar.gz
+	@echo "Configuring autoconf"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr autoconf; \
+        $(TAR) xf $(ROOT)/deps/autoconf-2.69.tar.gz; \
+        mv autoconf-2.69 autoconf; \
+        cd autoconf; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/autoconf: $(TOOLS)/autoconf/Makefile
+	@echo "Building autoconf"
+	@cd $(TOOLS)/autoconf; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+autoconf: $(TOOLS)/bin/autoconf
+
+$(TOOLS)/automake/Makefile: $(TOOLS)/bin/autoconf $(ROOT)/deps/automake-1.16.1.tar.gz
+	@echo "Configuring automake"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr automake; \
+        $(TAR) xf $(ROOT)/deps/automake-1.16.1.tar.gz; \
+        mv automake-1.16.1 automake; \
+        cd automake; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/automake: $(TOOLS)/automake/Makefile
+	@echo "Building automake"
+	@cd $(TOOLS)/automake; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+automake: $(TOOLS)/bin/automake
+
+$(TOOLS)/bison/Makefile: $(ROOT)/deps/bison-3.0.5.tar.gz
+	@echo "Configuring bison"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr bison; \
+        $(TAR) xf $(ROOT)/deps/bison-3.0.5.tar.gz; \
+        mv bison-3.0.5 bison; \
+        cd bison; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/bison: $(TOOLS)/bison/Makefile
+	@echo "Building bison"
+	@cd $(TOOLS)/bison; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+bison: $(TOOLS)/bin/bison
+
+$(TOOLS)/flex/Makefile: $(ROOT)/deps/flex-2.5.39.tar.gz
+	@echo "Configuring flex"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr flex; \
+        $(TAR) xf $(ROOT)/deps/flex-2.5.39.tar.gz; \
+        mv flex-2.5.39 flex; \
+        cd flex; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/flex: $(TOOLS)/flex/Makefile
+	@echo "Building flex"
+	@cd $(TOOLS)/flex; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+flex: $(TOOLS)/bin/flex
+
+$(TOOLS)/coreutils/Makefile: $(ROOT)/deps/coreutils-8.29.tar.gz
+	@echo "Configuring coreutils"
+	@mkdir -p $(TOOLS)
+	@cd $(TOOLS); \
+        rm -fr coreutils; \
+        $(TAR) xf $(ROOT)/deps/coreutils-8.29.tar.gz; \
+        mv coreutils-8.29 coreutils; \
+        cd coreutils; \
+        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+
+$(TOOLS)/bin/install: $(TOOLS)/coreutils/Makefile
+	@echo "Building coreutils"
+	@cd $(TOOLS)/coreutils; \
+		$(MAKE) $(LOGTOOLBUILD); \
+		$(MAKE_INSTALL) $(LOGTOOLBUILD)
+
+coreutils: $(TOOLS)/bin/install
 
 musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz:
 	@echo "Downloading toolchain"
@@ -75,10 +213,4 @@ $(TOOLS)/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar
 	@cd $(TOOLS) && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@touch $(TOOLS)/musl-cross/.unpacked
 
-TOOLS_DEPS=
-ifneq (,$(findstring musl,$(TARGET)))
-  TOOLS_DEPS=$(TOOLS)/musl-cross/.unpacked $(ELF2BIN)
-endif
-
 $(TOOLS): $(TOOLS_DEPS)
-	@mkdir -p $(TOOLS)
