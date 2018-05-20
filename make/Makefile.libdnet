@@ -15,7 +15,7 @@ ifneq "$(TARGET)" "native"
     endif
 endif
 
-$(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure $(DNET_DEPS)
+$(BUILD)/libdnet/Makefile: $(TOOLS) $(BUILD)/libdnet/configure $(DNET_DEPS)
 	@echo "Configuring libdnet for $(TARGET)"
 	@mkdir -p $(BUILD)/libdnet
 	@cd $(BUILD)/libdnet; \

@@ -8,7 +8,7 @@ $(BUILD)/libev/configure:
 		$(TAR) zxf $(DEPS)/libev-$(LIBEV_VERSION).tar.gz; \
 		mv libev-$(LIBEV_VERSION) libev
 
-$(BUILD)/libev/Makefile: build/tools $(BUILD)/libev/configure $(LIBEV_DEPS)
+$(BUILD)/libev/Makefile: $(TOOLS) $(BUILD)/libev/configure $(LIBEV_DEPS)
 	@echo "Configuring libev for $(TARGET)"
 	@cd $(BUILD)/libev; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

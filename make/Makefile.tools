@@ -1,13 +1,17 @@
+ROOT=$(shell pwd)
+TOOLS=build/tools
+TOOLS_BIN=$(TOOLS)/bin
 BUILD_HOST=linux
 TOOLCHAIN_VERSION=6
 INSTALL=install
+
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring musl,$(TARGET)))
-        CC=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-gcc
-        CPP=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-cpp
-        AR=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ar
-        LD=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ld
-        RANLIB=$(ROOT)/build/tools/musl-cross/bin/$(TARGET)-ranlib
+        CC=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-gcc
+        CPP=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-cpp
+        AR=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ar
+        LD=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ld
+        RANLIB=$(ROOT)/$(TOOLS)/musl-cross/bin/$(TARGET)-ranlib
     endif
     ifneq (,$(findstring mingw,$(TARGET)))
         CC=$(TARGET)-gcc
@@ -42,13 +46,15 @@ ifneq "$(TARGET)" "native"
 endif
 
 TAR=tar
-ELF2BIN=build/tools/elf2bin
+ELF2BIN=$(TOOLS_BIN)/elf2bin
 
 $(ELF2BIN): util/elf2bin.c
-	@mkdir -p build/tools
-	@cc -g -o $@ $<
+	@mkdir -p $(TOOLS_BIN)
+	@cc -g -o $(ELF2BIN) $<
 
 export PATH:=$(ROOT)/build/tools/musl-cross/bin:$(PATH)
+INSTALL=install
+export PATH:=$(ROOT)/$(TOOLS)/musl-cross/bin:$(ROOT)/$(TOOLS_BIN):$(PATH)
 ifeq "$(shell uname -s)" "Darwin"
     BUILD_HOST=osx
     ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
@@ -62,17 +68,17 @@ musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz:
 	@echo "Downloading toolchain"
 	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 
-$(ROOT)/build/tools/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
+$(TOOLS)/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@echo "Unpacking toolchain"
-	@rm -fr build/tools/musl-cross
-	@mkdir -p build/tools/musl-cross
-	@cd build/tools && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
-	@touch build/tools/musl-cross/.unpacked
+	@rm -fr $(TOOLS)/musl-cross
+	@mkdir -p $(TOOLS)/musl-cross
+	@cd $(TOOLS) && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
+	@touch $(TOOLS)/musl-cross/.unpacked
 
 TOOLS_DEPS=
 ifneq (,$(findstring musl,$(TARGET)))
-  TOOLS_DEPS=$(ROOT)/build/tools/musl-cross/.unpacked $(ELF2BIN)
+  TOOLS_DEPS=$(TOOLS)/musl-cross/.unpacked $(ELF2BIN)
 endif
 
-build/tools: $(TOOLS_DEPS)
-	@mkdir -p build/tools
+$(TOOLS): $(TOOLS_DEPS)
+	@mkdir -p $(TOOLS)

@@ -1,6 +1,6 @@
 LIBCURL_VERSION=7.62.0
 
-LIBCURL_DEPS = build/tools $(BUILD)/lib/libz.a
+LIBCURL_DEPS = $(TOOLS) $(BUILD)/lib/libz.a
 LIBCURL_ENV =
 LIBCURL_OPTS =
 

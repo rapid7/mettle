@@ -8,7 +8,7 @@ $(BUILD)/libz/configure:
 		$(TAR) zxf $(DEPS)/libz-$(LIBZ_VERSION).tar.gz; \
 		mv libz-$(LIBZ_VERSION) libz
 
-$(BUILD)/libz/Makefile: build/tools $(BUILD)/libz/configure $(LIBZ_DEPS)
+$(BUILD)/libz/Makefile: $(TOOLS) $(BUILD)/libz/configure $(LIBZ_DEPS)
 	@echo "Configuring libz for $(TARGET)"
 	@cd $(BUILD)/libz; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

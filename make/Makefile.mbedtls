@@ -5,7 +5,7 @@ ifneq (,$(findstring mingw,$(TARGET)))
     MBEDTLS_ENV=WINDOWS=1
 endif
 
-$(BUILD)/lib/libmbedtls.a: build/tools
+$(BUILD)/lib/libmbedtls.a: $(TOOLS)
 	@echo "Unpacking mbedtls for $(BUILD)"
 	@mkdir -p $(BUILD)/lib
 	@mkdir -p $(BUILD)/include

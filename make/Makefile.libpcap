@@ -19,7 +19,7 @@ $(BUILD)/libpcap/configure:
 		mv libpcap-$(LIBPCAP_VERSION) libpcap
 	$(LIBPCAP_FIXUP)
 
-$(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
+$(BUILD)/libpcap/Makefile: $(TOOLS) $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \

@@ -35,7 +35,7 @@ else
     endif
 endif
 
-$(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
+$(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	$(METTLE_DEPS) \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
