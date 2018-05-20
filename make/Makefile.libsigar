@@ -4,7 +4,8 @@ $(BUILD)/libsigar/configure:
 	@cd $(BUILD); \
 		rm -fr libsigar; \
 		$(TAR) zxf $(ROOT)/deps/libsigar-1.6.2.tar.gz; \
-		mv libsigar-1.6.2 libsigar
+		mv libsigar-1.6.2 libsigar; \
+		$(CONFIG_FIXUP) libsigar
 
 $(BUILD)/libsigar/Makefile: $(TOOLS) $(BUILD)/libsigar/configure
 	@echo "Configuring libsigar for $(TARGET)"

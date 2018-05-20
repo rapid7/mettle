@@ -12,7 +12,8 @@ include make/Makefile.libpcap
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
-		autoreconf -i $(LOGBUILD)
+		autoreconf -i $(LOGBUILD); \
+		$(CONFIG_FIXUP) .
 
 METTLE_DEPS =
 METTLE_TARGETS =

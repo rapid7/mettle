@@ -16,8 +16,9 @@ $(BUILD)/libpcap/configure:
 	@cd $(BUILD); \
 		rm -fr libpcap; \
 		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
-		mv libpcap-$(LIBPCAP_VERSION) libpcap
-	$(LIBPCAP_FIXUP)
+		mv libpcap-$(LIBPCAP_VERSION) libpcap; \
+		$(CONFIG_FIXUP) libpcap
+	@$(LIBPCAP_FIXUP)
 
 $(BUILD)/libpcap/Makefile: $(TOOLS) $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
