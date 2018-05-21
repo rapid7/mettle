@@ -24,7 +24,7 @@
 /**
  * Generate an encryption key for the enc_flag type requested
  */
-struct tlv_encryption_ctx* create_tlv_context(unsigned int enc_flag);
+struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag);
 
 void free_tlv_encryption_ctx(struct tlv_encryption_ctx *ctx);
 
@@ -45,4 +45,4 @@ void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len);
 /**
  * Accepts a string rsa private and a value to encrypt into the result buffer
  */
-size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, const unsigned char* data, size_t data_len, unsigned char* result);
+size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encryption_ctx *ctx, unsigned char* result);

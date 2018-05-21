@@ -37,7 +37,7 @@ size_t aes_encrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, si
 	return 0;
 }
 
-struct tlv_encryption_ctx* create_tlv_context(unsigned int enc_flag)
+struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 {
 	struct tlv_encryption_ctx *ctx = malloc(sizeof(struct tlv_encryption_ctx));
 	ctx->flag = enc_flag;
@@ -161,10 +161,20 @@ void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len)
 	return out_buf;
 }
 
-size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, const unsigned char* data, size_t data_len, unsigned char* result)
+size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encryption_ctx* ctx, unsigned char* result)
 {
 	size_t olen = 0;
 #ifndef __MINGW32__
+	data = ctx->key;
+	data_len = 0;
+	switch (ctx->flag)
+	{
+		case ENC_AES256:
+			data_len = AES_KEY_LEN;
+			break;
+		default:
+			break;
+	}
 	mbedtls_pk_context pk;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_entropy_context entropy;
