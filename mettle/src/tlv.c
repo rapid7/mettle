@@ -496,7 +496,7 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 	return 0;
 }
 
-void tlv_dispather_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx)
+void tlv_dispatcher_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx)
 {
 	td->enc_ctx = ctx;
 }

@@ -134,7 +134,7 @@ static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *
 				struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 				tlv_packet_add_u32(p, TLV_TYPE_SYM_KEY_TYPE, ENC_AES256);
 				tlv_packet_add_raw(p, TLV_TYPE_ENC_SYM_KEY, buf, enc_len);
-				tlv_dispather_add_encryption(td, enc_ctx);
+				tlv_dispatcher_add_encryption(td, enc_ctx);
 				return p;
 			}
 		}

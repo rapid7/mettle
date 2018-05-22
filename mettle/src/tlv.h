@@ -150,7 +150,7 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 		const char *method, tlv_handler_cb cb, void *arg);
 
-void tlv_dispather_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx);
+void tlv_dispatcher_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx);
 
 int tlv_dispatcher_enqueue_response(struct tlv_dispatcher *td, struct tlv_packet *p);
 
