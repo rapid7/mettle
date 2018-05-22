@@ -165,8 +165,8 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 {
 	size_t olen = 0;
 #ifndef __MINGW32__
-	data = ctx->key;
-	data_len = 0;
+	unsigned char *data = ctx->key;
+	size_t data_len = 0;
 	switch (ctx->flag)
 	{
 		case ENC_AES256:
