@@ -6,6 +6,26 @@
 
 #include "lua.h"
 
+/*
+ * Override 'print' so the extension won't crash
+ * Thanks @timwr for the link: https://gist.github.com/5at/3671566
+ */
+static int print_to_framework_side(lua_State *lua) {
+	int nargs = lua_gettop(lua);
+	for (int i = 0; i < nargs; i++) {
+		const char *str = lua_tostring(lua, i);
+
+		// Send as TLV
+		// Need to figure out a way to this
+	}
+
+	return 0;
+}
+
+static const struct luaL_Reg print_overrider [] = {
+	{"print", print_to_framework_side},
+	{NULL, NULL} // End marker
+};
 
 /*
  * Execute the code supplied (via TLV packet) string
@@ -16,6 +36,10 @@ static struct tlv_packet *request_execute_code(struct tlv_handler_ctx *ctx)
 
 	lua = luaL_newstate();
 	luaL_openlibs(lua);
+
+	lua_getglobal(lua, "_G");
+	luaL_setfuncs(lua, print_overrider, 0);
+	lua_pop(lua, 1);
 
 	int tlv_result = TLV_RESULT_FAILURE; // By default
 	struct tlv_packet *r = tlv_packet_response(ctx);
