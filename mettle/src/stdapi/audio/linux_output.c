@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 #include <mettle.h>
 #include "channel.h"
@@ -22,9 +23,8 @@ int terminate_audio_file(struct channel *c)
         return -1;
     }
 
-    pclose(pipe_fp);
     free(ctx->buffer);
     free(ctx);
 
-    return 0;
+    return WEXITSTATUS(pclose(pipe_fp));
 }
