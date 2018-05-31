@@ -47,12 +47,10 @@ struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 		case ENC_AES256: {
 			mbedtls_ctr_drbg_context ctr_drbg;
 			mbedtls_entropy_context entropy;
-			char *pers = "zrgrecergre zrggyr frrq"; // 'meterpreter mettle seed' rot13
 
 			mbedtls_entropy_init(&entropy);
 			mbedtls_ctr_drbg_init(&ctr_drbg);
-			if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-									  (unsigned char *) pers, strlen(pers)))) {
+			if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0))) {
 				unsigned char *aes_key = calloc(sizeof(unsigned char) * AES_KEY_LEN, 1);
 				if (!(mbedtls_ctr_drbg_random(&ctr_drbg, aes_key, AES_KEY_LEN))) {
 					ctx->key = aes_key;
@@ -178,7 +176,6 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 	mbedtls_pk_context pk;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_entropy_context entropy;
-	char *pers = "zrgrecergre zrggyr frrq"; // 'meterpreter mettle seed' rot13
 
 	mbedtls_entropy_init(&entropy);
 	mbedtls_ctr_drbg_init(&ctr_drbg);
@@ -187,8 +184,7 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 		mbedtls_pk_init(&pk);
 	}
 	if (!(mbedtls_pk_parse_public_key(&pk, pkey, pkey_len))) {
-		if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-								  (unsigned char *) pers, strlen(pers)))) {
+		if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0))) {
 			unsigned char buf[MBEDTLS_MPI_MAX_SIZE] = { '\0' };
 
 			if (!(mbedtls_pk_encrypt(&pk, data, data_len,
