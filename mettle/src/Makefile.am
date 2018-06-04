@@ -53,6 +53,7 @@ libmettle_la_SOURCES += stdapi/clipboard/osx_clipboard.m
 libmettle_la_SOURCES += stdapi/audio/apple_mic.m
 endif
 if HOST_LINUX
+libmettle_la_SOURCES += stdapi/audio/linux_mic.c
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
 endif
 

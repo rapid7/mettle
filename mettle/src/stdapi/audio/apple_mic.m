@@ -1,14 +1,8 @@
 #import <AVFoundation/AVFoundation.h>
 
-#include "tlv.h"
 #include "mic.h"
 #include "log.h"
 #include "ringbuf.h"
-
-#define TLV_TYPE_AUDIO_DURATION        (TLV_META_TYPE_UINT   | TLV_EXTENSIONS + 10)
-#define TLV_TYPE_AUDIO_DATA            (TLV_META_TYPE_RAW    | TLV_EXTENSIONS + 11)
-#define TLV_TYPE_AUDIO_INTERFACE_ID    (TLV_META_TYPE_UINT   | TLV_EXTENSIONS + 12)
-#define TLV_TYPE_AUDIO_INTERFACE_NAME  (TLV_META_TYPE_STRING | TLV_EXTENSIONS + 13)
 
 #define AUDIO_MAX_BUFFER_SIZE         65536
 #define AUDIO_TARGET_SAMPLE_RATE_HZ   11025
