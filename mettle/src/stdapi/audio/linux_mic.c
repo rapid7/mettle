@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "mic.h"
+
 FILE *arecord;
 
 struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx) {
@@ -29,11 +31,12 @@ struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx) {
     // Popen globally "arecord -D plughw:<card>,<device> -q"
     uint32_t device;
     tlv_packet_get_u32(ctx->req, TLV_TYPE_AUDIO_INTERFACE_ID, &device);
+    device--;
 
     int rc = TLV_RESULT_FAILURE;
 
-    char *cmd;
-    sprintf(cmd, "arecord -D plughw:%d -q", device);
+    char cmd[100];
+    sprintf(cmd, "arecord -D plughw:%d -q -f cd -t raw -r 11025 -c 1", device);
     arecord = popen(cmd, "r");
     if (arecord != NULL) {
 	rc = TLV_RESULT_SUCCESS;
