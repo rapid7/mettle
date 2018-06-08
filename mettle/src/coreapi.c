@@ -4,7 +4,6 @@
  * @file tlv_coreapi.c
  */
 
-#include "crypttlv.h"
 #include "log.h"
 #include "tlv.h"
 #include "extensions.h"
@@ -115,33 +114,8 @@ static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
 
 static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
 {
-#ifndef __MINGW32__
-	size_t guid_len = 0;
-	size_t pkey_len = 0;
-	struct mettle *m = ctx->arg;
-	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-	char *guid = tlv_packet_get_raw(ctx->req, TLV_TYPE_SESSION_GUID, &guid_len);
-	unsigned char *pkey = tlv_packet_get_raw(ctx->req, TLV_TYPE_RSA_PUB_KEY, &pkey_len);;
-
-	if (pkey_len > 0) {
-		struct tlv_encryption_ctx* enc_ctx = create_tlv_encryption_context(ENC_AES256);
-		if (enc_ctx->key != NULL)
-		{
-			unsigned char buf[MBEDTLS_MPI_MAX_SIZE] = { '\0' };
-			int enc_len = 0;
-			if ((enc_len = rsa_encrypt_pkcs(pkey, pkey_len, enc_ctx, buf)) > 0)
-			{
-				struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-				tlv_packet_add_u32(p, TLV_TYPE_SYM_KEY_TYPE, ENC_AES256);
-				tlv_packet_add_raw(p, TLV_TYPE_ENC_SYM_KEY, buf, enc_len);
-				tlv_dispatcher_add_encryption(td, enc_ctx);
-				return p;
-			}
-		}
-	}
-#endif
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-}
+	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+} 
 
 static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 {
