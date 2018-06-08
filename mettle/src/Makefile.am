@@ -22,7 +22,6 @@ libmettle_la_SOURCES += c2.c
 libmettle_la_SOURCES += c2_http.c
 libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
-libmettle_la_SOURCES += crypttlv.c
 libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += extension.c
 libmettle_la_SOURCES += extensions.c

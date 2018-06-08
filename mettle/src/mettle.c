@@ -204,8 +204,7 @@ static void on_c2_read(struct c2 *c2, void *arg)
 	struct buffer_queue *q = c2_ingress_queue(c2);
 	struct tlv_packet *request;
 
-	// need td here to pass into the reader
-	while ((request = tlv_packet_read_buffer_queue(m->td, q))) {
+	while ((request = tlv_packet_read_buffer_queue(q))) {
 		tlv_dispatcher_process_request(m->td, request);
 	}
 }

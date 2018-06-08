@@ -27,7 +27,7 @@ struct http_ctx {
 
 static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
-	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);
+	struct tlv_packet *request = tlv_packet_read_buffer_queue(q);
 	if (request) {
 		const char *method = tlv_packet_get_str(request, TLV_TYPE_METHOD);
 		const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
@@ -47,12 +47,6 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 				free(old_uri);
 			}
 		}
-	}
-	else {
-		/**
-		 * put packet in ingress? also consider making `core_patch_url` actually core
-		 * and expect the transport or get changed on patch request
-		**/
 	}
 }
 
