@@ -120,7 +120,7 @@ void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len)
 			case ENC_AES256: {
 				size_t enc_size = ((value_len / AES_IV_LEN) + 1) * AES_IV_LEN;
 				size_t pad_len = enc_size - value_len;
-				size_t out_size = enc_size + AES_IV_LEN + TLV_PREPEND_LEN + TLV_MIN_LEN;
+				size_t out_size = enc_size + AES_IV_LEN + TLV_PREPEND_LEN;
 				out_buf = calloc(out_size, 1);
 				if (out_buf) {
 					size_t length = 0;
