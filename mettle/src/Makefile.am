@@ -46,6 +46,8 @@ endif
 libmettle_la_SOURCES += util.c
 if HOST_APPLE
 libmettle_la_SOURCES += stdapi/webcam/apple_webcam.m
+libmettle_la_SOURCES += stdapi/audio/apple_output.m
+libmettle_la_SOURCES += stdapi/audio/posix_output.c
 endif
 if HOST_OSX
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
@@ -55,6 +57,8 @@ endif
 if HOST_LINUX
 libmettle_la_SOURCES += stdapi/audio/linux_mic.c
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
+libmettle_la_SOURCES += stdapi/audio/linux_output.c
+libmettle_la_SOURCES += stdapi/audio/posix_output.c
 endif
 
 libmettle_la_SOURCES += compat/progname.c

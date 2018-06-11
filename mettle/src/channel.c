@@ -428,6 +428,7 @@ static struct tlv_packet *channel_tell(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p;
 	if (cbs->tell_cb == NULL) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		return p;
 	}
 
 	ssize_t offset = cbs->tell_cb(c);
