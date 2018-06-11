@@ -5,9 +5,8 @@
 
 FILE *arecord;
 
+// Read all lines in `/proc/asound/pcm` if one has the `capture` mode enabled, send it
 struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx) {
-    // Popen "cat /proc/asound/pcm | grep capture"
-    // Send other lines
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     
     char *sound_device = NULL;
@@ -27,8 +26,8 @@ struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx) {
     return p;
 }
 
+// Simply launch `arecord` on the given card ID, send sound to stdout
 struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx) {
-    // Popen globally "arecord -D plughw:<card>,<device> -q"
     uint32_t device;
     tlv_packet_get_u32(ctx->req, TLV_TYPE_AUDIO_INTERFACE_ID, &device);
     device--;
@@ -44,12 +43,14 @@ struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx) {
 
     return tlv_packet_response_result(ctx, rc);
 }
-	
+
+// Kill the `arecord` process
 struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx) {
     pclose(arecord);
     return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
+// Read `arecord` stdout and send it
 ssize_t audio_mic_read(struct channel *c, void *buf, size_t len) {
     return fread(buf, 1, len, arecord);
 }
