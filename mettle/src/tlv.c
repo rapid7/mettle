@@ -23,21 +23,7 @@
 #include "uthash.h"
 #include "utlist.h"
 #include "mettle.h"
-
-struct tlv_header {
-	int32_t len;
-	uint32_t type;
-} __attribute__((packed));
-
-struct tlv_xor_header {
-	char xor_key[4];
-	uint8_t session_guid[SESSION_GUID_LEN];
-	uint32_t encryption_flags;
-	struct tlv_header tlv;
-} __attribute__((packed));
-
-#define TLV_PREPEND_LEN 24
-#define TLV_MIN_LEN 8
+#include "crypttlv.h"
 
 struct tlv_packet {
 	struct tlv_header h;
@@ -400,6 +386,7 @@ struct tlv_dispatcher {
 	size_t uuid_len;
 
 	char session_guid[SESSION_GUID_LEN];
+	struct tlv_encryption_ctx *enc_ctx;
 };
 
 struct tlv_packet *tlv_packet_add_uuid(struct tlv_packet *p, struct tlv_dispatcher *td)
@@ -455,13 +442,13 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td, bool add_prepe
 		size_t tlv_len = tlv_packet_len(p);
 		if (add_prepend) {
 			// usual communications flow between server and target
-			out_buf = calloc(tlv_len + TLV_PREPEND_LEN, 1);
+			out_buf = encrypt_tlv(td->enc_ctx, p, tlv_len);
 			if (out_buf) {
 				struct tlv_xor_header *hdr = out_buf;
 				tlv_xor_key(hdr->xor_key);
+				tlv_len = ntohl(hdr->tlv.len);
 				memcpy(hdr->session_guid, td->session_guid, SESSION_GUID_LEN);
-				memcpy(&hdr->tlv, tlv_buf, tlv_len);
-				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + 20);
+				tlv_xor_bytes(hdr->xor_key, &hdr->xor_key + 1, tlv_len + TLV_PREPEND_LEN - sizeof(hdr->xor_key));
 				*len = tlv_len + TLV_PREPEND_LEN;
 			}
 		} else {
@@ -507,6 +494,11 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 
 	HASH_ADD_STR(td->handlers, method, handler);
 	return 0;
+}
+
+void tlv_dispatcher_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx)
+{
+	td->enc_ctx = ctx;
 }
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
@@ -589,7 +581,7 @@ bool tlv_found_first_packet(struct buffer_queue *q)
 	while (buffer_queue_len(q) >= 571) {
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
-		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key));
+		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key)); // this just locates a header
 		size_t len = ntohl(h.tlv.len);
 		if (len == (547) && h.tlv.type == 0) {
 			found = true;
@@ -601,7 +593,7 @@ bool tlv_found_first_packet(struct buffer_queue *q)
 	return found;
 }
 
-struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
+struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , struct buffer_queue *q)
 {
 	/*
 	 * Ensure we have enough bytes for an xor key, packet header and length
@@ -615,7 +607,7 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 	 * Ensure there are enough bytes for the rest of the packet
 	 */
 	buffer_queue_copy(q, &h, sizeof(h));
-	tlv_xor_bytes(h.xor_key, &h.tlv, sizeof(h.tlv));
+	tlv_xor_bytes(h.xor_key, &h.session_guid, sizeof(h) - sizeof(h.xor_key)); // this is just checking length of read no enc applies
 	size_t len = ntohl(h.tlv.len);
 	if (len > INT_MAX || len < TLV_MIN_LEN
 			|| buffer_queue_len(q) < (len + TLV_PREPEND_LEN)) {
@@ -632,22 +624,41 @@ struct tlv_packet * tlv_packet_read_buffer_queue(struct buffer_queue *q)
 		len -= TLV_MIN_LEN;
 		buffer_queue_remove(q, p->buf, len);
 		tlv_xor_bytes(h.xor_key, p->buf, len);
+		if (td != NULL && td->enc_ctx != NULL && ntohl(h.encryption_flags) == td->enc_ctx->flag) {
+			void *result = decrypt_tlv(td->enc_ctx, p, len + TLV_MIN_LEN);
+			if (result) {
+				memset(p->buf, 0, len);
+				memcpy(p->buf, result, len);
+				free(result);
+			}
+		}
 	}
 
 	/*
 	 * Sanity check sub-TLVs
 	 */
 	int offset = 0;
+	bool found_tlv = false;
 	while (offset < len) {
 		struct tlv_header *tlv = (struct tlv_header *)(p->buf + offset);
 		int tlv_len = ntohl(tlv->len);
 		/*
 		 * Ensure the sub-TLV's fit within the packet
+		 * This looks like it is would drop if padding cannot be stripped from cbc enc
+		 * instead of dropping if at least on tlv is here keep all that are complete
+		 * and remove any slack
 		 */
-		if (tlv_len > (len - offset) || tlv_len < TLV_MIN_LEN) {
-			free(p);
-			return NULL;
+		if ((tlv_len > (len - offset) || tlv_len < TLV_MIN_LEN)) {
+			if (!found_tlv) {
+				free(p);
+				return NULL;
+			}
+			else {
+				// If a full packet can't be decoded then truncate and move on.
+				break;
+			}
 		}
+		found_tlv = true;
 		offset += tlv_len;
 		if (tlv_len == 0) {
 			break;
@@ -695,6 +706,8 @@ void tlv_dispatcher_free(struct tlv_dispatcher *td)
 		HASH_ITER(hh, td->handlers, h, h_tmp) {
 			free(h);
 		}
+		if (td->enc_ctx)
+			free_tlv_encryption_ctx(td->enc_ctx);
 		free(td);
 	}
 }
