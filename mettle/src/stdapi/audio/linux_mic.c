@@ -46,7 +46,9 @@ struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx) {
 
 // Kill the `arecord` process
 struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx) {
-    pclose(arecord);
+    if (arecord != NULL) {
+    	pclose(arecord);
+    }
     return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
 
