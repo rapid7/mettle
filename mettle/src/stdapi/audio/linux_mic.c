@@ -48,6 +48,7 @@ struct tlv_packet *audio_mic_start(struct tlv_handler_ctx *ctx) {
 struct tlv_packet *audio_mic_stop(struct tlv_handler_ctx *ctx) {
     if (arecord != NULL) {
     	pclose(arecord);
+	arecord = NULL; // So we don't try to `pclose` it again, put here as a safeguard
     }
     return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 }
