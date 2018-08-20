@@ -4,7 +4,12 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#include <string.h>
+#include <stdlib.h>
+
 #include "lua.h"
+
+char *str_output = NULL;
 
 /*
  * Override 'print' so the extension won't crash
@@ -15,8 +20,13 @@ static int print_to_framework_side(lua_State *lua) {
 	for (int i = 0; i < nargs; i++) {
 		const char *str = lua_tostring(lua, i);
 
-		// Send as TLV
-		// Need to figure out a way to this
+        // Extend buffer
+		str_output = realloc(str_output, strlen(str_output) + strlen(str));
+        if (str_output == NULL) {
+            continue;
+        }
+
+        str_output = strcat(str_output, str); // Add output
 	}
 
 	return 0;
@@ -55,6 +65,15 @@ static struct tlv_packet *request_execute_code(struct tlv_handler_ctx *ctx)
 	// script(s) so one could use the extension to write lua agents.
 
 	lua_close(lua);
+
+    if (str_output != NULL) {
+        // Something was printed
+        r = tlv_packet_add_str(r, TLV_TYPE_STRING, str_output);
+    } else {
+        r = tlv_packet_add_str(r, TLV_TYPE_STRING, "null");
+    }
+
+    free(str_output); // Filled whenever lua prints something
 
 	r = tlv_packet_add_result(r, tlv_result);
 	return r;
