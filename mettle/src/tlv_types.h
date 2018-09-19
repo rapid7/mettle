@@ -126,6 +126,7 @@
 #define TLV_TYPE_SEARCH_ROOT           (TLV_META_TYPE_STRING  | 1232)
 #define TLV_TYPE_SEARCH_RESULTS        (TLV_META_TYPE_GROUP   | 1233)
 
+#define TLV_TYPE_FILE_MODE_T           (TLV_META_TYPE_UINT    | 1234)
 /*
  * Net
  */

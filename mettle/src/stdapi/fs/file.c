@@ -283,6 +283,22 @@ struct tlv_packet *fs_file_copy(struct tlv_handler_ctx *ctx)
 	return NULL;
 }
 
+struct tlv_packet *fs_chmod(struct tlv_handler_ctx *ctx)
+{
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+	uint32_t mode;
+	if (tlv_packet_get_u32(ctx->req, TLV_TYPE_FILE_MODE_T, &mode)) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+
+	struct mettle *m = ctx->arg;
+	eio_chmod(path, mode, 0, fs_cb, ctx);
+	return NULL;
+}
+
 struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
 {
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
@@ -463,6 +479,7 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_expand_path", fs_expand_path, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_file_copy", fs_file_copy, m);
+	tlv_dispatcher_add_handler(td, "stdapi_fs_chmod", fs_chmod, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_mkdir", fs_mkdir, m);
 	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_dir", fs_rmdir, m);
