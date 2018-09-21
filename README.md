@@ -147,3 +147,15 @@ To pull your local changes of mettle into your Metasploit install:
 5. `gem install <path to new gem>` (for example: 'metasploit_payloads-mettle', '0.4.1.pre.dev')
 6. Run `bundle install` in your Framework directory, and ensure you see something like `Using metasploit_payloads-mettle 0.4.1.pre.dev (was 0.4.1)` in the output
 7. Congrats, you are now done!
+
+Pushing out a New Gem
+----------------------
+Right now, only Rapid7 Employees can push out a new Gem.
+1. Test Locally
+2. Check out the version file again to return it to the original state
+3. Increment the version
+4. Land the changes to upstream master
+5. Kick off the Jenkins Payload task Payloads-Mettle-Build-MacOS-Artifacts (must be logged in to the R7 build infrastructure)
+6. Monitor for the new gem on rubygems.org
+7. Once the gem appears, make a PR for bumping the version in framework
+
