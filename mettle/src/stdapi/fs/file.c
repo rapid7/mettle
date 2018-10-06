@@ -18,6 +18,9 @@
 #include <md5.h>
 #include <sha1.h>
 
+#include <libgen.h>
+#include <glob.h>
+
 #include "channel.h"
 #include "log.h"
 #include "tlv.h"
@@ -63,56 +66,58 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 	return tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, &ms, sizeof(ms));
 }
 
-static int
-fs_ls_cb(eio_req *req)
+static void
+fs_ls_async(eio_req *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
-	struct mettle *m = ctx->arg;
 	struct tlv_packet *p;
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	if (path == NULL) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		goto out;
+	}
 
-	if (req->result < 0) {
+	// If there is no wildcard, add one in order to list the directory
+	char search_path[PATH_MAX];
+	if (strchr(path, '*') == NULL) {
+		int bytes_written = snprintf(search_path, PATH_MAX, "%s/*", path);
+		if (bytes_written < 0 || bytes_written > PATH_MAX) {
+			p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+			goto out;
+		}
+		path = search_path;
+	}
+
+	glob_t glob_result;
+	memset(&glob_result, 0, sizeof(glob_result));
+	int ret = glob(path, GLOB_TILDE, NULL, &glob_result);
+	if (ret != 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	} else {
-		const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-		struct eio_dirent *ents = (struct eio_dirent *)req->ptr1;
-		char *names = (char *)req->ptr2;
-
-		for (int i = 0; i < req->result; ++i) {
-			struct eio_dirent *ent = ents + i;
-			char *name = names + ent->nameofs;
-
-			char fq_path[PATH_MAX];
-			snprintf(fq_path, sizeof(fq_path), "%s/%s", path, name);
-			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, name);
-			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, fq_path);
+		for(size_t i = 0; i < glob_result.gl_pathc; ++i) {
+			char *name = glob_result.gl_pathv[i];
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, name);
 			struct stat buf;
-			if (stat(fq_path, &buf) == 0) {
+			if (stat(name, &buf) == 0) {
 #ifndef _WIN32
 				p = add_stat(p, &buf);
 #endif
 			}
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, basename(name));
 		}
 	}
 
+	globfree(&glob_result);
+out:
+
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 	tlv_handler_ctx_free(ctx);
-	return 0;
 }
 
 struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
-
-	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
-	if (path == NULL) {
-		return tlv_packet_response_result(ctx, EINVAL);
-	}
-
-	if (eio_readdir(path, EIO_READDIR_DENTS, 0, fs_ls_cb, ctx) == NULL) {
-		return tlv_packet_response_result(ctx, errno);
-	}
-
+	eio_custom(fs_ls_async, 0, NULL, ctx);
 	return NULL;
 }
 
@@ -138,7 +143,6 @@ fs_stat_cb(eio_req *req)
 struct tlv_packet *
 fs_stat(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_FILE_PATH);
 	if (path == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
@@ -180,7 +184,6 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
 
-	struct mettle *m = ctx->arg;
 	eio_mkdir(path, 0777, 0, fs_cb, ctx);
 	return NULL;
 }
@@ -193,7 +196,6 @@ fs_rmdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
 
-	struct mettle *m = ctx->arg;
 	eio_rmdir(path, 0, fs_cb, ctx);
 	return NULL;
 }
@@ -278,7 +280,6 @@ out:
 
 struct tlv_packet *fs_file_copy(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
 	eio_custom(fs_file_copy_async, 0, NULL, ctx);
 	return NULL;
 }
@@ -294,7 +295,6 @@ struct tlv_packet *fs_chmod(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, EINVAL);
 	}
 
-	struct mettle *m = ctx->arg;
 	eio_chmod(path, mode, 0, fs_cb, ctx);
 	return NULL;
 }
@@ -306,7 +306,6 @@ struct tlv_packet *fs_delete_file(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, EINVAL);
 	}
 
-	struct mettle *m = ctx->arg;
 	eio_unlink(path, 0, fs_cb, ctx);
 	return NULL;
 }
@@ -366,7 +365,6 @@ out:
 
 struct tlv_packet *fs_md5(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
 	eio_custom(fs_md5_async, 0, NULL, ctx);
 	return NULL;
 }
@@ -412,7 +410,6 @@ out:
 
 struct tlv_packet *fs_sha1(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
 	eio_custom(fs_sha1_async, 0, NULL, ctx);
 	return NULL;
 }
