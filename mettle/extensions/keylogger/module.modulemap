@@ -1,5 +1,5 @@
 module swift2mettle [system] {
-	header "/Users/pebarry/mettle/mettle/extensions/keylogger/swift2mettle.h"
+	header "./swift2mettle.h"
 	link "swift2mettle"
 	link "mettle"
 	link "ev"
