@@ -10,7 +10,7 @@ libswift2mettle_la_SOURCES = swift2mettle.c
 CLEANFILES = keylogger
 
 keylogger: CallBackFunctions.swift Keylogger.swift main.swift
-	swiftc -v -L $(abs_top_builddir)/../lib/ -I $(top_srcdir)/extensions/keylogger -target x86_64-apple-macosx10.13 $^ -o $@
+	swiftc -v -L $(abs_top_builddir)/../lib/ -I $(top_srcdir)/extensions/keylogger -target x86_64-apple-macosx10.11 $^ -o $@
 	cp $@ $(bindir)/
 
 install-exec-hook: keylogger
