@@ -120,20 +120,17 @@ int c2_add_transport_uri(struct c2 *c2, const char *uri)
 	struct c2_transport *t = NULL;
 	struct c2_transport_type *type = c2_find_transport_type(c2, uri);
 	if (type == NULL) {
-		fprintf(stderr, "a");
 		goto err;
 	}
 
 	t = calloc(1, sizeof *t);
 	if (t == NULL) {
-		fprintf(stderr, "a");
 		goto err;
 	}
 	t->c2 = c2;
 	t->type = type;
 	t->uri = strdup(uri);
 	if (t->uri == NULL) {
-		fprintf(stderr, "b");
 		goto err;
 	}
 
@@ -142,7 +139,6 @@ int c2_add_transport_uri(struct c2 *c2, const char *uri)
 	 */
 	t->dest = strstr(t->uri, "://");
 	if (t->dest == NULL || strlen(t->dest) < 4) {
-		fprintf(stderr, "c");
 		goto err;
 	}
 	t->dest += 3;
@@ -155,7 +151,6 @@ int c2_add_transport_uri(struct c2 *c2, const char *uri)
 
 	return 0;
 err:
-	fprintf(stderr, "erg");
 	if (t) {
 		free(t->uri);
 		free(t);
