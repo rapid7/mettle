@@ -99,7 +99,7 @@ tcp_client_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PEER_PORT, &dst_port);
 
 	src_host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
-	tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_HOST, &src_port);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_PORT, &src_port);
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_CONNECT_RETRIES, &retries);
 
