@@ -93,6 +93,9 @@ fs_ls_async(eio_req *req)
 
 	glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
+#ifndef GLOB_TILDE
+#define GLOB_TILDE 0
+#endif
 	int ret = glob(path, GLOB_TILDE, NULL, &glob_result);
 	if (ret != 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
