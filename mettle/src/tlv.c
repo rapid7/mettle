@@ -150,7 +150,7 @@ int tlv_packet_get_bool(struct tlv_packet *p, uint32_t value_type, bool *value)
 	if (!buf || len != 1)
 		return -1;
 
-	*value = *(bool *)(buf);
+	*value = *buf;
 	return 0;
 }
 
@@ -161,7 +161,8 @@ int tlv_packet_get_u16(struct tlv_packet *p, uint32_t value_type, uint16_t *valu
 	if (!buf || len != 2)
 		return -1;
 
-	*value = ntohs(*(uint16_t *)(buf));
+	memcpy(value, buf, 2);
+	*value = ntohs(*value);
 	return 0;
 }
 
@@ -172,7 +173,9 @@ int tlv_packet_get_u32(struct tlv_packet *p, uint32_t value_type, uint32_t *valu
 	if (!buf || len != 4)
 		return -1;
 
-	*value = ntohl(*(uint32_t *)(buf));
+	memcpy(value, buf, 4);
+	*value = ntohl(*value);
+
 	return 0;
 }
 
@@ -183,7 +186,8 @@ int tlv_packet_get_u64(struct tlv_packet *p, uint32_t value_type, uint64_t *valu
 	if (!buf || len != 8)
 		return -1;
 
-	*value = dnet_ntohll(*(uint64_t *)(buf));
+	memcpy(value, buf, 8);
+	*value = dnet_ntohll(*value);
 	return 0;
 }
 
