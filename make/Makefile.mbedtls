@@ -1,4 +1,4 @@
-MBEDTLS_VERSION=2.6.0
+MBEDTLS_VERSION=2.14.1
 
 MBEDTLS_ENV=
 ifneq (,$(findstring mingw,$(TARGET)))
