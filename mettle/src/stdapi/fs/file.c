@@ -19,7 +19,6 @@
 #include <sha1.h>
 
 #include <libgen.h>
-#include <glob.h>
 
 #include "channel.h"
 #include "log.h"
@@ -66,6 +65,10 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 	return tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, &ms, sizeof(ms));
 }
 
+#ifdef HAVE_GLOB
+
+#include <glob.h>
+
 static void
 fs_ls_async(eio_req *req)
 {
@@ -100,9 +103,7 @@ fs_ls_async(eio_req *req)
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, name);
 			struct stat buf;
 			if (stat(name, &buf) == 0) {
-#ifndef _WIN32
 				p = add_stat(p, &buf);
-#endif
 			}
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, basename(name));
 		}
@@ -120,6 +121,62 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 	eio_custom(fs_ls_async, 0, NULL, ctx);
 	return NULL;
 }
+
+#else
+
+static int
+fs_ls_cb(eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	struct mettle *m = ctx->arg;
+	struct tlv_packet *p;
+
+	if (req->result < 0) {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	} else {
+		const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		struct eio_dirent *ents = (struct eio_dirent *)req->ptr1;
+		char *names = (char *)req->ptr2;
+
+		for (int i = 0; i < req->result; ++i) {
+			struct eio_dirent *ent = ents + i;
+			char *name = names + ent->nameofs;
+
+			char fq_path[PATH_MAX];
+			snprintf(fq_path, sizeof(fq_path), "%s/%s", path, name);
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, name);
+			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, fq_path);
+			struct stat buf;
+			if (stat(fq_path, &buf) == 0) {
+#ifndef _WIN32
+				p = add_stat(p, &buf);
+#endif
+			}
+		}
+	}
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+	return 0;
+}
+
+struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+
+	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	if (path == NULL) {
+		return tlv_packet_response_result(ctx, EINVAL);
+	}
+
+	if (eio_readdir(path, EIO_READDIR_DENTS, 0, fs_ls_cb, ctx) == NULL) {
+		return tlv_packet_response_result(ctx, errno);
+	}
+
+	return NULL;
+}
+#endif
 
 static int
 fs_stat_cb(eio_req *req)
