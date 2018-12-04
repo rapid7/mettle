@@ -122,12 +122,11 @@ int main(int argc, char **argv)
 	close(fd);
 
 	// Setup area in memory to contain the new binary image
-	mapping = mmap(NULL, 0x1000000, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+	mapping = calloc(1, 0x1000000);
 	if(mapping == MAP_FAILED) {
 		printf("Failed to mmap(): %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	memset(mapping, 0, 0x1000000);
 
 	printf("data @ %p, mapping @ %p\n", data, mapping);
 
