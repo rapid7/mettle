@@ -1,13 +1,5 @@
 LIBPCAP_VERSION=1.9.0
 
-$(BUILD)/libpcap/configure:
-	@echo "Unpacking libpcap for $(TARGET)"
-	@mkdir -p $(BUILD)
-	@cd $(BUILD); \
-		rm -fr libpcap; \
-		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
-		mv libpcap-$(LIBPCAP_VERSION) libpcap
-
 LIBPCAP_CONFIG_FLAGS = --disable-dbus --disable-usb
 ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS += --with-pcap=linux
@@ -15,8 +7,17 @@ endif
 
 ifneq (,$(findstring -iphone-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS=--with-pcap=bpf --disable-universal
-    LIBPCAP_FIXUP=cp ./mettle/include/compat/net/bpf.h $(BUILD)/libpcap/net/bpf.h
+    LIBPCAP_FIXUP=mkdir $(BUILD)/libpcap/net; cp ./mettle/include/compat/net/* $(BUILD)/libpcap/net/
 endif
+
+$(BUILD)/libpcap/configure:
+	@echo "Unpacking libpcap for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr libpcap; \
+		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
+		mv libpcap-$(LIBPCAP_VERSION) libpcap
+	$(LIBPCAP_FIXUP)
 
 $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
@@ -26,7 +27,6 @@ $(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS
 
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"
-	@$(LIBPCAP_FIXUP)
 	@cd $(BUILD)/libpcap; \
 		$(MAKE) $(LOGBUILD) ; \
 	       	$(MAKE_INSTALL) $(LOGBUILD)
