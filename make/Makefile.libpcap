@@ -8,7 +8,7 @@ $(BUILD)/libpcap/configure:
 		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
 		mv libpcap-$(LIBPCAP_VERSION) libpcap
 
-LIBPCAP_CONFIG_FLAGS = --disable-dbus
+LIBPCAP_CONFIG_FLAGS = --disable-dbus --disable-usb
 ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS += --with-pcap=linux
 endif
