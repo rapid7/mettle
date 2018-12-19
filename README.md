@@ -33,7 +33,7 @@ On macOS you will need the following:
 xcode-select --install
 
 # Dependencies
-brew install coreutils m4 automake mingw-w64
+brew install coreutils m4 automake mingw-w64 libtool
 ```
 
 Make Targets

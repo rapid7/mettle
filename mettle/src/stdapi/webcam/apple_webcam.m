@@ -114,7 +114,7 @@ int count;
     CIImage* ciImage = [CIImage imageWithCVImageBuffer: head];
     NSBitmapImageRep* bitmapRep = [[NSBitmapImageRep alloc] initWithCIImage: ciImage];
     NSDictionary *props = [NSDictionary dictionary];
-    return [bitmapRep representationUsingType:NSJPEGFileType properties: props];
+    return [bitmapRep representationUsingType:NSBitmapImageFileTypeJPEG properties: props];
 #endif
   }
   return nil;
