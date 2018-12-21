@@ -40,7 +40,11 @@ module MetasploitPayloads
     def generate_argv
       cmd_line = 'mettle '
       @config.each do |opt, val|
-        cmd_line << "-#{short_opt(opt)} \"#{val}\" "
+        if val.is_a? String
+          cmd_line << "-#{short_opt(opt)}\"#{val}\" "
+        else
+          cmd_line << "-#{short_opt(opt)}#{val.to_s} "
+        end
       end
       if cmd_line.length > CMDLINE_MAX
         fail RuntimeError, 'mettle argument list too big', caller
@@ -52,19 +56,19 @@ module MetasploitPayloads
     def short_opt(opt)
       case opt
       when :background
-        'b'
+        'b '
       when :debug
         'd'
       when :name
-        'n'
+        'n '
       when :log_file
-        'o'
+        'o '
       when :uri
-        'u'
+        'u '
       when :uuid
-        'U'
+        'U '
       when :session_guid
-        'G'
+        'G '
       else
         fail RuntimeError, "unknown mettle option #{opt}", caller
       end
