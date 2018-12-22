@@ -10,7 +10,7 @@ environment.
 Building on Linux
 ------------
 
-Debain, Ubuntu, and derivatives are most supported for builds. To build, your need at least 5GB of free disk space, and the following packages available:
+Debain, Ubuntu, and derivatives are most supported for builds. To build, you need at least 5GB of free disk space, and the following packages available:
 
 ```
 # Dependencies
