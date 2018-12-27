@@ -43,7 +43,7 @@ module MetasploitPayloads
         if val.is_a? String
           cmd_line << "-#{short_opt(opt)}\"#{val}\" "
         else
-          cmd_line << "-#{short_opt(opt)}#{val.to_s} "
+          cmd_line << "-#{short_opt(opt)}#{val} "
         end
       end
       if cmd_line.length > CMDLINE_MAX
