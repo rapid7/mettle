@@ -100,7 +100,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 			}
 			break;
 		case 'd':
-			if (optarg) {
+			{
 				const char *errstr = NULL;
 				log_level = strtonum(optarg, 0, 3, &errstr);
 				if (errstr != NULL) {
@@ -112,7 +112,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 			}
 			break;
 		case 'b':
-			if (optarg) {
+			{
 				const char *errstr = NULL;
 				int val = strtonum(optarg, 0, 1, &errstr);
 				if (errstr != NULL) {
