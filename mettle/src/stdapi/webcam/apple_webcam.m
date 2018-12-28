@@ -114,7 +114,7 @@ int count;
     CIImage* ciImage = [CIImage imageWithCVImageBuffer: head];
     NSBitmapImageRep* bitmapRep = [[NSBitmapImageRep alloc] initWithCIImage: ciImage];
     NSDictionary *props = [NSDictionary dictionary];
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200
     // Verified that macOS 10.11 at least does not have this
     return [bitmapRep representationUsingType:NSBitmapImageFileTypeJPEG properties: props];
 #else
