@@ -23,9 +23,9 @@ static void usage(const char *name)
 	printf("  -h, --help             display help\n");
 	printf("  -u, --uri <uri>        add connection URI\n");
 	printf("  -U, --uuid <uuid>      set the UUID (base64)\n");
-	printf("  -d, --debug [level]    enable debug output\n");
+	printf("  -d, --debug <level>    enable debug output (set to 0 to disable)\n");
 	printf("  -o, --out <file>       write debug output to a file\n");
-	printf("  -b, --background [0|1] start as a background service\n");
+	printf("  -b, --background <0|1> start as a background service (0 disable, 1 enable)\n");
 	printf("  -p, --persist [none|install|uninstall] manage persistence\n");
 	printf("  -n, --name <name>      name to start as\n");
 	printf("\n");
@@ -50,17 +50,17 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	int index = 0;
 
 	struct option options[] = {
-		{"debug", optional_argument, NULL, 'd'},
+		{"debug", required_argument, NULL, 'd'},
 		{"out", required_argument, NULL, 'o'},
 		{"uri", required_argument, NULL, 'u'},
 		{"uuid", required_argument, NULL, 'U'},
 		{"session-guid", required_argument, NULL, 'G'},
-		{"background", optional_argument, NULL, 'b'},
+		{"background", required_argument, NULL, 'b'},
 		{"persist", required_argument, NULL, 'p'},
 		{"name", required_argument, NULL, 'n'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:G:d::o:b::p:n:";
+	const char *short_options = "hu:U:G:d:o:b:p:n:";
 	const char *out = NULL;
 	char *name = strdup("mettle");
 	bool name_flag = false;
@@ -100,22 +100,19 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 			}
 			break;
 		case 'd':
-			if (optarg) {
+			{
 				const char *errstr = NULL;
-				int val = strtonum(optarg, 0, 3, &errstr);
+				log_level = strtonum(optarg, 0, 3, &errstr);
 				if (errstr != NULL) {
 					fprintf(stderr, "invalid debug level '%s': %s\n", optarg, errstr);
 					return -1;
 				}
-				log_level = val;
-			} else {
-				log_level++;
+				log_set_level(log_level);
+				debug = (log_level > 0);
 			}
-			log_set_level(log_level);
-			debug = (log_level > 0);
 			break;
 		case 'b':
-			if (optarg) {
+			{
 				const char *errstr = NULL;
 				int val = strtonum(optarg, 0, 1, &errstr);
 				if (errstr != NULL) {
@@ -123,8 +120,6 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 					return -1;
 				}
 				background = val == 1;
-			} else {
-				background = true;
 			}
 			break;
 		case 'o':
