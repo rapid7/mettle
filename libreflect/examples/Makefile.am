@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_builddir)/include
+AM_CPPFLAGS = -I$(abs_top_srcdir)/include
 
 bin_PROGRAMS = noexec
 
