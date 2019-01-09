@@ -1,0 +1,19 @@
+$(ROOT)/libreflect/configure: $(ROOT)/libreflect/configure.ac
+	@mkdir -p $(BUILD)
+	@cd $(ROOT)/libreflect; \
+		autoreconf -i $(LOGBUILD)
+
+LIBREFLECT_TARGETS = $(BUILD)/lib/libreflect.a
+
+$(BUILD)/libreflect/Makefile: build/tools $(ROOT)/libreflect/configure
+	@echo "Configuring libreflect for $(TARGET)"
+	@mkdir -p $(BUILD)/libreflect
+	@cd $(BUILD)/libreflect; \
+		$(ENV) $(ROOT)/libreflect/$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/bin/libreflect.built: $(BUILD)/libreflect/Makefile
+	@echo "Building libreflect for $(TARGET)"
+	@cd $(BUILD)/libreflect; \
+		$(MAKE_INSTALL) $(LOGBUILD)
+
+libreflect: $(BUILD)/bin/libreflect.built $(LIBREFLECT_TARGETS)
