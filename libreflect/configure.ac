@@ -33,8 +33,27 @@ dnl We'll need these shared checks when we start doing fancier stuff
 dnl CHECK_LIBC_COMPAT
 dnl CHECK_PROGNAME
 
-CFLAGS="$CFLAGS -Wall -Werror -pedantic -std=gnu99"
-CFLAGS="$CFLAGS -DBUILD_TUPLE=\\\"$TARGET\\\""
+dnl TODO: add checks that the resulting binaries are actually static PIEs
+AX_CHECK_LINK_FLAG([--static-pie], [
+			dnl --static-pie was added in GCC 8
+			STATIC_PIE=--static-pie
+			], [
+			AX_CHECK_LINK_FLAG([--pie], [
+					dnl The mettle toolchain has extra magic to allow --static and --pie
+					dnl to work together. Accepted, but produces incorrect behavior in
+					dnl GCC 8. That case is caught by the preceding check.
+					STATIC_PIE="--static --pie"
+					], [
+					AC_MSG_WARN([cannot build static PIEs, skipping examples])
+					], [--static]
+)])
+
+AS_IF([test "x$STATIC_PIE" = "x"], [
+			AM_CONDITIONAL([COMPILE_EXAMPLES], [false])
+			], [
+			AM_CONDITIONAL([COMPILE_EXAMPLES], [true])
+			AC_SUBST([STATIC_PIE], [$STATIC_PIE])
+])
 
 AC_CONFIG_FILES([
 	Makefile
@@ -42,14 +61,7 @@ AC_CONFIG_FILES([
 	examples/Makefile
 ])
 
-dnl TODO: add checks for building static PIEs when building the examples
-dnl AC_ARG_ENABLE([staticpie],
-dnl 	AS_HELP_STRING([--enable-staticpie], [Building Static PIE]))
-dnl AS_IF([test "x$enable_staticpie" = "xyes"], [
-dnl 		AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])
-dnl 		AM_CONDITIONAL([MAKEBIN],  [true])
-dnl         ], [
-dnl 		AM_CONDITIONAL([MAKEBIN],  [false])
-dnl ])
+CFLAGS="$CFLAGS -Wall -Werror -pedantic -std=gnu99"
+CFLAGS="$CFLAGS -DBUILD_TUPLE=\\\"$TARGET\\\""
 
 AC_OUTPUT
