@@ -23,6 +23,9 @@ AM_CONDITIONAL([HOST_LINUX],   [test x$HOST_OS = xlinux])
 AC_SUBST([HOST_OS], [$HOST_OS])
 AC_SUBST([HOST_CPU], [$host_cpu])
 
+dnl Check that we have assembly to do the thing
+AC_CHECK_HEADER([$srcdir/arch/$HOST_OS/$HOST_CPU/arch_jump.h], [], [AC_MSG_ERROR([$HOST_OS-$HOST_CPU not supported])])
+
 dnl TODO: add checks for non-Linux ELF-based systems that use headers other
 dnl than <link.h> for macros similar to, but named differently from, ElfW(X)
 
