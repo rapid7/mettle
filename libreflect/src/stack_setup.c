@@ -77,16 +77,25 @@ void stack_setup(size_t *stack_base, int argc, char **argv, char **env, size_t *
 	size_t *auxv_base;
 	int ii;
 
+	dprint("New stack: %p\n", (void *)stack_base);
+
 	stack_base[0] = argc;
+	dprint("  0x%08zx\n", stack_base[0]);
+
 	for (ii = 0; ii < argc; ii++) {
 		stack_base[1 + ii] = (size_t)argv[ii];
+		dprint("  0x%08zx\n", stack_base[1 + ii]);
 	}
 	stack_base[1 + ii] = 0;
+	dprint("  0x%08zx\n", stack_base[1 + ii]);
 
 	for (ii = 0; env[ii]; ii++) {
 		stack_base[1 + argc + ii] = (size_t)env[ii];
+		dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
 	}
 	stack_base[1 + argc + ii] = 0;
+	dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
+
 	auxv_base = stack_base + 1 + argc + ii + 1;
 
 	if(auxv) {
@@ -100,4 +109,9 @@ void stack_setup(size_t *stack_base, int argc, char **argv, char **env, size_t *
 	}
 
 	load_program_info(auxv_base, exe, interp);
+#ifdef DEBUG
+	for (ii = 0; auxv_base[ii]; ii += 2) {
+		dprint("  0x%08zx\t0x%08zx\n", auxv_base[ii], auxv_base[ii+1]);
+	}
+#endif
 }
