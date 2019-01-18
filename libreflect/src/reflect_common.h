@@ -8,6 +8,9 @@
 #endif
 
 #if DEBUG
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #define dprint(...) (printf(__VA_ARGS__))
 #else
 #define dprint(...)

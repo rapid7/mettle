@@ -5,6 +5,13 @@
 #include <link.h>
 
 /*
+ * High-level interface
+ */
+void reflect_execv(const unsigned char *elf, char **argv);
+void reflect_execve(const unsigned char *elf, char **argv, char **env);
+void reflect_execves(const unsigned char *elf, char **argv, char **env, size_t *stack);
+
+/*
  * ELF mapping interface
  */
 struct mapped_elf {
@@ -13,7 +20,7 @@ struct mapped_elf {
 	char *interp;
 };
 
-void map_elf(unsigned char *data, struct mapped_elf *obj);
+void map_elf(const unsigned char *data, struct mapped_elf *obj);
 
 /*
  * Stack creation and setup interface

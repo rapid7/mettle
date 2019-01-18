@@ -89,11 +89,16 @@ int main(int argc, char **argv, char **env)
 
 
 	// copy and modify our initial argv and env to reuse
+
 	size_t *new_stack = (size_t *)argv - 1;
+
 	// If allocating a new stack, be sure to give it lots of space since the OS
 	// won't always honor MAP_GROWSDOWN:
 	//size_t *new_stack = (void *) (2047 * PAGE_SIZE + mmap(0, 2048 * PAGE_SIZE,
 	//	PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_GROWSDOWN, -1, 0));
+	// Or use the high level API:
+	// reflect_execv(data, argv + 1);
+
 	stack_setup(new_stack, argc - 1, argv + 1, env, NULL,
 			exe.ehdr, interp.ehdr);
 

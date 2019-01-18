@@ -12,14 +12,14 @@
 // Non-multilib compatible, makes a mmap(2) allocation and copy of the ELF object
 //
 // TODO: a version that reads the file from a stream?
-void map_elf(unsigned char *data, struct mapped_elf *obj)
+void map_elf(const unsigned char *data, struct mapped_elf *obj)
 {
 	ElfW(Addr) dest = 0;
 	ElfW(Ehdr) *ehdr;
 	ElfW(Phdr) *phdr;
 
 	unsigned char *mapping = MAP_FAILED; // target memory location
-	unsigned char *source = 0;
+	const unsigned char *source = 0;
 	size_t len, virtual_offset = 0, total_to_map = 0;
 	int ii, prot;
 
