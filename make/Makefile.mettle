@@ -3,6 +3,7 @@ include make/Makefile.json-c
 include make/Makefile.libdnet
 include make/Makefile.libev
 include make/Makefile.libeio
+include make/Makefile.libreflect
 include make/Makefile.linenoise
 include make/Makefile.libsigar
 include make/Makefile.libz
@@ -33,6 +34,10 @@ else
         ifneq "$(TARGET)" "native"
             METTLE_TARGETS += $(BUILD)/bin/mettle.bin
             METTLE_DEPS += $(BUILD)/lib/libmbedtls.a
+
+			# TODO: enable libreflect and static PIE when supported by a native
+			# build as well
+            METTLE_DEPS += libreflect
             METTLE_OPTS += --enable-staticpie
         endif
         ifneq (,$(findstring x86_64,$(TARGET)))

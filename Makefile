@@ -4,7 +4,6 @@ all: mettle
 include make/Makefile.tools
 include make/Makefile.common
 include make/Makefile.mettle
-include make/Makefile.libreflect
 
 distclean:
 	@rm -fr $(BUILD)
