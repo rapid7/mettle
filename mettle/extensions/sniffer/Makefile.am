@@ -12,5 +12,5 @@ sniffer_LDFLAGS = $(PLATFORM_LDADD)
 
 if MAKEBIN
 install-exec-hook:
-	$(top_builddir)/../../tools/elf2bin $(bindir)/$(bin_PROGRAMS) $(bindir)/$(bin_PROGRAMS).bin
+	elf2bin $(bindir)/$(bin_PROGRAMS) $(bindir)/$(bin_PROGRAMS).bin
 endif

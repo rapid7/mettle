@@ -12,7 +12,8 @@ include make/Makefile.libpcap
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
-		autoreconf -i $(LOGBUILD)
+		autoreconf -i $(LOGBUILD); \
+		$(CONFIG_FIXUP) .
 
 METTLE_DEPS =
 METTLE_TARGETS =
@@ -35,7 +36,7 @@ else
     endif
 endif
 
-$(BUILD)/mettle/Makefile: build/tools $(ROOT)/mettle/configure \
+$(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	$(METTLE_DEPS) \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
@@ -54,7 +55,7 @@ $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built
-	$(ELF2BIN) $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
+	elf2bin $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
 
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 

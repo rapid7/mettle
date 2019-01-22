@@ -23,17 +23,10 @@ environment as well.
 Building on macOS
 ------------
 
-On macOS you will need the following:
+On macOS you will need to install the xcode command line tools as follows:
 
 ```
-# Install brew (if you have not already)
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-
-# Install command line tools
 xcode-select --install
-
-# Dependencies
-brew install coreutils m4 automake mingw-w64 libtool
 ```
 
 Make Targets

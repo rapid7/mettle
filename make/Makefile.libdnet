@@ -4,7 +4,8 @@ $(BUILD)/libdnet/configure:
 	@cd $(BUILD); \
 		rm -fr libdnet; \
 		$(TAR) zxf $(ROOT)/deps/libdnet-1.12.tar.gz; \
-		mv libdnet-1.12 libdnet
+		mv libdnet-1.12 libdnet; \
+		$(CONFIG_FIXUP) libdnet
 
 DNET_CONFIGURE_FLAGS:=""
 ifneq "$(TARGET)" "native"
@@ -15,7 +16,7 @@ ifneq "$(TARGET)" "native"
     endif
 endif
 
-$(BUILD)/libdnet/Makefile: build/tools $(BUILD)/libdnet/configure $(DNET_DEPS)
+$(BUILD)/libdnet/Makefile: $(TOOLS) $(BUILD)/libdnet/configure $(DNET_DEPS)
 	@echo "Configuring libdnet for $(TARGET)"
 	@mkdir -p $(BUILD)/libdnet
 	@cd $(BUILD)/libdnet; \

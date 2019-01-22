@@ -8,7 +8,7 @@ $(BUILD)/json-c/configure:
 		$(TAR) zxf $(DEPS)/json-c-$(JSON_C_VERSION).tar.gz; \
 		mv json-c-$(JSON_C_VERSION) json-c
 
-$(BUILD)/json-c/Makefile: build/tools $(BUILD)/json-c/configure
+$(BUILD)/json-c/Makefile: $(TOOLS) $(BUILD)/json-c/configure
 	@echo "Configuring json-c for $(TARGET)"
 	@cd $(BUILD)/json-c; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

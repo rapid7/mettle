@@ -37,7 +37,9 @@ ifeq (,$(findstring mingw,$(TARGET)))
 endif
 
 CPPFLAGS:=-I$(BUILD)/include -DCURL_STATICLIB
+CONFIG_FIXUP=cp $(DEPS)/config.guess $(DEPS)/config.sub
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
+CONFIGURE_STATIC=configure --prefix=$(BUILD) --static
 ifneq "$(TARGET)" "native"
 	HOST=$(TARGET)
 endif
@@ -52,7 +54,7 @@ ifneq (,$(findstring musl,$(TARGET)))
     endif
 endif
 
-ENV=LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)"
+ENV=ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"
@@ -61,13 +63,3 @@ endif
 ifeq "$(VERBOSE)" "1"
     LOGBUILD:=
 endif
-
-ifeq "$(shell uname -s)" "Darwin"
-    ELLCC_HOST=osx
-    ifeq ("$(wildcard /usr/local/opt/coreutils/libexec/gnubin/install)", "")
-        $(info "Gnu install is not found, try 'brew install coreutils")
-    else
-        export PATH:=/usr/local/opt/coreutils/libexec/gnubin:$(PATH)
-    endif
-endif
-

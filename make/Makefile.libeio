@@ -6,9 +6,10 @@ $(BUILD)/libeio/configure:
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/libeio; \
 		$(TAR) zxf $(DEPS)/libeio-$(LIBEIO_VERSION).tar.gz; \
-		mv libeio-$(LIBEIO_VERSION) libeio
+		mv libeio-$(LIBEIO_VERSION) libeio; \
+		$(CONFIG_FIXUP) libeio
 
-$(BUILD)/libeio/Makefile: build/tools $(BUILD)/libeio/configure $(LIBEIO_DEPS)
+$(BUILD)/libeio/Makefile: $(TOOLS) $(BUILD)/libeio/configure $(LIBEIO_DEPS)
 	@echo "Configuring libeio for $(TARGET)"
 	@cd $(BUILD)/libeio; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)

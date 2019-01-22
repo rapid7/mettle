@@ -1,6 +1,6 @@
-LIBPCAP_VERSION=1.9.0
+LIBPCAP_VERSION=1.10.0-PRE-GIT
 
-LIBPCAP_CONFIG_FLAGS = --disable-dbus --disable-usb
+LIBPCAP_CONFIG_FLAGS = --disable-dbus --disable-usb --disable-rdma
 ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS += --with-pcap=linux
 endif
@@ -16,10 +16,11 @@ $(BUILD)/libpcap/configure:
 	@cd $(BUILD); \
 		rm -fr libpcap; \
 		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
-		mv libpcap-$(LIBPCAP_VERSION) libpcap
-	$(LIBPCAP_FIXUP)
+		mv libpcap-$(LIBPCAP_VERSION) libpcap; \
+		$(CONFIG_FIXUP) libpcap
+	@$(LIBPCAP_FIXUP)
 
-$(BUILD)/libpcap/Makefile: build/tools $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
+$(BUILD)/libpcap/Makefile: $(TOOLS) $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \

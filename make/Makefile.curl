@@ -1,6 +1,6 @@
-LIBCURL_VERSION=7.62.0
+LIBCURL_VERSION=7.63.0
 
-LIBCURL_DEPS = build/tools $(BUILD)/lib/libz.a
+LIBCURL_DEPS = $(TOOLS) $(BUILD)/lib/libz.a
 LIBCURL_ENV =
 LIBCURL_OPTS =
 
@@ -15,13 +15,16 @@ LIBCURL_OPTS =
     endif
 #endif
 
-$(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS)
+$(BUILD)/curl/configure:
 	@echo "Unpacking curl for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/curl; \
 		$(TAR) zxf $(DEPS)/curl-$(LIBCURL_VERSION).tar.gz; \
-		mv curl-$(LIBCURL_VERSION) curl
+		mv curl-$(LIBCURL_VERSION) curl; \
+		$(CONFIG_FIXUP) curl
+
+$(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS) $(BUILD)/curl/configure
 	@echo "Configuring curl for $(TARGET)"
 	@cd $(BUILD)/curl; \
 		$(LIBCURL_ENV) $(ENV) ./$(CONFIGURE) \
