@@ -4,19 +4,19 @@ $(BUILD)/libsigar/configure:
 	@cd $(BUILD); \
 		rm -fr libsigar; \
 		$(TAR) zxf $(ROOT)/deps/libsigar-1.6.2.tar.gz; \
-		mv libsigar-1.6.2 libsigar; \
-		$(CONFIG_FIXUP) libsigar
+		mv libsigar-1.6.2 libsigar
 
 $(BUILD)/libsigar/Makefile: $(TOOLS) $(BUILD)/libsigar/configure
 	@echo "Configuring libsigar for $(TARGET)"
 	@mkdir -p $(BUILD)/libsigar
-	@cd $(BUILD)/libsigar; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/libsigar; \
+		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
 
 $(BUILD)/lib/libsigar.a: $(BUILD)/libsigar/Makefile
 	@echo "Building libsigar for $(TARGET)"
-	@cd $(BUILD)/libsigar; \
-		$(MAKE) $(LOGBUILD) ; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/libsigar; \
+		$(ENV) $(MAKE) $(LOGBUILD) ; \
 	       	$(MAKE_INSTALL) $(LOGBUILD)
 
 libsigar: $(BUILD)/lib/libsigar.a

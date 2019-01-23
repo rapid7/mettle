@@ -12,8 +12,7 @@ include make/Makefile.libpcap
 $(ROOT)/mettle/configure: $(ROOT)/mettle/configure.ac
 	@mkdir -p $(BUILD)
 	@cd $(ROOT)/mettle; \
-		autoreconf -i $(LOGBUILD); \
-		$(CONFIG_FIXUP) .
+		autoreconf -i $(LOGBUILD)
 
 METTLE_DEPS =
 METTLE_TARGETS =
@@ -45,13 +44,14 @@ $(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
-	@cd $(BUILD)/mettle; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/mettle; \
+		$(CONFIG_FIXUP) \
 		$(ENV) $(ROOT)/mettle/$(CONFIGURE) $(METTLE_OPTS) $(LOGBUILD)
 
 $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 	@echo "Building mettle for $(TARGET)"
 	@rm -f build/$(TARGET_BUILD_DIR)/bin/*
-	@cd $(BUILD)/mettle; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/mettle; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built

@@ -15,17 +15,6 @@ ERRFILE=$(BUILD)/build.err
 DEPS=$(ROOT)/deps
 OUTPUTDIR=$(BUILD)/data
 
-ifneq (,$(findstring darwin,$(TARGET)))
-    LDFLAGS:=$(LDFLAGS) -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreImage -framework CoreVideo
-    ifneq (,$(findstring iphone,$(TARGET)))
-        export SDKROOT=$(shell xcrun --sdk iphoneos --show-sdk-path)
-        LDFLAGS:=$(LDFLAGS) -framework UIKit -framework CoreGraphics
-    else
-        export SDKROOT=$(shell xcrun --sdk macosx --show-sdk-path)
-        LDFLAGS:=$(LDFLAGS) -framework AppKit
-    endif
-endif
-
 CFLAGS:=$(CFLAGS) -Os -Wno-attributes
 ifeq (,$(findstring mingw,$(TARGET)))
     CFLAGS:=$(CFLAGS) -fPIE
@@ -36,8 +25,8 @@ ifeq (,$(findstring mingw,$(TARGET)))
     endif
 endif
 
-CPPFLAGS:=-I$(BUILD)/include -DCURL_STATICLIB
-CONFIG_FIXUP=cp $(DEPS)/config.guess $(DEPS)/config.sub
+CPPFLAGS:=$(CPPFLAGS) -I$(BUILD)/include -DCURL_STATICLIB
+CONFIG_FIXUP=cp $(DEPS)/config.guess $(DEPS)/config.sub . ;
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 CONFIGURE_STATIC=configure --prefix=$(BUILD) --static
 ifneq "$(TARGET)" "native"
@@ -54,7 +43,7 @@ ifneq (,$(findstring musl,$(TARGET)))
     endif
 endif
 
-ENV=ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"
+ENV:=$(ENV) ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"

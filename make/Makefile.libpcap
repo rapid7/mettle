@@ -16,20 +16,20 @@ $(BUILD)/libpcap/configure:
 	@cd $(BUILD); \
 		rm -fr libpcap; \
 		$(TAR) zxf $(ROOT)/deps/libpcap-$(LIBPCAP_VERSION).tar.gz; \
-		mv libpcap-$(LIBPCAP_VERSION) libpcap; \
-		$(CONFIG_FIXUP) libpcap
+		mv libpcap-$(LIBPCAP_VERSION) libpcap
 	@$(LIBPCAP_FIXUP)
 
 $(BUILD)/libpcap/Makefile: $(TOOLS) $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 	@echo "Configuring libpcap for $(TARGET)"
 	@mkdir -p $(BUILD)/libpcap
 	@cd $(BUILD)/libpcap; \
+		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE) $(LIBPCAP_CONFIG_FLAGS) $(LOGBUILD)
 
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"
 	@cd $(BUILD)/libpcap; \
-		$(MAKE) $(LOGBUILD) ; \
+		$(ENV) $(MAKE) $(LOGBUILD) ; \
 	       	$(MAKE_INSTALL) $(LOGBUILD)
 
 libpcap: $(BUILD)/lib/libpcap.a

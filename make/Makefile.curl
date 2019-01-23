@@ -21,12 +21,12 @@ $(BUILD)/curl/configure:
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/curl; \
 		$(TAR) zxf $(DEPS)/curl-$(LIBCURL_VERSION).tar.gz; \
-		mv curl-$(LIBCURL_VERSION) curl; \
-		$(CONFIG_FIXUP) curl
+		mv curl-$(LIBCURL_VERSION) curl
 
 $(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS) $(BUILD)/curl/configure
 	@echo "Configuring curl for $(TARGET)"
-	@cd $(BUILD)/curl; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/curl; \
+		$(CONFIG_FIXUP) \
 		$(LIBCURL_ENV) $(ENV) ./$(CONFIGURE) \
 		$(LIBCURL_OPTS) \
 		--without-libpsl \
@@ -54,8 +54,8 @@ $(BUILD)/lib/libcurl.a: $(LIBCURL_DEPS) $(BUILD)/curl/configure
 		ac_cv_header_sys_poll_h=no \
 		$(LOGBUILD)
 	@echo "Building curl for $(TARGET)"
-	@cd $(BUILD)/curl; \
-		$(LIBCURL_ENV) $(MAKE) lib $(LOGBUILD) ; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/curl; \
+		$(LIBCURL_ENV) $(ENV) $(MAKE) lib $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 curl: $(BUILD)/lib/libcurl.a
