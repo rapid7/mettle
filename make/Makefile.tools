@@ -10,6 +10,18 @@ TAR=tar
 TOOLS_DEPS=libtool automake bison flex
 export PATH:=$(TOOLS)/musl-cross/bin:$(TOOLS_BIN):$(PATH)
 
+ifneq (,$(findstring darwin,$(TARGET)))
+    LDFLAGS:=$(LDFLAGS) -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreImage -framework CoreVideo
+    ifneq (,$(findstring iphone,$(TARGET)))
+        SDKROOT:=$(shell xcrun --sdk iphoneos --show-sdk-path)
+        LDFLAGS:=$(LDFLAGS) -framework UIKit -framework CoreGraphics
+    else
+        SDKROOT:=$(shell xcrun --sdk macosx --show-sdk-path)
+        LDFLAGS:=$(LDFLAGS) -framework AppKit
+    endif
+	ENV:=SDKROOT=$(SDKROOT)
+endif
+
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring musl,$(TARGET)))
         CC=$(TOOLS)/musl-cross/bin/$(TARGET)-gcc
@@ -33,11 +45,10 @@ ifneq "$(TARGET)" "native"
         LDFLAGS:=$(LDFLAGS) $(ADDFLAGS)
     endif
     ifneq (,$(findstring iphone,$(TARGET)))
-        ADDFLAGS:=-isysroot $(SDKROOT)
         ifneq (,$(findstring arm,$(TARGET)))
-            ADDFLAGS:=$(ADDFLAGS) -mios-version-min=7.1 -arch armv7
+            ADDFLAGS:=-isysroot $(SDKROOT) -mios-version-min=7.1 -arch armv7
         else
-            ADDFLAGS:=$(ADDFLAGS) -mios-version-min=7.1 -arch arm64
+            ADDFLAGS:=-isysroot $(SDKROOT) -mios-version-min=7.1 -arch arm64
         endif
         CFLAGS:=$(CFLAGS) $(ADDFLAGS)
         CPPFLAGS:=$(CPPFLAGS) $(ADDFLAGS)

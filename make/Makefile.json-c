@@ -10,12 +10,12 @@ $(BUILD)/json-c/configure:
 
 $(BUILD)/json-c/Makefile: $(TOOLS) $(BUILD)/json-c/configure
 	@echo "Configuring json-c for $(TARGET)"
-	@cd $(BUILD)/json-c; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/json-c; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
 
 $(BUILD)/lib/libjson-c.a: $(BUILD)/json-c/Makefile
 	@echo "Building json-c for $(TARGET)"
-	@cd $(BUILD)/json-c; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/json-c; \
 		$(MAKE) $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 

@@ -6,18 +6,18 @@ $(BUILD)/libev/configure:
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/libev; \
 		$(TAR) zxf $(DEPS)/libev-$(LIBEV_VERSION).tar.gz; \
-		mv libev-$(LIBEV_VERSION) libev; \
-		$(CONFIG_FIXUP) libev
+		mv libev-$(LIBEV_VERSION) libev
 
 $(BUILD)/libev/Makefile: $(TOOLS) $(BUILD)/libev/configure $(LIBEV_DEPS)
 	@echo "Configuring libev for $(TARGET)"
-	@cd $(BUILD)/libev; \
+	@cd $(SETUP_BUILDENV) $(BUILD)/libev; \
+		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
 
 $(BUILD)/lib/libev.a: $(BUILD)/libev/Makefile
 	@echo "Building libev for $(TARGET)"
-	@cd $(BUILD)/libev; \
-		$(MAKE) $(LOGBUILD) ; \
+	@cd $(SETUP_BUILDENV) $(BUILD)/libev; \
+		$(ENV) $(MAKE) $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 libev: $(BUILD)/lib/libev.a

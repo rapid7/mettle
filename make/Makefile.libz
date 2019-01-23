@@ -10,13 +10,14 @@ $(BUILD)/libz/configure:
 
 $(BUILD)/libz/Makefile: $(TOOLS) $(BUILD)/libz/configure $(LIBZ_DEPS)
 	@echo "Configuring libz for $(TARGET)"
-	@cd $(BUILD)/libz; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/libz; \
+		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE_STATIC) $(LOGBUILD)
 
 $(BUILD)/lib/libz.a: $(BUILD)/libz/Makefile
 	@echo "Building libz for $(TARGET)"
-	@cd $(BUILD)/libz; \
-		$(MAKE) $(LOGBUILD) ; \
+	@$(SETUP_BUILDENV) cd $(BUILD)/libz; \
+		$(ENV) $(MAKE) $(LOGBUILD) ; \
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 libz: $(BUILD)/lib/libz.a
