@@ -143,12 +143,9 @@ To pull your local changes of mettle into your Metasploit install:
 
 Pushing out a New Gem
 ----------------------
-Right now, only Rapid7 Employees can push out a new Gem.
+Build CI will automatically publish new gems when commits land to master and pass build.
 1. Test Locally
-2. Check out the version file again to return it to the original state
-3. Increment the version
-4. Land the changes to upstream master
-5. Kick off the Jenkins Payload task Payloads-Mettle-Build-MacOS-Artifacts (must be logged in to the R7 build infrastructure)
-6. Monitor for the new gem on rubygems.org
-7. Once the gem appears, make a PR for bumping the version in framework
+2. Land the changes to upstream master
+3. Monitor for the new gem on rubygems.org
+4. Once the gem appears, make a PR for bumping the version in framework
 
