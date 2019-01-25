@@ -55,7 +55,7 @@ $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 		$(MAKE_INSTALL) $(LOGBUILD)
 
 $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built
-	elf2bin $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
+	$(TOOLS)/bin/elf2bin $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
 
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
