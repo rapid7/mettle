@@ -15,6 +15,9 @@ $(BUILD)/lib/libmbedtls.a: $(TOOLS)
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls; \
 		cp $(DEPS)/mbedtls-config.h mbedtls/include/mbedtls/config.h; \
 		sed -ibak 's/-no_warning_for_no_symbols//' mbedtls/library/Makefile
+	@echo "Applying MIPS register patch"
+	@cd $(BUILD)/mbedtls; \
+		patch -b -p1 < $(DEPS)/mbedtls_mips.patch
 	@echo "Building mbedtls for $(TARGET)"
 	@$(SETUP_BUILDENV) cd $(BUILD)/mbedtls; \
 		$(ENV) $(MBEDTLS_ENV) $(MAKE) lib $(LOGBUILD); \
