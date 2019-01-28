@@ -19,7 +19,7 @@ case $host_os in
 		CPPFLAGS="$CPPFLAGS -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_SOURCE -D_GNU_SOURCE"
 esac
 
-AM_CONDITIONAL([HOST_LINUX],   [test x$HOST_OS = xlinux])
+AM_CONDITIONAL([HOST_LINUX], [test x$HOST_OS = xlinux])
 AC_SUBST([HOST_OS], [$HOST_OS])
 AC_SUBST([HOST_CPU], [$host_cpu])
 
@@ -45,22 +45,18 @@ AX_CHECK_LINK_FLAG([--static-pie], [
 			dnl --static-pie was added in GCC 8
 			STATIC_PIE=--static-pie
 			], [
-			AX_CHECK_LINK_FLAG([--pie], [
+			AX_CHECK_LINK_FLAG([--static --pie], [
 					dnl The mettle toolchain has extra magic to allow --static and --pie
 					dnl to work together. Accepted, but produces incorrect behavior in
 					dnl GCC 8. That case is caught by the preceding check.
 					STATIC_PIE="--static --pie"
 					], [
-					AC_MSG_WARN([cannot build static PIEs, skipping examples])
-					], [--static]
+					AC_MSG_WARN([cannot build static PIEs, skipping noexec example])
+					]
 )])
 
-AS_IF([test "x$STATIC_PIE" = "x"], [
-			AM_CONDITIONAL([COMPILE_EXAMPLES], [false])
-			], [
-			AM_CONDITIONAL([COMPILE_EXAMPLES], [true])
-			AC_SUBST([STATIC_PIE], [$STATIC_PIE])
-])
+AM_CONDITIONAL([HAVE_STATIC_PIE], [test "x$STATIC_PIE" != "x"])
+AC_SUBST([STATIC_PIE], [$STATIC_PIE])
 
 AC_CONFIG_FILES([
 	Makefile
