@@ -5,7 +5,7 @@ $(ROOT)/libreflect/configure: $(ROOT)/libreflect/configure.ac
 
 LIBREFLECT_TARGETS = $(BUILD)/lib/libreflect.a
 
-$(BUILD)/libreflect/Makefile: build/tools $(ROOT)/libreflect/configure
+$(BUILD)/libreflect/Makefile: build/tools $(ROOT)/libreflect/configure $(ROOT)/libreflect/include/reflect.h.in
 	@echo "Configuring libreflect for $(TARGET)"
 	@mkdir -p $(BUILD)/libreflect
 	@cd $(BUILD)/libreflect; \
@@ -15,5 +15,7 @@ $(BUILD)/bin/libreflect.built: $(BUILD)/libreflect/Makefile
 	@echo "Building libreflect for $(TARGET)"
 	@cd $(BUILD)/libreflect; \
 		$(MAKE_INSTALL) $(LOGBUILD)
+
+$(BUILD)/lib/libreflect.a: $(BUILD)/bin/libreflect.built
 
 libreflect: $(BUILD)/bin/libreflect.built $(LIBREFLECT_TARGETS)

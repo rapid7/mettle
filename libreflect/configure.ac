@@ -66,6 +66,7 @@ AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 	examples/Makefile
+	include/reflect.h
 ])
 
 CFLAGS="$CFLAGS -Wall -Werror -pedantic -std=gnu99"
