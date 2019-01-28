@@ -24,7 +24,14 @@ AC_SUBST([HOST_OS], [$HOST_OS])
 AC_SUBST([HOST_CPU], [$host_cpu])
 
 dnl Check that we have assembly to do the thing
-AC_CHECK_HEADER([$srcdir/arch/$HOST_OS/$HOST_CPU/arch_jump.h], [], [AC_MSG_ERROR([$HOST_OS-$HOST_CPU not supported])])
+AC_CHECK_HEADER([$srcdir/arch/$HOST_OS/$HOST_CPU/arch_jump.h], [
+			HAVE_ASM=1
+			], [
+			HAVE_ASM=0
+			AC_MSG_WARN([cannot find assembly for $HOST_OS-$HOST_CPU, falling back to memfd_create/execveat])])
+
+AM_CONDITIONAL([HAVE_ASM], [test x$HAVE_ASM = x1])
+AC_SUBST([HAVE_ASM], [$HAVE_ASM])
 
 dnl TODO: add checks for non-Linux ELF-based systems that use headers other
 dnl than <link.h> for macros similar to, but named differently from, ElfW(X)
