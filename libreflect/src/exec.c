@@ -14,10 +14,12 @@ extern char **environ;
 
 void reflect_execv(const unsigned char *elf, char **argv) {
 	dprint("Using default environment %p\n", (void *)environ);
-	reflect_execve(elf, argv, environ);
+	reflect_execve(elf, argv, NULL);
 }
 
 void reflect_execve(const unsigned char *elf, char **argv, char **env) {
+	// When allocating a new stack, be sure to give it lots of space since the OS
+	// won't always honor MAP_GROWSDOWN
 	size_t *new_stack = (void *) (2047 * PAGE_SIZE +  (char *) mmap(0, 2048 * PAGE_SIZE,
 		PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_GROWSDOWN, -1, 0));
 
@@ -32,6 +34,10 @@ void reflect_execves(const unsigned char *elf, char **argv, char **env, size_t *
 	size_t argc;
 
 	struct mapped_elf exe = {0}, interp = {0};
+
+	if (env == NULL) {
+		env = environ;
+	}
 
 	map_elf(elf, &exe);
 	if (exe.ehdr == MAP_FAILED) {
