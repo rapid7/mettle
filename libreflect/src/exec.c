@@ -35,6 +35,11 @@ void reflect_execves(const unsigned char *elf, char **argv, char **env, size_t *
 
 	struct mapped_elf exe = {0}, interp = {0};
 
+	if (!is_compatible_elf((ElfW(Ehdr) *)elf)) {
+		abort();
+	}
+
+
 	if (env == NULL) {
 		env = environ;
 	}

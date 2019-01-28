@@ -1,6 +1,7 @@
 #include <elf.h>
 #include <errno.h>
 #include <link.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +9,18 @@
 
 #include <reflect.h>
 #include "map_elf.h"
+
+// This takes a native-sized EHDR, but the parts we check are in the
+// constant-sized bit so it doesn't really matter
+// TODO: multilib and ehdr->e_machine checking
+bool is_compatible_elf(const ElfW(Ehdr) *ehdr) {
+	return (ehdr->e_ident[EI_MAG0] == ELFMAG0 &&
+			ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
+			ehdr->e_ident[EI_MAG2] == ELFMAG2 &&
+			ehdr->e_ident[EI_MAG3] == ELFMAG3 &&
+			ehdr->e_ident[EI_CLASS] == ELFCLASS_NATIVE &&
+			ehdr->e_ident[EI_DATA] == ELFDATA_NATIVE);
+}
 
 // Non-multilib compatible, makes a mmap(2) allocation and copy of the ELF object
 //
