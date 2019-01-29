@@ -4,6 +4,12 @@
 #include <ev.h>
 #include "buffer_queue.h"
 
+#if HAVE_REFLECT
+#include <reflect.h>
+#else
+#define reflect_execv (void *)
+#endif
+
 struct process;
 struct progmgr;
 

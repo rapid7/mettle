@@ -14,8 +14,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <reflect.h>
-
 #include "argv_split.h"
 #include "log.h"
 #include "process.h"
@@ -455,7 +453,11 @@ struct process * process_create_from_executable(struct procmgr *mgr,
 struct process * process_create_from_executable_buf(struct procmgr *mgr,
 	const unsigned char *buffer, struct process_options *opts)
 {
+#if HAVE_REFLECT
 	return process_create(mgr, NULL, buffer, 0, opts);
+#else
+	return NULL;
+#endif
 }
 
 struct process * process_create_from_binary_image(struct procmgr *mgr,
