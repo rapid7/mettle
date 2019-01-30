@@ -11,7 +11,6 @@ libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
-libmettle_la_LIBADD += -lstdc++
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += argv_split.c
