@@ -24,8 +24,8 @@ ifneq (,$(findstring darwin,$(BUILD)))
     METTLE_DEPS += $(BUILD)/lib/libpcap.a
 else
     ifneq (,$(findstring mingw,$(BUILD)))
+        #METTLE_DEPS += $(BUILD)/lib/liblinenoise.a
     else
-        METTLE_DEPS += $(BUILD)/lib/liblinenoise.a
         METTLE_DEPS += $(BUILD)/lib/libpcap.a
         ifneq "$(TARGET)" "native"
             METTLE_TARGETS += $(BUILD)/bin/mettle.bin
