@@ -1,0 +1,20 @@
+LINENOISE_VERSION=ng-0.0.1
+
+$(BUILD)/linenoise/configure:
+	@echo "Unpacking linenoise for $(TARGET)"
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); \
+		rm -fr $(BUILD)/linenoise; \
+		$(TAR) zxf $(DEPS)/linenoise-$(LINENOISE_VERSION).tar.gz; \
+		mv linenoise-$(LINENOISE_VERSION) linenoise
+
+$(BUILD)/linenoise/Makefile: build/tools $(BUILD)/linenoise/configure $(LINENOISE_DEPS)
+	@echo "Configuring linenoise for $(TARGET)"
+	@cd $(BUILD)/linenoise; \
+		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
+
+$(BUILD)/lib/liblinenoise.a: $(BUILD)/linenoise/Makefile
+	@echo "Building linenoise for $(TARGET)"
+	@cd $(BUILD)/linenoise; \
+		$(MAKE) $(LOGBUILD) ; \
+		$(MAKE_INSTALL) $(LOGBUILD)

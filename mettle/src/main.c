@@ -27,7 +27,10 @@ static void usage(const char *name)
 	printf("  -o, --out <file>       write debug output to a file\n");
 	printf("  -b, --background <0|1> start as a background service (0 disable, 1 enable)\n");
 	printf("  -p, --persist [none|install|uninstall] manage persistence\n");
+	printf("  -m, --modules <path>   add modules from path\n");
 	printf("  -n, --name <name>      name to start as\n");
+	printf("  -l, --listen\n");
+	printf("  -c, --console\n");
 	printf("\n");
 	exit(1);
 }
@@ -58,14 +61,18 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		{"background", required_argument, NULL, 'b'},
 		{"persist", required_argument, NULL, 'p'},
 		{"name", required_argument, NULL, 'n'},
+		{"listen", required_argument, NULL, 'l'},
+		{"console", no_argument, NULL, 'c'},
+		{"modules", required_argument, NULL, 'm'},
 		{ 0, 0, NULL, 0 }
 	};
-	const char *short_options = "hu:U:G:d:o:b:p:n:";
+	const char *short_options = "hu:U:G:d:o:b:p:n:lcm:";
 	const char *out = NULL;
 	char *name = strdup("mettle");
 	bool name_flag = false;
 	bool debug = false;
 	bool background = false;
+	bool interactive = false;
 	enum persist_type persist = persist_none;
 	int log_level = 0;
 
@@ -76,6 +83,9 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, options, &index)) != -1) {
 		switch (c) {
+		case 'c':
+			interactive = true;
+			break;
 		case 'u':
 			c2_add_transport_uri(mettle_get_c2(m), optarg);
 			break;
@@ -84,6 +94,9 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 			break;
 		case 'G':
 			mettle_set_session_guid_base64(m, optarg);
+			break;
+		case 'm':
+			modulemgr_load_path(mettle_get_modulemgr(m), optarg);
 			break;
 		case 'n':
 			free(name);
@@ -131,10 +144,6 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		}
 	}
 
-	if (debug) {
-		start_logger(out);
-	}
-
 	/*
 	 * Only rename if we were not injected, since currently we do not know
 	 * where the real argv is. This is fixable, but possibly not useful to
@@ -143,6 +152,15 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 	if (name_flag && !(flags & PAYLOAD_INJECTED)) {
 		log_info("using name: %s", name);
 		setproctitle(name);
+	}
+
+	if (interactive) {
+		mettle_console_start_interactive(m);
+		return 0;
+	}
+
+	if (debug) {
+		start_logger(out);
 	}
 
 	if (background) {

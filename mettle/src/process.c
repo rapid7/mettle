@@ -119,7 +119,7 @@ static char *shell_path(void)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts, unsigned int flags)
+    const char *file, struct process_options *opts)
 {
 	char *args = NULL, *proc = NULL;
 
@@ -186,7 +186,7 @@ static void exec_child(struct procmgr *mgr,
 		args = proc;
 	}
 
-	if (flags & PROCESS_CREATE_SUBSHELL) {
+	if (opts->flags & PROCESS_CREATE_SUBSHELL) {
 		const char *sh = shell_path();
 		if (sh) {
 			execl(sh, sh, "-c", args, (char *)NULL);
@@ -205,7 +205,7 @@ static void exec_child(struct procmgr *mgr,
 
 static void exec_image(struct procmgr *mgr,
 	const unsigned char *image, size_t image_len,
-	struct process_options *opts, unsigned int flags)
+	struct process_options *opts)
 {
 	char *args = NULL, *proc = NULL;
 
@@ -329,7 +329,7 @@ void process_set_callbacks(struct process *p,
 static struct process * process_create(struct procmgr *mgr,
 	const char *file,
 	const unsigned char *bin_image, size_t bin_image_len,
-	struct process_options *opts, unsigned int flags)
+	struct process_options *opts)
 {
 	int stdin_pair[2];
 	if (pipe(stdin_pair) == -1) {
@@ -365,9 +365,9 @@ static struct process * process_create(struct procmgr *mgr,
 		close(stderr_pair[0]);
 
 		if (bin_image) {
-			exec_image(mgr, bin_image, bin_image_len, opts, flags);
+			exec_image(mgr, bin_image, bin_image_len, opts);
 		} else {
-			exec_child(mgr, file, opts, flags);
+			exec_child(mgr, file, opts);
 		}
 		return NULL;
 
@@ -431,17 +431,16 @@ static struct process * process_create(struct procmgr *mgr,
 }
 
 struct process * process_create_from_executable(struct procmgr *mgr,
-	const char *file,
-	struct process_options *opts, unsigned int flags)
+	const char *file, struct process_options *opts)
 {
-	return process_create(mgr, file, NULL, 0, opts, flags);
+	return process_create(mgr, file, NULL, 0, opts);
 }
 
 struct process * process_create_from_binary_image(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
-	struct process_options *opts, unsigned int flags)
+	struct process_options *opts)
 {
-	return process_create(mgr, NULL, bin_image, bin_image_len, opts, flags);
+	return process_create(mgr, NULL, bin_image, bin_image_len, opts);
 }
 
 int process_kill(struct process* process)
@@ -510,6 +509,15 @@ ssize_t process_write(struct process *process, const void *buf, size_t buf_len)
 		len += n;
 	}
 	return len > 0 ? len : -1;
+}
+
+void procmgr_iter_processes(struct procmgr *mgr,
+		void (*cb)(struct process *, void *process_arg, void *arg), void *arg)
+{
+	struct process *process, *tmp;
+	HASH_ITER(hh, mgr->processes, process, tmp) {
+		cb(process, process->cb_arg, arg);
+	}
 }
 
 void procmgr_free(struct procmgr *mgr)

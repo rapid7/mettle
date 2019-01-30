@@ -54,7 +54,7 @@ size_t buffer_queue_len(struct buffer_queue *q)
 	return q->bytes;
 }
 
-int buffer_queue_add(struct buffer_queue *q, void *data, size_t len)
+int buffer_queue_add(struct buffer_queue *q, const void *data, size_t len)
 {
 	struct buffer *buf = calloc(1, sizeof(*buf));
 	if (buf == NULL) {

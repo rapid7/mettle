@@ -19,6 +19,7 @@
 #include "log.h"
 
 static FILE *zlog_fout = NULL;
+void (*zlog_cb)(const char *buf) = NULL;
 
 static char _zlog_buffer[LOG_BUFFER_SIZE][LOG_BUFFER_STR_MAX_LEN];
 static int _zlog_buffer_size = 0;
@@ -39,11 +40,16 @@ static inline void _zlog_buffer_unlock()
 static void _zlog_flush_buffer()
 {
 	if (zlog_fout != NULL) {
-		int i = 0;
-		for (i = 0; i < _zlog_buffer_size; i++) {
+		for (int i = 0; i < _zlog_buffer_size; i++) {
 			fprintf(zlog_fout, "%s", _zlog_buffer[i]);
 		}
 		fflush(zlog_fout);
+	}
+	if (zlog_cb != NULL) {
+		for (int i = 0; i < _zlog_buffer_size; i++) {
+			_zlog_buffer[i][strlen(_zlog_buffer[i]) - 1] = '\0';
+			zlog_cb(_zlog_buffer[i]);
+		}
 	}
 	_zlog_buffer_size = 0;
 }
@@ -84,6 +90,11 @@ void zlog_init(char const *log_file)
 void zlog_init_file(FILE * out)
 {
 	zlog_fout = out;
+}
+
+void zlog_init_cb(void (*cb)(const char *msg))
+{
+	zlog_cb = cb;
 }
 
 void *zlog_buffer_flush_thread(void *arg)
@@ -154,7 +165,7 @@ void zlog_time(const char *filename, int line, char const *fmt, ...)
 	struct timeval tv;
 	time_t curtime;
 
-	if (zlog_fout) {
+	if (zlog_fout || zlog_cb) {
 		gettimeofday(&tv, NULL);
 		curtime = tv.tv_sec;
 		strftime(timebuf, 64, "%m-%d-%Y %H:%M:%S", localtime(&curtime));
@@ -177,7 +188,7 @@ void zlog(const char *filename, int line, char const *fmt, ...)
 	va_list va;
 	char *buffer = NULL;
 
-	if (zlog_fout) {
+	if (zlog_fout || zlog_cb) {
 		buffer = zlog_get_buffer();
 		snprintf(buffer, LOG_BUFFER_STR_MAX_LEN, "[%s:%d]",
 			short_filename(filename), line);

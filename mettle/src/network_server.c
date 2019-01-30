@@ -72,12 +72,11 @@ void network_server_setcbs(struct network_server *ns,
     ns->cb_arg = cb_arg;
 }
 
-struct network_server * network_server_new(struct ev_loop *loop,
-		const char *host, uint16_t port)
+int network_server_listen_tcp(struct network_server *ns,
+	const char *host, uint16_t port)
 {
-	struct network_server *ns = calloc(1, sizeof(*ns));
 	if (ns == NULL) {
-		return NULL;
+		return -1;
 	}
 
 	ns->sin.sin6_family = AF_INET6;
@@ -125,22 +124,23 @@ struct network_server * network_server_new(struct ev_loop *loop,
 
 	ev_io_init(&ns->connect_event, connect_cb, ns->listener, EV_READ);
 	ns->connect_event.data = ns;
-	ev_io_start(loop, &ns->connect_event);
+	ev_io_start(ns->loop, &ns->connect_event);
+	return 0;
 
-	return ns;
 err:
-	network_server_free(ns);
-	return NULL;
+	close(ns->listener);
+	ns->listener = 0;
+	return -1;
 }
 
-const char *network_server_get_host(struct network_server *ns)
+struct network_server * network_server_new(struct ev_loop *loop)
 {
-	return ns->host;
-}
-
-uint16_t network_server_get_port(struct network_server *ns)
-{
-	return ns->port;
+	struct network_server *ns = calloc(1, sizeof(*ns));
+	if (ns == NULL) {
+		return NULL;
+	}
+	ns->loop = loop;
+	return ns;
 }
 
 void network_server_free(struct network_server *ns)

@@ -116,9 +116,10 @@ static int tcp_server_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	nsc->channel = c;
 	nsc->td = mettle_get_tlv_dispatcher(m);
 
-	nsc->ns = network_server_new(mettle_get_loop(m), host, port);
-	if (nsc->ns == NULL) {
+	nsc->ns = network_server_new(mettle_get_loop(m));
+	if (network_server_listen_tcp(nsc->ns, host, port) == -1) {
 		log_info("failed to listen on %s:%d", host, port);
+		network_server_free(nsc->ns);
 		free(nsc);
 		return -1;
 	}

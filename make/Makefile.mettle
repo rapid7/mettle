@@ -1,7 +1,9 @@
 include make/Makefile.curl
+include make/Makefile.json-c
 include make/Makefile.libdnet
 include make/Makefile.libev
 include make/Makefile.libeio
+include make/Makefile.linenoise
 include make/Makefile.libsigar
 include make/Makefile.libz
 include make/Makefile.mbedtls
@@ -37,9 +39,11 @@ endif
 
 $(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	$(METTLE_DEPS) \
+	$(BUILD)/lib/libjson-c.a \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
+	$(BUILD)/lib/liblinenoise.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"

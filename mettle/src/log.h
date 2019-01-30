@@ -48,6 +48,7 @@ log_set_level(int level)
 
 #define log_init(log_file)
 #define log_init_file(file_hdl)
+#define log_init_cb(file_hdl)
 #define log_init_flush_thread
 #define log_finish
 #define log_flush_buffer
@@ -69,6 +70,7 @@ log_set_level(int level)
 
 #define log_init(log_file) zlog_init(log_file)
 #define log_init_file(file_hdl) zlog_init_file(file_hdl)
+#define log_init_cb(cb) zlog_init_cb(cb)
 #define log_init_flush_thread zlog_init_flush_thread
 #define log_finish zlog_finish
 #define log_flush_buffer zlog_flush_buffer
@@ -86,6 +88,8 @@ log_set_level(int level)
 void zlog_init(char const *log_file);
 // initialize zlog: flush to file handle
 void zlog_init_file(FILE * out);
+// initialize zlog: flush to a callback function
+void zlog_init_cb(void (*cb)(const char *msg));
 // creating a flushing thread
 void zlog_init_flush_thread();
 // finish using the zlog; clean up

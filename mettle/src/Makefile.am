@@ -7,11 +7,11 @@ libmettle_la_LIBADD = -ldnet
 libmettle_la_LIBADD += -lcurl
 libmettle_la_LIBADD += -leio
 libmettle_la_LIBADD += -lev
-# libmettle_la_LIBADD += -lmbedtls
-# libmettle_la_LIBADD += -lmbedcrypto
+libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
+libmettle_la_LIBADD += -lstdc++
 
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += argv_split.c
@@ -22,13 +22,17 @@ libmettle_la_SOURCES += c2.c
 libmettle_la_SOURCES += c2_http.c
 libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
-libmettle_la_SOURCES += crypttlv.c
+libmettle_la_SOURCES += console.c
 libmettle_la_SOURCES += coreapi.c
+libmettle_la_SOURCES += crypttlv.c
 libmettle_la_SOURCES += extension.c
 libmettle_la_SOURCES += extensions.c
 libmettle_la_SOURCES += http_client.c
+libmettle_la_SOURCES += json.c
 libmettle_la_SOURCES += log.c
 libmettle_la_SOURCES += md5.c
+libmettle_la_SOURCES += module.c
+libmettle_la_SOURCES += mettle_rpc.c
 libmettle_la_SOURCES += network_client.c
 libmettle_la_SOURCES += network_server.c
 libmettle_la_SOURCES += ringbuf.c
@@ -40,7 +44,9 @@ libmettle_la_SOURCES += inet_ntop.c inet_pton.c
 libmettle_la_SOURCES += posix_win.c
 libmettle_la_SOURCES += process_win.c
 libmettle_la_SOURCES += service_win.c
+libmettle_la_LIBADD += -llinenoise
 else
+libmettle_la_SOURCES += linenoise.c
 libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += service.c
 endif
@@ -92,5 +98,4 @@ bin_PROGRAMS = mettle
 
 mettle_SOURCES = main.c
 mettle_LDADD = libmettle.la
-
 mettle_LDFLAGS = $(PLATFORM_LDADD)

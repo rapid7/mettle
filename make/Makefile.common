@@ -37,10 +37,8 @@ ifneq "$(HOST)" ""
 endif
 
 # if Debug is enabled, build with debug symbols
-ifneq (,$(findstring musl,$(TARGET)))
-    ifeq "$(D)" "1"
-        CFLAGS:=$(CFLAGS) -g
-    endif
+ifeq "$(D)" "1"
+    CFLAGS:=$(CFLAGS) -g
 endif
 
 ENV:=$(ENV) ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"

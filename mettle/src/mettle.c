@@ -24,6 +24,7 @@
 struct mettle {
 	struct channelmgr *cm;
 	struct extmgr *em;
+	struct modulemgr *mm;
 	struct procmgr *pm;
 
 	struct c2 *c2;
@@ -85,6 +86,11 @@ int start_heartbeat(struct mettle *m)
 struct c2 * mettle_get_c2(struct mettle *m)
 {
 	return m->c2;
+}
+
+struct modulemgr * mettle_get_modulemgr(struct mettle *m)
+{
+	return m->mm;
 }
 
 struct ev_loop * mettle_get_loop(struct mettle *m)
@@ -232,8 +238,6 @@ struct mettle *mettle(void)
 	ev_async_init(&eio_async_watcher, eio_async_cb);
 	eio_init(eio_want_poll, eio_done_poll);
 
-	start_heartbeat(m);
-
 	m->c2 = c2_new(m->loop);
 	if (m->c2 == NULL) {
 		goto err;
@@ -262,6 +266,11 @@ struct mettle *mettle(void)
 		goto err;
 	}
 
+	m->mm = modulemgr_new(m->loop);
+	if (m->mm == NULL) {
+		goto err;
+	}
+
 	return m;
 
 err:
@@ -287,6 +296,8 @@ int mettle_start(struct mettle *m)
 	c2_start(m->c2);
 
 	ev_async_start(m->loop, &eio_async_watcher);
+
+	start_heartbeat(m);
 
 	return ev_run(m->loop, 0);
 }

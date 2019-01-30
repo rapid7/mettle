@@ -165,9 +165,6 @@ static int extension_start(struct mettle *m, const char *full_path,
 	struct process_options opts = {
 		.process_name = full_path,
 		.args = args,
-		.env = NULL,
-		.cwd = NULL,
-		.user = NULL,
 	};
 
 	struct extension_process *ep = calloc(1, sizeof(*ep));
@@ -176,9 +173,9 @@ static int extension_start(struct mettle *m, const char *full_path,
 	}
 
 	if (bin_image) {
-		ep->p = process_create_from_binary_image(pm, bin_image, bin_image_len, &opts, 0);
+		ep->p = process_create_from_binary_image(pm, bin_image, bin_image_len, &opts);
 	} else {
-		ep->p = process_create_from_executable(pm, full_path, &opts, 0);
+		ep->p = process_create_from_executable(pm, full_path, &opts);
 	}
 	if (ep->p == NULL) {
 		log_error("Failed to start extension '%s'", full_path);
