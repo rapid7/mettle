@@ -22,11 +22,6 @@ libmettle_la_SOURCES += c2.c
 libmettle_la_SOURCES += c2_http.c
 libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
-if HOST_WIN
-libmettle_la_SOURCES += console-unsupported.c
-else
-libmettle_la_SOURCES += console.c
-endif
 libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += crypttlv.c
 libmettle_la_SOURCES += extension.c
@@ -44,13 +39,13 @@ libmettle_la_SOURCES += sha1.c
 libmettle_la_SOURCES += tlv.c
 libmettle_la_SOURCES += stdapi/stdapi.c
 if HOST_WIN
+libmettle_la_SOURCES += console-unsupported.c
 libmettle_la_SOURCES += inet_ntop.c inet_pton.c
 libmettle_la_SOURCES += posix_win.c
 libmettle_la_SOURCES += process_win.c
 libmettle_la_SOURCES += service_win.c
-libmettle_la_LIBADD += -llinenoise
 else
-libmettle_la_SOURCES += linenoise.c
+libmettle_la_SOURCES += console.c linenoise.c
 libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += service.c
 endif
