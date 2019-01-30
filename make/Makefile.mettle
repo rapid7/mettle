@@ -25,6 +25,7 @@ ifneq (,$(findstring darwin,$(BUILD)))
 else
     ifneq (,$(findstring mingw,$(BUILD)))
     else
+        METTLE_DEPS += $(BUILD)/lib/liblinenoise.a
         METTLE_DEPS += $(BUILD)/lib/libpcap.a
         ifneq "$(TARGET)" "native"
             METTLE_TARGETS += $(BUILD)/bin/mettle.bin
@@ -43,7 +44,6 @@ $(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	$(BUILD)/lib/libcurl.a \
 	$(BUILD)/lib/libeio.a \
 	$(BUILD)/lib/libev.a \
-	$(BUILD)/lib/liblinenoise.a \
 	$(BUILD)/lib/libsigar.a \
 	$(BUILD)/lib/libdnet.a
 	@echo "Configuring mettle for $(TARGET)"

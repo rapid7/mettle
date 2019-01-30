@@ -22,7 +22,11 @@ libmettle_la_SOURCES += c2.c
 libmettle_la_SOURCES += c2_http.c
 libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
+if HOST_WIN
+libmettle_la_SOURCES += console-unsupported.c
+else
 libmettle_la_SOURCES += console.c
+endif
 libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += crypttlv.c
 libmettle_la_SOURCES += extension.c
