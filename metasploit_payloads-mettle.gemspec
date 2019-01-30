@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.license       = '3-clause (or "modified") BSD'
 
   spec.files         = `git ls-files lib/`.split("\n")
-  spec.files        += Dir['build/*/bin/*']
+  spec.files        += Dir['build/*/bin/*'].reject { |file| file.start_with? "build/tools" }
   spec.executables   = []
   spec.require_paths = ['lib']
 
