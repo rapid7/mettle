@@ -80,24 +80,35 @@ fs_ls_async(eio_req *req)
 		goto out;
 	}
 
-	// If there is no wildcard, add one in order to list the directory
-	char search_path[PATH_MAX];
-	if (strchr(path, '*') == NULL) {
-		int bytes_written = snprintf(search_path, PATH_MAX, "%s/*", path);
-		if (bytes_written < 0 || bytes_written > PATH_MAX) {
-			p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-			goto out;
-		}
-		path = search_path;
-	}
-
 	glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
 #ifndef GLOB_TILDE
 #define GLOB_TILDE 0
 #endif
-	int ret = glob(path, GLOB_TILDE, NULL, &glob_result);
-	if (ret != 0) {
+	int glob_ret = 0;
+	if (strchr(path, '*') != NULL) {
+		glob_ret = glob(path, GLOB_TILDE, NULL, &glob_result);
+	} else {
+		// If there is no wildcard, add /.* and /* to list the directory
+		// /.* is needed to view hidden files
+		char search_path[PATH_MAX];
+		int bytes_written = snprintf(search_path, PATH_MAX, "%s/.*", path);
+		if (bytes_written < 0 || bytes_written > PATH_MAX) {
+			p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+			goto out;
+		}
+		glob_ret = glob(search_path, GLOB_TILDE, NULL, &glob_result);
+		if (glob_ret == 0 || glob_ret == GLOB_NOMATCH) {
+			bytes_written = snprintf(search_path, PATH_MAX, "%s/*", path);
+			if (bytes_written < 0 || bytes_written > PATH_MAX) {
+				p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+				goto out;
+			}
+			glob_ret = glob(search_path, GLOB_TILDE | GLOB_APPEND, NULL, &glob_result);
+		}
+		path = search_path;
+	}
+	if (glob_ret != 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	} else {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
