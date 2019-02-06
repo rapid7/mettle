@@ -35,25 +35,24 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 {
 	struct meterp_stat {
 		uint32_t dev;
-		uint32_t ino;
 		uint32_t mode;
 		uint32_t nlink;
 		uint32_t uid;
 		uint32_t gid;
 		uint32_t rdev;
-		uint32_t pad;
+		uint64_t ino;
 		uint64_t size;
 		uint64_t atime;
 		uint64_t mtime;
 		uint64_t ctime;
 	} __attribute__((__packed__)) ms = {
 		.dev = htole32(s->st_dev),
-		.ino = htole16(s->st_ino),
-		.mode = htole16(s->st_mode),
-		.nlink = htole16(s->st_nlink),
-		.uid = htole16(s->st_uid),
-		.gid = htole16(s->st_gid),
+		.mode = htole32(s->st_mode),
+		.nlink = htole32(s->st_nlink),
+		.uid = htole32(s->st_uid),
+		.gid = htole32(s->st_gid),
 		.rdev = htole32(s->st_rdev),
+		.ino = htole64(s->st_ino),
 		.size = htole64(s->st_size),
 #ifndef _WIN32
 		.mtime = htole64(s->st_mtim.tv_sec),
