@@ -35,13 +35,13 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 {
 	struct meterp_stat {
 		uint32_t dev;
-		uint16_t ino;
-		uint16_t mode;
-		uint16_t nlink;
-		uint16_t uid;
-		uint16_t gid;
-		uint16_t pad;
+		uint32_t ino;
+		uint32_t mode;
+		uint32_t nlink;
+		uint32_t uid;
+		uint32_t gid;
 		uint32_t rdev;
+		uint32_t pad;
 		uint64_t size;
 		uint64_t atime;
 		uint64_t mtime;
