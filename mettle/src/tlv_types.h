@@ -119,7 +119,7 @@
 #define TLV_TYPE_FILE_SIZE             (TLV_META_TYPE_UINT    | 1204)
 #define TLV_TYPE_FILE_HASH             (TLV_META_TYPE_RAW     | 1206)
 
-#define TLV_TYPE_STAT_BUF              (TLV_META_TYPE_COMPLEX | 1220)
+#define TLV_TYPE_STAT_BUF              (TLV_META_TYPE_COMPLEX | 1221)
 
 #define TLV_TYPE_SEARCH_RECURSE        (TLV_META_TYPE_BOOL    | 1230)
 #define TLV_TYPE_SEARCH_GLOB           (TLV_META_TYPE_STRING  | 1231)
