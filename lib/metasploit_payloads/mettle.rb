@@ -27,7 +27,7 @@ module MetasploitPayloads
     end
 
     #
-    # Available formats are :process_image and :exec
+    # Available formats are :process_image, :dylib and :exec
     #
     def to_binary(format=:process_image)
       bin = self.class.read(@platform, format)
@@ -99,6 +99,8 @@ module MetasploitPayloads
           case format
           when :process_image
             "#{filename}.bin"
+          when :dylib
+            "#{filename}.dylib"
           when :exec
             "#{filename}"
           else

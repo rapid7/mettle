@@ -22,6 +22,9 @@ METTLE_OPTS =
 
 ifneq (,$(findstring darwin,$(BUILD)))
     METTLE_DEPS += $(BUILD)/lib/libpcap.a
+    ifneq (,$(findstring arm-iphone,$(BUILD)))
+        METTLE_TARGETS += $(BUILD)/bin/mettle.dylib
+    endif
 else
     ifneq (,$(findstring mingw,$(BUILD)))
         #METTLE_DEPS += $(BUILD)/lib/liblinenoise.a
@@ -60,6 +63,10 @@ $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
 
 $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built
 	$(TOOLS)/bin/elf2bin $(BUILD)/bin/mettle $(BUILD)/bin/mettle.bin
+
+$(BUILD)/bin/mettle.dylib: $(BUILD)/bin/mettle.built
+	@./deps/app2dylib -o $(BUILD)/bin/mettle.dylib $(BUILD)/bin/mettle
+	@./deps/ldid -S $(BUILD)/bin/mettle.dylib
 
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
