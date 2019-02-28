@@ -252,7 +252,7 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct process_options opts = {
 		.process_name = path,
 		.args = args,
-		.flags = PROCESS_CREATE_SUBSHELL
+		.flags = flags,
 	};
 
 	log_debug("process_new: %s %s 0x%08x", path, args, flags);
