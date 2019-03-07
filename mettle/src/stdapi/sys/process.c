@@ -252,8 +252,13 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct process_options opts = {
 		.process_name = path,
 		.args = args,
-		.flags = flags,
+		.flags = 0
 	};
+
+	if (strchr(path, '$') != NULL || strchr(path, '%') != NULL ||
+	    strchr(args, '$') != NULL || strchr(args, '%') != NULL) {
+		opts.flags |= PROCESS_CREATE_SUBSHELL;
+	}
 
 	log_debug("process_new: %s %s 0x%08x", path, args, flags);
 
