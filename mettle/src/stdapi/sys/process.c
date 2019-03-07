@@ -243,11 +243,11 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct procmgr *pm = mettle_get_procmgr(m);
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
 	char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
+	size_t exe_len;
+	unsigned char *in_mem_exe = tlv_packet_get_raw(ctx->req, TLV_TYPE_VALUE_DATA, &exe_len);
 	uint32_t flags = 0;
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_FLAGS, &flags);
-
-	log_debug("process_new: %s %s 0x%08x", path, args, flags);
 
 	struct process_options opts = {
 		.process_name = path,
@@ -255,7 +255,17 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		.flags = PROCESS_CREATE_SUBSHELL
 	};
 
-	struct process *p = process_create_from_executable(pm, path, &opts);
+	log_debug("process_new: %s %s 0x%08x", path, args, flags);
+
+	struct process *p;
+	if (in_mem_exe != NULL && exe_len != 0) {
+		log_debug("process_new: got %zd byte executable to run in memory", exe_len);
+		opts.flags = PROCESS_CREATE_REFLECT;
+		p = process_create_from_executable_buf(pm, in_mem_exe, &opts);
+	} else {
+		p = process_create_from_executable(pm, path, &opts);
+	}
+
 	if (p == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}

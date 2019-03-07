@@ -12,6 +12,10 @@ libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
 
+if HAVE_REFLECT
+libmettle_la_LIBADD += -lreflect
+endif
+
 libmettle_la_SOURCES = mettle.c
 libmettle_la_SOURCES += argv_split.c
 libmettle_la_SOURCES += base64.c

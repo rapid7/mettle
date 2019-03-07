@@ -4,6 +4,12 @@
 #include <ev.h>
 #include "buffer_queue.h"
 
+#if HAVE_REFLECT
+#include <reflect.h>
+#else
+#define reflect_execv (void *)
+#endif
+
 struct process;
 struct progmgr;
 
@@ -21,7 +27,8 @@ struct process_options {
 	const char *process_name;       /* Alternate process name */
 	const char *cwd;                /* Current working directory */
 	const char *user;               /* User to start the process as */
-#define PROCESS_CREATE_SUBSHELL		0x00000001
+#define PROCESS_CREATE_SUBSHELL		(0x00000001 << 0)
+#define PROCESS_CREATE_REFLECT		(0x00000001 << 1)
 	int flags;
 };
 
@@ -30,6 +37,9 @@ struct process_options {
  */
 struct process * process_create_from_executable(struct procmgr *mgr,
 	const char *file, struct process_options *opts);
+
+struct process * process_create_from_executable_buf(struct procmgr *mgr,
+	const unsigned char *elf, struct process_options *opts);
 
 struct process * process_create_from_binary_image(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,

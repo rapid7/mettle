@@ -198,7 +198,12 @@ static void exec_child(struct procmgr *mgr,
 		if (argv[0][0] == '/' && access(argv[0], X_OK)) {
 			argv[0] = basename(argv[0]);
 		}
-		execvp(file, argv);
+		if (opts->flags & PROCESS_CREATE_REFLECT) {
+			log_debug("%s: reflectively executing %p with %s", __FUNCTION__, file, args);
+			reflect_execv((unsigned char *)file, argv);
+		} else {
+			execvp(file, argv);
+		}
 	}
 	abort();
 }
@@ -364,7 +369,9 @@ static struct process * process_create(struct procmgr *mgr,
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 
-		if (bin_image) {
+		if (opts->flags & PROCESS_CREATE_REFLECT) {
+			exec_child(mgr, (char *)bin_image, opts);
+		} else if (bin_image) {
 			exec_image(mgr, bin_image, bin_image_len, opts);
 		} else {
 			exec_child(mgr, file, opts);
@@ -434,6 +441,23 @@ struct process * process_create_from_executable(struct procmgr *mgr,
 	const char *file, struct process_options *opts)
 {
 	return process_create(mgr, file, NULL, 0, opts);
+}
+
+/*
+ * TODO:
+ *  * Add process name imitation
+ *  * Convert images to use this
+ *  * Check for executable compatibility
+ *  * Pass in size and bounds check operations
+ */
+struct process * process_create_from_executable_buf(struct procmgr *mgr,
+	const unsigned char *buffer, struct process_options *opts)
+{
+#if HAVE_REFLECT
+	return process_create(mgr, NULL, buffer, 0, opts);
+#else
+	return NULL;
+#endif
 }
 
 struct process * process_create_from_binary_image(struct procmgr *mgr,
