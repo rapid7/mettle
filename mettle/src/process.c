@@ -186,11 +186,13 @@ static void exec_child(struct procmgr *mgr,
 		args = proc;
 	}
 
+	char *sh = NULL;
 	if (opts->flags & PROCESS_CREATE_SUBSHELL) {
-		const char *sh = shell_path();
-		if (sh) {
-			execl(sh, sh, "-c", args, (char *)NULL);
-		}
+		sh = shell_path();
+	}
+
+	if (sh) {
+		execl(sh, sh, "-c", args, (char *)NULL);
 	} else {
 		size_t argc = 0;
 		char **argv = NULL;
