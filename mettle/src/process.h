@@ -7,7 +7,7 @@
 #if HAVE_REFLECT
 #include <reflect.h>
 #else
-#define reflect_execv (void *)
+#define reflect_execv(...) ((void *) -1)
 #endif
 
 struct process;
