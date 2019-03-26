@@ -228,6 +228,13 @@ struct process * process_create_from_executable(struct procmgr *mgr,
 	return process_create(mgr, file, NULL, 0, opts);
 }
 
+struct process * process_create_from_executable_buf(struct procmgr *mgr,
+	const unsigned char *exe, struct process_options *opts)
+{
+	/* TODO: reflective loading not implemented for PEs */
+	return NULL;
+}
+
 struct process * process_create_from_binary_image(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
 	struct process_options *opts)
