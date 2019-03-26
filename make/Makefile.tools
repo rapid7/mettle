@@ -32,6 +32,7 @@ ifneq "$(TARGET)" "native"
     endif
     ifneq (,$(findstring mingw,$(TARGET)))
         CC=$(TARGET)-gcc
+        CXX=$(TARGET)-g++
         CPP=$(TARGET)-cpp
         AR=$(TARGET)-ar
         LD=$(TARGET)-ld
