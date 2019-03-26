@@ -16,6 +16,8 @@
 #include "buffer_queue.h"
 #include "tlv_types.h"
 
+#include "printf_format.h"
+
 #define SESSION_GUID_LEN 16
 #define TLV_PREPEND_LEN 24
 #define TLV_MIN_LEN 8
@@ -87,7 +89,7 @@ struct tlv_packet * tlv_packet_add_str(struct tlv_packet *p,
 
 struct tlv_packet * tlv_packet_add_fmt(struct tlv_packet *p,
 		uint32_t type, char const *fmt, ...)
-		__attribute__ ((format(printf, 3, 4)));
+		__attribute__ ((format(METTLE_PRINTF_FORMAT, 3, 4)));
 
 struct tlv_packet * tlv_packet_add_u32(struct tlv_packet *p,
 		uint32_t type, uint32_t val);
