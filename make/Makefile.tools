@@ -25,6 +25,7 @@ endif
 ifneq "$(TARGET)" "native"
     ifneq (,$(findstring musl,$(TARGET)))
         CC=$(TOOLS)/musl-cross/bin/$(TARGET)-gcc
+        CXX=$(TOOLS)/musl-cross/bin/$(TARGET)-g++
         CPP=$(TOOLS)/musl-cross/bin/$(TARGET)-cpp
         AR=$(TOOLS)/musl-cross/bin/$(TARGET)-ar
         LD=$(TOOLS)/musl-cross/bin/$(TARGET)-ld
