@@ -128,11 +128,13 @@ static void set_prompt(const char *fmt, ...)
 {
 	char *prompt = NULL;
 	va_list va;
+	int formatted = 0;
+
 	va_start(va, fmt);
-	vasprintf(&prompt, fmt, va);
+	formatted = vasprintf(&prompt, fmt, va);
 	va_end(va);
 
-	if (prompt) {
+	if (formatted >= 0 && prompt) {
 		free(console.prompt);
 		console.prompt = prompt;
 	}
@@ -153,9 +155,11 @@ static void set_prompt(const char *fmt, ...)
 static void console_log(const char *prefix, const char *fmt, va_list va)
 {
 	char *msg = NULL;
-	vasprintf(&msg, fmt, va);
+	int formatted = 0;
 
-	if (msg) {
+	formatted = vasprintf(&msg, fmt, va);
+
+	if (formatted >= 0 && msg) {
 		pthread_mutex_lock(&console.mutex);
 		if (console.thread == pthread_self()) {
 			printf("%s%s\n", prefix, msg);

@@ -39,7 +39,10 @@ void reflect_mfd_execve(const unsigned char *elf, char **argv, char **env) {
 	}
 
 	out = syscall(SYS_memfd_create, "", MFD_CLOEXEC);
-	ftruncate(out, end);
+	if (ftruncate(out, end) == -1) {
+		dprint("Failed to resize memory file: %s\n", strerror(errno));
+		abort();
+	}
 
 	while (written < end) {
 		l = write(out, elf + written, end - written);
