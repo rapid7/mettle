@@ -47,7 +47,7 @@ void reflect_mfd_execve(const unsigned char *elf, char **argv, char **env) {
 	while (written < end) {
 		l = write(out, elf + written, end - written);
 		if (l == -1) {
-		  dprint("Failed to write %s: %s\n", strerror(errno));
+		  dprint("Failed to write memory file: %s\n", strerror(errno));
 		  abort();
 		}
 		written += l;
