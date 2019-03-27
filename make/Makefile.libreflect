@@ -5,7 +5,7 @@ $(ROOT)/libreflect/configure: $(ROOT)/libreflect/configure.ac
 
 LIBREFLECT_TARGETS = $(BUILD)/lib/libreflect.a
 
-$(BUILD)/libreflect/Makefile: build/tools $(ROOT)/libreflect/configure $(ROOT)/libreflect/include/reflect.h.in
+$(BUILD)/libreflect/Makefile: $(TOOLS) $(ROOT)/libreflect/configure $(ROOT)/libreflect/include/reflect.h.in
 	@echo "Configuring libreflect for $(TARGET)"
 	@mkdir -p $(BUILD)/libreflect
 	@cd $(BUILD)/libreflect; \
