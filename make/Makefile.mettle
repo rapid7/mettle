@@ -23,7 +23,7 @@ METTLE_OPTS =
 
 ifneq (,$(findstring darwin,$(BUILD)))
     METTLE_DEPS += $(BUILD)/lib/libpcap.a
-    ifneq (,$(findstring arm-iphone,$(BUILD)))
+    ifneq (,$(findstring iphone,$(BUILD)))
         METTLE_TARGETS += $(BUILD)/bin/mettle.dylib
     endif
 else
