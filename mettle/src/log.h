@@ -5,6 +5,8 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
+#include "printf_format.h"
+
 /*
  * Disable logging at all log sites
  */
@@ -99,11 +101,11 @@ void zlog_flush_buffer();
 
 // log an entry; using the printf format
 void zlogf(char const *fmt, ...)
-	__attribute__ ((format(printf, 1, 2)));
+	__attribute__ ((format(METTLE_PRINTF_FORMAT, 1, 2)));
 
 // log an entry with a timestamp
 void zlogf_time(char const *fmt, ...)
-	__attribute__ ((format(printf, 1, 2)));
+	__attribute__ ((format(METTLE_PRINTF_FORMAT, 1, 2)));
 
 void zlog_hex(const char *filename, int line, const void *buf, size_t len);
 
@@ -111,10 +113,10 @@ void zlog_hex(const char *filename, int line, const void *buf, size_t len);
 //   the first 2 arguments can be replaced by ZLOG_LOC which
 //   will be filled by the compiler
 void zlog(const char *filename, int line, char const *fmt, ...)
-	__attribute__ ((format(printf, 3, 4)));
+	__attribute__ ((format(METTLE_PRINTF_FORMAT, 3, 4)));
 
 // log an entry with the filename and location with a timestamp
 void zlog_time(const char *filename, int line, char const *fmt, ...)
-	__attribute__ ((format(printf, 3, 4)));
+	__attribute__ ((format(METTLE_PRINTF_FORMAT, 3, 4)));
 
 #endif

@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "printf_format.h"
+
 #ifndef oom
 #define oom() exit(-1)
 #endif
@@ -146,7 +148,7 @@ _UNUSED_ static void utstring_printf_va(UT_string *s, const char *fmt, va_list a
 #ifdef __GNUC__
 /* support printf format checking (2=the format string, 3=start of varargs) */
 static void utstring_printf(UT_string *s, const char *fmt, ...)
-  __attribute__ (( format( printf, 2, 3) ));
+  __attribute__ (( format( METTLE_PRINTF_FORMAT, 2, 3) ));
 #endif
 _UNUSED_ static void utstring_printf(UT_string *s, const char *fmt, ...) {
    va_list ap;

@@ -11,6 +11,8 @@
 #include <json-c/json.h>
 #include "bufferev.h"
 
+#include "printf_format.h"
+
 /*
  * JSON read and dispatch methods
  */
@@ -35,7 +37,7 @@ void json_read_buffer_queue_cb(struct buffer_queue *queue, struct json_tokener *
 int json_add_str(struct json_object *json, const char *key, const char *val);
 
 int json_add_str_fmt(struct json_object *json, const char *key, const char *format, ...)
-	__attribute__((format(printf, 3, 4)));
+	__attribute__((format(METTLE_PRINTF_FORMAT, 3, 4)));
 
 int json_add_int32(struct json_object *json, const char *key, int32_t val);
 
