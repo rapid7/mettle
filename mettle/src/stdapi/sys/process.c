@@ -255,8 +255,11 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		.flags = 0
 	};
 
-	if (strchr(path, '$') != NULL || strchr(path, '%') != NULL ||
-	    strchr(args, '$') != NULL || strchr(args, '%') != NULL) {
+	if (strchr(path, '$') != NULL || strchr(path, '%') != NULL) {
+		opts.flags |= PROCESS_CREATE_SUBSHELL;
+	}
+
+	if (args && (strchr(args, '$') != NULL || strchr(args, '%') != NULL)) {
 		opts.flags |= PROCESS_CREATE_SUBSHELL;
 	}
 
