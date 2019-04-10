@@ -142,12 +142,12 @@ fs_ls_cb(eio_req *req)
 
 struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 {
-#ifdef HAVE_GLOB
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
 	if (path == NULL) {
 		return tlv_packet_response_result(ctx, EINVAL);
 	}
 
+#ifdef HAVE_GLOB
 	if (strchr(path, '*') != NULL) {
 		eio_custom(fs_ls_glob, 0, NULL, ctx);
 	} else
