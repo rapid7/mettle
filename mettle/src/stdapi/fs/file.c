@@ -69,44 +69,18 @@ add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 #include <glob.h>
 
 static void
-fs_ls_async(eio_req *req)
+fs_ls_glob(eio_req *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
 	struct tlv_packet *p;
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
-	if (path == NULL) {
-		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-		goto out;
-	}
 
-	glob_t glob_result;
-	memset(&glob_result, 0, sizeof(glob_result));
 #ifndef GLOB_TILDE
 #define GLOB_TILDE 0
 #endif
-	int glob_ret = 0;
-	if (strchr(path, '*') != NULL) {
-		glob_ret = glob(path, GLOB_TILDE, NULL, &glob_result);
-	} else {
-		// If there is no wildcard, add /.* and /* to list the directory
-		// /.* is needed to view hidden files
-		char search_path[PATH_MAX];
-		int bytes_written = snprintf(search_path, PATH_MAX, "%s/.*", path);
-		if (bytes_written < 0 || bytes_written > PATH_MAX) {
-			p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-			goto out;
-		}
-		glob_ret = glob(search_path, GLOB_TILDE, NULL, &glob_result);
-		if (glob_ret == 0 || glob_ret == GLOB_NOMATCH) {
-			bytes_written = snprintf(search_path, PATH_MAX, "%s/*", path);
-			if (bytes_written < 0 || bytes_written > PATH_MAX) {
-				p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-				goto out;
-			}
-			glob_ret = glob(search_path, GLOB_TILDE | GLOB_APPEND, NULL, &glob_result);
-		}
-		path = search_path;
-	}
+	glob_t glob_result;
+	memset(&glob_result, 0, sizeof(glob_result));
+	int glob_ret = glob(path, GLOB_TILDE, NULL, &glob_result);
 	if (glob_ret != 0) {
 		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	} else {
@@ -123,19 +97,11 @@ fs_ls_async(eio_req *req)
 	}
 
 	globfree(&glob_result);
-out:
 
 	tlv_dispatcher_enqueue_response(ctx->td, p);
 	tlv_handler_ctx_free(ctx);
 }
-
-struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
-{
-	eio_custom(fs_ls_async, 0, NULL, ctx);
-	return NULL;
-}
-
-#else
+#endif
 
 static int
 fs_ls_cb(eio_req *req)
@@ -176,20 +142,22 @@ fs_ls_cb(eio_req *req)
 
 struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 {
-	struct mettle *m = ctx->arg;
-
+#ifdef HAVE_GLOB
 	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
 	if (path == NULL) {
 		return tlv_packet_response_result(ctx, EINVAL);
 	}
 
-	if (eio_readdir(path, EIO_READDIR_DENTS, 0, fs_ls_cb, ctx) == NULL) {
-		return tlv_packet_response_result(ctx, errno);
-	}
+	if (strchr(path, '*') != NULL) {
+		eio_custom(fs_ls_glob, 0, NULL, ctx);
+	} else
+#endif
+		if (eio_readdir(path, EIO_READDIR_DENTS, 0, fs_ls_cb, ctx) == NULL) {
+			return tlv_packet_response_result(ctx, errno);
+		}
 
 	return NULL;
 }
-#endif
 
 static int
 fs_stat_cb(eio_req *req)
