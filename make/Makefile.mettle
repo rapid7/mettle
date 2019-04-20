@@ -25,6 +25,7 @@ ifneq (,$(findstring darwin,$(BUILD)))
     METTLE_DEPS += $(BUILD)/lib/libpcap.a
     ifneq (,$(findstring iphone,$(BUILD)))
         METTLE_TARGETS += $(BUILD)/bin/mettle.dylib
+        METTLE_TARGETS += $(BUILD)/bin/mettle.sha1.dylib
     endif
 else
     ifneq (,$(findstring mingw,$(BUILD)))
@@ -74,7 +75,11 @@ $(BUILD)/bin/mettle.bin: $(BUILD)/bin/mettle.built
 
 $(BUILD)/bin/mettle.dylib: $(BUILD)/bin/mettle.built
 	@./deps/app2dylib -o $(BUILD)/bin/mettle.dylib $(BUILD)/bin/mettle
-	@./deps/ldid -S $(BUILD)/bin/mettle.dylib
+	@./deps/ldid2 -S $(BUILD)/bin/mettle.dylib
+
+$(BUILD)/bin/mettle.sha1.dylib: $(BUILD)/bin/mettle.built
+	@./deps/app2dylib -o $(BUILD)/bin/mettle.sha1.dylib $(BUILD)/bin/mettle
+	@./deps/ldid -S $(BUILD)/bin/mettle.sha1.dylib
 
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
