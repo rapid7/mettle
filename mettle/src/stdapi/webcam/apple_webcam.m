@@ -68,6 +68,9 @@ int count;
   NSError* error = nil;
   AVCaptureDeviceInput* input =
     [AVCaptureDeviceInput deviceInputWithDevice: device  error: &error];
+  if (!input) {
+    return false;
+  }
   [session addInput:input];
 
   AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
@@ -145,14 +148,15 @@ int count;
 
 struct tlv_packet *webcam_get_frame(struct tlv_handler_ctx *ctx)
 {
-  struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
   @autoreleasepool {
     NSData* jpgData = [capture getFrame];
     if (jpgData) {
+      struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
       p = tlv_packet_add_raw(p, TLV_TYPE_WEBCAM_IMAGE, jpgData.bytes, jpgData.length);
+      return p;
     }
   }
-  return p;
+  return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
 struct tlv_packet *webcam_start(struct tlv_handler_ctx *ctx)
