@@ -217,7 +217,7 @@ coreutils: $(TOOLS)/bin/install
 
 musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz:
 	@echo "Downloading toolchain"
-	curl -f -O https://s3.amazonaws.com/muslcross/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
+	curl -f -O https://muslcross.s3.amazonaws.com/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 
 $(TOOLS)/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@echo "Unpacking toolchain"
