@@ -211,11 +211,13 @@ static void process_channel_exit_cb(struct process *p, int exit_status, void *ar
 	struct channelmgr_ctx *cm_ctx = arg;
 	struct channel *c = channelmgr_channel_by_id(cm_ctx->cm, cm_ctx->channel_id);
 	cm_ctx->eof = true;
-	if (c && channel_get_interactive(c)) {
-		channel_send_close_request(c);
-		free(cm_ctx);
-	} else {
-		channel_set_eof(c);
+	if (c) {
+	   if (channel_get_interactive(c)) {
+			channel_send_close_request(c);
+			free(cm_ctx);
+		} else {
+			channel_set_eof(c);
+		}
 	}
 }
 
