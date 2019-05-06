@@ -27,12 +27,15 @@ module MetasploitPayloads
     end
 
     #
-    # Available formats are :process_image, :dylib and :exec
+    # Available formats are :process_image, :dylib, :dylib_sha1 and :exec
     #
     def to_binary(format=:process_image)
       bin = self.class.read(@platform, format)
-      params = generate_argv
-      add_args(bin, params)
+      unless @config.empty?
+        params = generate_argv
+        bin = add_args(bin, params)
+      end
+      bin
     end
 
     private
@@ -101,6 +104,8 @@ module MetasploitPayloads
             "#{filename}.bin"
           when :dylib
             "#{filename}.dylib"
+          when :dylib_sha1
+            "#{filename}.sha1.dylib"
           when :exec
             "#{filename}"
           else
