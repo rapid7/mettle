@@ -61,6 +61,7 @@ libmettle_la_SOURCES += stdapi/clipboard/apple_clipboard.m
 endif
 if HOST_OSX
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
+libmettle_la_SOURCES += stdapi/ui/osx_keyboard.m
 libmettle_la_SOURCES += stdapi/audio/apple_mic.m
 endif
 if HOST_LINUX

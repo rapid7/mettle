@@ -30,6 +30,7 @@ case $host_os in
 			],
 			[HOST_OS=osx
 			 AC_DEFINE(HAVE_DESKTOP_SCREENSHOT)
+			 AC_DEFINE(HAVE_KEYBOARD)
 			 AC_DEFINE(HAVE_MIC)
 			 AC_SUBST([PLATFORM_LDADD], ["-framework AppKit $PLATFORM_LDADD -framework Cocoa"])],
 			[HOST_OS=ios])
