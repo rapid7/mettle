@@ -29,5 +29,8 @@ void ui_register_handlers(struct mettle *m)
 #if HAVE_KEYBOARD
 	tlv_dispatcher_add_handler(td, "stdapi_ui_send_keys", send_keys, m);
 #endif
+#if HAVE_MOUSE
+	tlv_dispatcher_add_handler(td, "stdapi_ui_send_mouse", send_mouse, m);
+#endif
 }
 
