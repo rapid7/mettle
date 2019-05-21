@@ -250,6 +250,8 @@ struct mettle *mettle(void)
 
 	m->pm = procmgr_new(m->loop);
 
+	procmgr_setup_env();
+
 	m->em = extmgr_new();
 
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
