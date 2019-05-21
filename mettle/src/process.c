@@ -118,33 +118,12 @@ static char *shell_path(void)
 	return NULL;
 }
 
-static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+void procmgr_setup_env(void)
 {
-	char *args = NULL, *proc = NULL;
-
-	ev_loop_fork(EV_DEFAULT);
-	ev_loop_destroy(EV_DEFAULT_UC);
-
-	const char *process_name = file;
-	if (opts) {
-		if (opts->cwd != NULL && chdir(opts->cwd)) {
-			abort();
-		}
-		if (opts->user != NULL) {
-			switch_user(opts->user);
-		}
-		if (opts->env != NULL) {
-			environ = opts->env;
-		}
-		if (opts->process_name) {
-			process_name = opts->process_name;
-		}
+	const char *lang = getenv("LANG");
+	if (lang == NULL) {
+		setenv("LANG", "C", 0);
 	}
-
-	proc = strdup(process_name);
-
-	setenv("LANG", "C", 0);
 
 	struct passwd *pwd = getpwuid(geteuid());
 	if (pwd != NULL) {
@@ -177,6 +156,34 @@ static void exec_child(struct procmgr *mgr,
 	} else {
 		setenv("PATH", def_path, 1);
 	}
+}
+
+static void exec_child(struct procmgr *mgr,
+    const char *file, struct process_options *opts)
+{
+	char *args = NULL, *proc = NULL;
+
+	ev_loop_fork(EV_DEFAULT);
+	ev_loop_destroy(EV_DEFAULT_UC);
+
+	const char *process_name = file;
+	if (opts) {
+		if (opts->cwd != NULL && chdir(opts->cwd)) {
+			abort();
+		}
+		if (opts->user != NULL) {
+			switch_user(opts->user);
+		}
+		if (opts->env != NULL) {
+			environ = opts->env;
+		}
+		if (opts->process_name) {
+			process_name = opts->process_name;
+		}
+	}
+
+	proc = strdup(process_name);
+
 
 	if (opts && opts->args) {
 		if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {

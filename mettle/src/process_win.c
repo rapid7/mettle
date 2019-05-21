@@ -156,6 +156,10 @@ void process_set_callbacks(struct process *p,
 	p->cb_arg = cb_arg;
 }
 
+void procmgr_setup_env(void)
+{
+}
+
 struct process * process_create(struct procmgr *mgr,
 	const char *file,
 	const unsigned char *bin_image, size_t bin_image_len,

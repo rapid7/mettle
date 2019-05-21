@@ -15,6 +15,8 @@ struct progmgr;
 
 struct procmgr * procmgr_new(struct ev_loop *loop);
 
+void procmgr_setup_env(void);
+
 void procmgr_free(struct procmgr *mgr);
 
 typedef void (*process_exit_cb_t)(struct process *, int exit_status, void *arg);
