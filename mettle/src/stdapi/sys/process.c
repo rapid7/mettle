@@ -183,7 +183,7 @@ ssize_t sys_process_read(struct channel *c, void *buf, size_t len)
 {
 	ssize_t rc = channel_dequeue(c, buf, len);
 	if (rc > 0) {
-		log_debug("read %" PRIuS " bytes for channel", rc);
+		log_debug("read %zd bytes for channel", rc);
 	}
 	if (channel_get_ctx(c) == NULL && channel_queue_len(c) < 1) {
 		channel_shutdown(c);
