@@ -501,10 +501,10 @@ void ui_send_keyevent(uint32_t keycode, bool keydown)
 struct tlv_packet *send_keyevent(struct tlv_handler_ctx *ctx)
 {
   struct tlv_packet *p;
-	size_t buf_len = 0;
-	char *buf = tlv_packet_get_raw(ctx->req, TLV_TYPE_KEYEVENT_SEND, &buf_len);
-	if (buf == NULL) {
-		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+  size_t buf_len = 0;
+  char *buf = tlv_packet_get_raw(ctx->req, TLV_TYPE_KEYEVENT_SEND, &buf_len);
+  if (buf == NULL) {
+    return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
   }
 
   for (size_t i=0;i<buf_len;i+=8) {
