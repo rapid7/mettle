@@ -261,6 +261,7 @@
 #define TLV_TYPE_MOUSE_ACTION          (TLV_META_TYPE_UINT    | 3015)
 #define TLV_TYPE_MOUSE_X               (TLV_META_TYPE_UINT    | 3016)
 #define TLV_TYPE_MOUSE_Y               (TLV_META_TYPE_UINT    | 3017)
+#define TLV_TYPE_KEYEVENT_SEND         (TLV_META_TYPE_RAW     | 3018)
 
 /*
  * Event Log

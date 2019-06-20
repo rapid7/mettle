@@ -3,6 +3,7 @@
 
 struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx);
 struct tlv_packet *send_keys(struct tlv_handler_ctx *ctx);
+struct tlv_packet *send_keyevent(struct tlv_handler_ctx *ctx);
 struct tlv_packet *send_mouse(struct tlv_handler_ctx *ctx);
 
 #endif
