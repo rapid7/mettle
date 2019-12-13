@@ -14,5 +14,6 @@ libreflect_la_SOURCES += exec.c
 endif
 
 if HOST_LINUX
+libreflect_la_SOURCES += map_segment_memfd.c
 libreflect_la_SOURCES += memfd_exec.c
 endif

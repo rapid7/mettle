@@ -9,6 +9,7 @@
 
 #include <reflect.h>
 #include "map_elf.h"
+#include "map_segment.h"
 
 // This takes a native-sized EHDR, but the parts we check are in the
 // constant-sized bit so it doesn't really matter
@@ -27,14 +28,13 @@ bool is_compatible_elf(const ElfW(Ehdr) *ehdr) {
 // TODO: a version that reads the file from a stream?
 void map_elf(const unsigned char *data, struct mapped_elf *obj)
 {
-	ElfW(Addr) dest = 0;
 	ElfW(Ehdr) *ehdr;
 	ElfW(Phdr) *phdr;
 
 	unsigned char *mapping = MAP_FAILED; // target memory location
 	const unsigned char *source = 0;
-	size_t len, virtual_offset = 0, total_to_map = 0;
-	int ii, prot;
+	size_t virtual_offset = 0, total_to_map = 0;
+	int ii;
 
 	// Locate ELF program and section headers
 	ehdr = (ElfW(Ehdr) *)data;
@@ -54,33 +54,27 @@ void map_elf(const unsigned char *data, struct mapped_elf *obj)
 	phdr = (ElfW(Phdr) *)(data + ehdr->e_phoff);
 	for(ii = 0; ii < ehdr->e_phnum; ii++, phdr++) {
 		if(phdr->p_type == PT_LOAD) {
+			dprint("segment %d\n", ii);
 			if(mapping == MAP_FAILED) {
 				// Setup area in memory to contain the new binary image
 				if (phdr->p_vaddr != 0) {
 					// The first loadable segment has an address, so we are not PIE and need to readjust our perspective
 					total_to_map -= phdr->p_vaddr;
 				}
-				mapping = mmap((void *)PAGE_FLOOR(phdr->p_vaddr), PAGE_CEIL(total_to_map), PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+				mapping = mmap((void *)PAGE_FLOOR(phdr->p_vaddr), PAGE_CEIL(total_to_map), PROT_NONE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 				if(mapping == MAP_FAILED) {
 					dprint("Failed to mmap(): %s\n", strerror(errno));
 					goto map_failed;
 				}
-				memset(mapping, 0, total_to_map);
 				dprint("data @ %p, mapping @ %p\n", data, mapping);
 				if(phdr->p_vaddr == 0) virtual_offset = (size_t) mapping;
 				obj->ehdr = (ElfW(Ehdr) *) mapping;
 				obj->entry_point = virtual_offset + ehdr->e_entry;
 			}
 			source = data + phdr->p_offset;
-			dest = virtual_offset + phdr->p_vaddr;
-			len = phdr->p_filesz;
-			dprint("memcpy(%p, %p, %08zx)\n", (void *)dest, source, len);
-			memcpy((void *)dest, source, len);
 
-			prot = (((phdr->p_flags & PF_R) ? PROT_READ : 0) |
-				((phdr->p_flags & PF_W) ? PROT_WRITE: 0) |
-				((phdr->p_flags & PF_X) ? PROT_EXEC : 0));
-			if(mprotect((void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz), prot) != 0) {
+			if(map_segment(obj, phdr, source) == -1) {
+				dprint("Could not map memory for segment %d: %s\n", ii, strerror(errno));
 				goto mprotect_failed;
 			}
 		} else if(phdr->p_type == PT_INTERP) {
@@ -103,5 +97,3 @@ mprotect_failed:
 map_failed:
 	obj->ehdr = MAP_FAILED;
 }
-
-
