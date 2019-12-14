@@ -23,7 +23,14 @@ int map_segment(struct mapped_elf *obj, ElfW(Phdr) *phdr, const unsigned char *s
 		((phdr->p_flags & PF_W) ? PROT_WRITE: 0) |
 		((phdr->p_flags & PF_X) ? PROT_EXEC : 0));
 
-	dest = (size_t) obj->ehdr + phdr->p_vaddr;
+	// Caluate the destination. If the object is position independent,
+	// phdr->p_vaddr is a memory offset, otherwise it is an actual address
+	if (obj->pie) {
+		dest = (size_t) obj->ehdr + phdr->p_vaddr;
+	} else {
+		dest = phdr->p_vaddr;
+	}
+
 	len = phdr->p_filesz;
 
 	if (prot & PROT_EXEC) {

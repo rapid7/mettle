@@ -44,6 +44,7 @@ struct mapped_elf {
 	ElfW(Ehdr) *ehdr;
 	ElfW(Addr) entry_point;
 	char *interp;
+	bool pie;
 };
 
 void map_elf(const unsigned char *data, struct mapped_elf *obj);

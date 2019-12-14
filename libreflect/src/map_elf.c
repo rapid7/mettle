@@ -67,7 +67,13 @@ void map_elf(const unsigned char *data, struct mapped_elf *obj)
 					goto map_failed;
 				}
 				dprint("data @ %p, mapping @ %p\n", data, mapping);
-				if(phdr->p_vaddr == 0) virtual_offset = (size_t) mapping;
+				if(phdr->p_vaddr == 0) {
+					virtual_offset = (size_t) mapping;
+					obj->pie = true;
+				} else {
+					obj->pie = false;
+				}
+
 				obj->ehdr = (ElfW(Ehdr) *) mapping;
 				obj->entry_point = virtual_offset + ehdr->e_entry;
 			}
