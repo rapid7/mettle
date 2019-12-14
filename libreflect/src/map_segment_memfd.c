@@ -17,7 +17,7 @@
 int map_segment(struct mapped_elf *obj, ElfW(Phdr) *phdr, const unsigned char *source) {
 	ElfW(Addr) dest;
 	ssize_t written;
-	size_t len;
+	size_t len, page_rounded_len;
 	unsigned char *mapping;
 	int memfd, prot = (((phdr->p_flags & PF_R) ? PROT_READ : 0) |
 		((phdr->p_flags & PF_W) ? PROT_WRITE: 0) |
@@ -32,6 +32,7 @@ int map_segment(struct mapped_elf *obj, ElfW(Phdr) *phdr, const unsigned char *s
 	}
 
 	len = phdr->p_filesz;
+	page_rounded_len = PAGE_CEIL(phdr->p_memsz + (phdr->p_vaddr % PAGE_SIZE));
 
 	if (prot & PROT_EXEC) {
 		memfd = syscall(SYS_memfd_create, "", 0);
@@ -48,25 +49,26 @@ int map_segment(struct mapped_elf *obj, ElfW(Phdr) *phdr, const unsigned char *s
 			goto write_failed;
 		}
 
-		dprint("mmap(%p, %08zx, %08x)\n", (void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz), prot);
-		mapping = mmap((void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz), prot, MAP_FIXED | MAP_PRIVATE, memfd, 0);
+		dprint("mmap(%p, %08zx, %08x)\n", (void *)PAGE_FLOOR(dest), page_rounded_len, prot);
+		mapping = mmap((void *)PAGE_FLOOR(dest), page_rounded_len, prot, MAP_FIXED | MAP_PRIVATE, memfd, 0);
 		if (mapping == MAP_FAILED) {
 			dprint("Failed to mmap(): %s\n", strerror(errno));
 			goto write_failed;
 		}
 		close(memfd);
 	} else {
-		dprint("mmap(%p, %08zx)\n", (void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz + (phdr->p_vaddr % PAGE_SIZE)));
-		mapping = mmap((void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz + (phdr->p_vaddr % PAGE_SIZE)), PROT_WRITE, MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+		dprint("mmap(%p, %08zx)\n", (void *)PAGE_FLOOR(dest), page_rounded_len);
+		mapping = mmap((void *)PAGE_FLOOR(dest), page_rounded_len, PROT_WRITE, \
+				MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 		if (mapping == MAP_FAILED) {
 			dprint("Failed to mmap(): %s\n", strerror(errno));
 			goto memfd_failed;
 		}
-		memset(mapping, 0, PAGE_CEIL(phdr->p_memsz + (phdr->p_vaddr % PAGE_SIZE)));
+		memset(mapping, 0, page_rounded_len);
 		dprint("memcpy(%p, %p, %08zx)\n", (void *)dest, source, len);
 		memcpy((void *)dest, source, len);
 
-		if(mprotect((void *)PAGE_FLOOR(dest), PAGE_CEIL(phdr->p_memsz + (phdr->p_vaddr % PAGE_SIZE)), prot) != 0) {
+		if(mprotect((void *)PAGE_FLOOR(dest), page_rounded_len, prot) != 0) {
 			dprint("Could not mprotect(): %s\n", strerror(errno));
 			goto memfd_failed;
 		}
