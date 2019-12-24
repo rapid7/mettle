@@ -14,6 +14,11 @@
 #define REFLECT_HAVE_ASM @HAVE_ASM@
 #endif
 
+#ifndef REFLECT_HAVE_MEMFD
+/* Determined by just OS for now. */
+#define REFLECT_HAVE_MEMFD @HAVE_MEMFD@
+#endif
+
 /*
  * High-level interface
  */

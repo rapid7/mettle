@@ -5,6 +5,7 @@ AM_CPPFLAGS = -I../include
 lib_LTLIBRARIES = libreflect.la
 
 libreflect_la_SOURCES = map_elf.c
+libreflect_la_SOURCES += map_segment.c
 libreflect_la_SOURCES += stack_setup.c
 
 if HAVE_ASM
