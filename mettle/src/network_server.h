@@ -25,4 +25,6 @@ void network_server_setcbs(struct network_server *ns,
 
 void network_server_free(struct network_server *ns);
 
+char * network_server_get_local_addr(struct network_server *ns, uint16_t *port);
+
 #endif

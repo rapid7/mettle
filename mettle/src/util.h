@@ -7,6 +7,8 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+#include <sys/socket.h>
+
 /*
  * COUNT_OF from Google Chromium, deals with C++ objects
  */
@@ -26,5 +28,8 @@
 		  _a < _b ? _a : _b; })
 
 int make_socket_nonblocking(int fd);
+
+char *
+parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port);
 
 #endif
