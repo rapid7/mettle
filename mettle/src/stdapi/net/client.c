@@ -49,6 +49,14 @@ tcp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 
 		if (event & BEV_CONNECTED) {
 			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_SUCCESS);
+			uint16_t local_port;
+			char *local_host = bufferev_get_local_addr(be, &local_port);
+			if (local_host) {
+				p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_HOST, local_host);
+				p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, local_port);
+				free(local_host);
+				local_host = NULL;
+			}
 			channel_opened(tcc->channel);
 
 		} else if (event & BEV_ERROR) {
@@ -236,6 +244,14 @@ udp_client_channel_event_cb(struct bufferev *be, int event, void *arg)
 
 		if (event & BEV_CONNECTED) {
 			p = tlv_packet_response_result(tlv_ctx, TLV_RESULT_SUCCESS);
+			uint16_t local_port;
+			char *local_host = bufferev_get_local_addr(be, &local_port);
+			if (local_host) {
+				p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_HOST, local_host);
+				p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, local_port);
+				free(local_host);
+				local_host = NULL;
+			}
 			channel_opened(tcc->channel);
 
 		} else if (event & BEV_ERROR) {

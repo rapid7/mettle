@@ -7,7 +7,6 @@
 #include <ev.h>
 #include <eio.h>
 #include <errno.h>
-#include <string.h>
 #include <strings.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,7 +16,6 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <sys/uio.h>
 
 #include "buffer_queue.h"
@@ -322,24 +320,6 @@ int bufferev_connect_tcp_sock(struct bufferev *be, int sock)
 	}
 
 	return 0;
-}
-
-static char *
-parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
-{
-	char host[INET6_ADDRSTRLEN] = { 0 };
-
-	if (addr->ss_family == AF_INET) {
-		struct sockaddr_in *s = (struct sockaddr_in *)addr;
-		*port = ntohs(s->sin_port);
-		inet_ntop(AF_INET, &s->sin_addr, host, INET6_ADDRSTRLEN);
-	} else if (addr->ss_family == AF_INET6) {
-		struct sockaddr_in6 *s = (struct sockaddr_in6 *)addr;
-		*port = ntohs(s->sin6_port);
-		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
-	}
-
-	return strdup(host);
 }
 
 char * bufferev_get_udp_msg_peer_addr(struct bufferev_udp_msg *msg, uint16_t *port)

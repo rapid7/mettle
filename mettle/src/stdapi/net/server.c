@@ -71,13 +71,21 @@ static void open_tcp_channel(struct network_server_channel *nsc, struct bufferev
 
 	uint16_t local_port;
 	char *local_host = bufferev_get_local_addr(be, &local_port);
-	p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_HOST, local_host);
-	p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, local_port);
+	if (local_host) {
+		p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_HOST, local_host);
+		p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, local_port);
+		free(local_host);
+		local_host = NULL;
+	}
 
 	uint16_t peer_port;
 	char *peer_host = bufferev_get_peer_addr(be, &peer_port);
-	p = tlv_packet_add_str(p, TLV_TYPE_PEER_HOST, peer_host);
-	p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, peer_port);
+	if (peer_host) {
+		p = tlv_packet_add_str(p, TLV_TYPE_PEER_HOST, peer_host);
+		p = tlv_packet_add_u32(p, TLV_TYPE_PEER_PORT, peer_port);
+		free(peer_host);
+		peer_host = NULL;
+	}
 
 	bufferev_set_cbs(be, conn_read_cb, NULL, conn_event_cb, conn);
 	channel_set_ctx(conn->channel, conn);
@@ -100,8 +108,8 @@ static int tcp_server_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	uint32_t port = 0;
 	struct mettle *m = ctx->arg;
 	struct network_server_channel *nsc;
-
-	const char *host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
+	struct tlv_packet *p = NULL;
+	char *host = tlv_packet_get_str(ctx->req, TLV_TYPE_LOCAL_HOST);
 
 	if (tlv_packet_get_u32(ctx->req, TLV_TYPE_LOCAL_PORT, &port) == -1) {
 		log_error("no port specified");
@@ -128,6 +136,15 @@ static int tcp_server_new(struct tlv_handler_ctx *ctx, struct channel *c)
 	channel_set_ctx(c, nsc);
 	log_info("listening on %s:%d", host, port);
 
+	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	host = network_server_get_local_addr(nsc->ns, (uint16_t*)&port);
+	if (host) {
+		p = tlv_packet_add_str(p, TLV_TYPE_LOCAL_HOST, host);
+		p = tlv_packet_add_u32(p, TLV_TYPE_LOCAL_PORT, port);
+		free(host);
+		host = NULL;
+	}
+	tlv_dispatcher_enqueue_response(ctx->td, p);
 	return 0;
 }
 
@@ -168,7 +185,7 @@ void net_server_register_handlers(struct mettle *m)
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 
 	struct channel_callbacks tcp_server_cbs = {
-		.new_cb = tcp_server_new,
+		.new_async_cb = tcp_server_new,
 		.free_cb = tcp_server_free,
 	};
 	channelmgr_add_channel_type(cm, "stdapi_net_tcp_server", &tcp_server_cbs);

@@ -154,5 +154,14 @@ void network_server_free(struct network_server *ns)
 	}
 }
 
+char * network_server_get_local_addr(struct network_server *ns, uint16_t *port)
+{
+	struct sockaddr_storage addr;
+	socklen_t len = sizeof(addr);
 
+	if (getsockname(ns->listener, (struct sockaddr *)&addr, &len) == -1) {
+		return NULL;
+	}
 
+	return parse_sockaddr(&addr, port);
+}
