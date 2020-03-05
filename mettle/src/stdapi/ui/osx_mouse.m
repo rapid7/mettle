@@ -37,10 +37,11 @@ struct tlv_packet *send_mouse(struct tlv_handler_ctx *ctx)
     } else if (action == 6) {
       eventType = kCGEventRightMouseUp;
       button = kCGMouseButtonRight;
+    } else if (action == 7) {
+      eventType = kCGEventLeftMouseDown;
     }
     CGEventRef event = CGEventCreateMouseEvent( NULL, eventType, point, button);
     CGEventPost(kCGHIDEventTap, event);
-    CFRelease(event);
     if (action == 1) {
       eventType = kCGEventLeftMouseUp;
       CGEventRef event = CGEventCreateMouseEvent( NULL, eventType, point, button);
@@ -53,6 +54,16 @@ struct tlv_packet *send_mouse(struct tlv_handler_ctx *ctx)
       CGEventPost(kCGHIDEventTap, event);
       CFRelease(event);
     }
+    if (action == 7) {
+      CGEventRef eventUp = CGEventCreateMouseEvent( NULL, kCGEventLeftMouseUp, point, button);
+      CGEventPost(kCGHIDEventTap, eventUp);
+      CGEventSetIntegerValueField(event, kCGMouseEventClickState, 2);
+      CGEventPost(kCGHIDEventTap, event);
+      CGEventSetIntegerValueField(eventUp, kCGMouseEventClickState, 2);
+      CGEventPost(kCGHIDEventTap, eventUp);
+      CFRelease(eventUp);
+    }
+    CFRelease(event);
   }
   p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
   return p;
