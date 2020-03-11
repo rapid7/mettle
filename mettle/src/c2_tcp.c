@@ -36,6 +36,12 @@ static void tcp_event_cb(struct bufferev *be, int event, void *arg)
 	struct c2_transport *t = arg;
 	if (event & BEV_CONNECTED) {
 		c2_transport_reachable(t);
+	} else if (event == BEV_ERROR) {
+		c2_transport_unreachable(t);
+		struct tcp_ctx *ctx = c2_transport_get_ctx(t);
+		if (ctx) {
+			ctx->first_packet = 1;
+		}
 	} else {
 		c2_transport_unreachable(t);
 	}
