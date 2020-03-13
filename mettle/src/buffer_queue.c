@@ -114,7 +114,6 @@ size_t buffer_queue_copy(struct buffer_queue *q, void *data, size_t len)
 		memcpy(data, buf->data + buf->offset, bytes);
 		data += bytes;
 		len -= bytes;
-		buf = buf->next;
 		copied += bytes;
 		if (len <= 0) {
 			break;
