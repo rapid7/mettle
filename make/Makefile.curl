@@ -1,4 +1,4 @@
-LIBCURL_VERSION=7.63.0
+LIBCURL_VERSION=7.69.1
 
 LIBCURL_DEPS = $(TOOLS) $(BUILD)/lib/libz.a
 LIBCURL_ENV =
@@ -8,7 +8,7 @@ LIBCURL_OPTS =
 #    LIBCURL_OPTS += --with-darwinssl
 #else
     ifneq (,$(findstring mingw,$(BUILD)))
-        LIBCURL_OPTS += --with-ssl --with-winssl
+        LIBCURL_OPTS += --without-ssl --with-winssl
     else
         LIBCURL_DEPS += $(BUILD)/lib/libmbedtls.a
         LIBCURL_OPTS += --without-ssl --with-mbedtls=$(BUILD)
