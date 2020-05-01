@@ -23,6 +23,7 @@
 #include "channel.h"
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 
 #ifdef __APPLE__
 #define st_mtim st_mtimespec
@@ -509,20 +510,20 @@ void file_register_handlers(struct mettle *m)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 
-	tlv_dispatcher_add_handler(td, "stdapi_fs_chdir", fs_chdir, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_file", fs_delete_file, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_file_expand_path", fs_expand_path, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_file_move", fs_file_move, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_file_copy", fs_file_copy, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_chmod", fs_chmod, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_getwd", fs_getwd, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_mkdir", fs_mkdir, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_delete_dir", fs_rmdir, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_ls", fs_ls, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_separator", fs_separator, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_stat", fs_stat, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_md5", fs_md5, m);
-	tlv_dispatcher_add_handler(td, "stdapi_fs_sha1", fs_sha1, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_CHDIR, fs_chdir, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_DELETE_FILE, fs_delete_file, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_FILE_EXPAND_PATH, fs_expand_path, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_FILE_MOVE, fs_file_move, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_FILE_COPY, fs_file_copy, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_CHMOD, fs_chmod, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_GETWD, fs_getwd, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MKDIR, fs_mkdir, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_DELETE_DIR, fs_rmdir, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_LS, fs_ls, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SEPARATOR, fs_separator, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_STAT, fs_stat, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MD5, fs_md5, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SHA1, fs_sha1, m);
 
 	struct channel_callbacks cbs = {
 		.new_cb = file_new,

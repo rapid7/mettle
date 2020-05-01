@@ -127,7 +127,7 @@ void extension_log_to_file(int level, char const * filename)
  * Add/register the TLV handlers of an extension.
  */
 int extension_add_handler(struct extension *e,
-		const char *method, tlv_handler_cb cb, void *arg)
+		uint32_t command_id, tlv_handler_cb cb, void *arg)
 {
 	int ret_val;
 
@@ -135,9 +135,9 @@ int extension_add_handler(struct extension *e,
 		return -1;
 	}
 
-	ret_val = tlv_dispatcher_add_handler(e->td, method, cb, arg);
+	ret_val = tlv_dispatcher_add_handler(e->td, command_id, cb, arg);
 	if (ret_val == 0) {
-		fprintf(stdout, "%s\n", method);
+		fprintf(stdout, "%u\n", command_id);
 	}
 
 	return ret_val;

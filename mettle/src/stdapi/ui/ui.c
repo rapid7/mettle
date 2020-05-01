@@ -24,14 +24,14 @@ void ui_register_handlers(struct mettle *m)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
 #if HAVE_DESKTOP_SCREENSHOT
-	tlv_dispatcher_add_handler(td, "stdapi_ui_desktop_screenshot", desktop_screenshot, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_UI_DESKTOP_SCREENSHOT, desktop_screenshot, m);
 #endif
 #if HAVE_KEYBOARD
-	tlv_dispatcher_add_handler(td, "stdapi_ui_send_keys", send_keys, m);
-	tlv_dispatcher_add_handler(td, "stdapi_ui_send_keyevent", send_keyevent, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_UI_SEND_KEYS, send_keys, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_UI_SEND_KEYEVENT, send_keyevent, m);
 #endif
 #if HAVE_MOUSE
-	tlv_dispatcher_add_handler(td, "stdapi_ui_send_mouse", send_mouse, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_UI_SEND_MOUSE, send_mouse, m);
 #endif
 }
 

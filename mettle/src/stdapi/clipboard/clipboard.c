@@ -22,8 +22,8 @@ void clipboard_register_handlers(struct mettle *m)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
 #if HAVE_CLIPBOARD
-	tlv_dispatcher_add_handler(td, "extapi_clipboard_get_data", extapi_clipboard_get_data, m);
-	tlv_dispatcher_add_handler(td, "extapi_clipboard_set_data", extapi_clipboard_set_data, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_EXTAPI_CLIPBOARD_GET_DATA, extapi_clipboard_get_data, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_EXTAPI_CLIPBOARD_SET_DATA, extapi_clipboard_set_data, m);
 #endif
 }
 

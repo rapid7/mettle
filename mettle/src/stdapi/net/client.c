@@ -10,6 +10,7 @@
 #include "log.h"
 #include "network_client.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "util.h"
 
 struct tcp_client_channel {
@@ -369,7 +370,7 @@ void net_client_register_handlers(struct mettle *m)
 		.free_cb = tcp_client_free,
 	};
 	channelmgr_add_channel_type(cm, "stdapi_net_tcp_client", &tcp_client_cbs);
-	tlv_dispatcher_add_handler(td, "stdapi_net_socket_tcp_shutdown", tcp_shutdown, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_NET_SOCKET_TCP_SHUTDOWN, tcp_shutdown, m);
 
 	struct channel_callbacks udp_client_cbs = {
 		.new_async_cb = udp_client_new,

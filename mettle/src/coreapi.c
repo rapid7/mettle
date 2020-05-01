@@ -7,6 +7,7 @@
 #include "crypttlv.h"
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "extensions.h"
 #include "util-common.h"
 
@@ -16,27 +17,23 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static void add_method(const char *method, void *arg)
+static void add_method(uint32_t command_id, void *arg)
 {
 	struct tlv_packet **p = arg;
-	*p = tlv_packet_add_str(*p, TLV_TYPE_STRING, method);
+	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
 }
 
 static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
-	const char *extension = tlv_packet_get_str(ctx->req, TLV_TYPE_STRING);
-
-	/*
-	 * When enumerating stdapi, send everything we know about so far
-	 */
-	if (extension == NULL || strcmp(extension, "stdapi") == 0) {
-		extension = NULL;
-	}
+  uint32_t command_id_start = 0, command_id_end = 0;
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_UINT, &command_id_start);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_LENGTH, &command_id_end);
+  command_id_end += command_id_start;
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	tlv_dispatcher_iter_extension_methods(td, extension, add_method, &p);
+	tlv_dispatcher_iter_extension_methods(td, command_id_start, command_id_end, add_method, &p);
 	return p;
 }
 
@@ -96,21 +93,6 @@ static struct tlv_packet *core_set_uuid(struct tlv_handler_ctx *ctx)
 	}
 
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-}
-
-static struct tlv_packet *core_uuid(struct tlv_handler_ctx *ctx)
-{
-	size_t uuid_len;
-	struct mettle *m = ctx->arg;
-	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-	const char *uuid = tlv_dispatcher_get_uuid(td, &uuid_len);
-
-	if (uuid && uuid_len) {
-	       struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	       return tlv_packet_add_raw(p, TLV_TYPE_UUID, uuid, uuid_len);
-	}
-
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
 static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *ctx)
@@ -230,13 +212,12 @@ void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	tlv_dispatcher_add_handler(td, "core_enumextcmd", enumextcmd, m);
-	tlv_dispatcher_add_handler(td, "core_machine_id", core_machine_id, m);
-	tlv_dispatcher_add_handler(td, "core_set_uuid", core_set_uuid, m);
-	tlv_dispatcher_add_handler(td, "core_uuid", core_uuid, m);
-	tlv_dispatcher_add_handler(td, "core_get_session_guid", core_get_session_guid, m);
-	tlv_dispatcher_add_handler(td, "core_set_session_guid", core_set_session_guid, m);
-	tlv_dispatcher_add_handler(td, "core_negotiate_tlv_encryption", core_negotiate_tlv_encryption, m);
-	tlv_dispatcher_add_handler(td, "core_loadlib", core_loadlib, m);
-	tlv_dispatcher_add_handler(td, "core_shutdown", core_shutdown, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, enumextcmd, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MACHINE_ID, core_machine_id, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_UUID, core_set_uuid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_GET_SESSION_GUID, core_get_session_guid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_SESSION_GUID, core_set_session_guid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_LOADLIB, core_loadlib, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SHUTDOWN, core_shutdown, m);
 }

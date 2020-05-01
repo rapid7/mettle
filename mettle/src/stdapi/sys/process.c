@@ -10,6 +10,7 @@
 
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 
 static struct tlv_packet *
 get_process_info(sigar_t *sigar, sigar_pid_t pid)
@@ -316,15 +317,15 @@ void sys_process_register_handlers(struct mettle *m)
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_processes", sys_process_get_processes, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_attach", sys_process_attach, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_close", sys_process_close, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_execute", sys_process_execute, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_kill", sys_process_kill, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_processes", sys_process_get_processes, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_getpid", sys_process_getpid, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_get_info", sys_process_get_info, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_process_wait", sys_process_wait, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GET_PROCESSES, sys_process_get_processes, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_ATTACH, sys_process_attach, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_CLOSE, sys_process_close, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_EXECUTE, sys_process_execute, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_KILL, sys_process_kill, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GET_PROCESSES, sys_process_get_processes, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GETPID, sys_process_getpid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GET_INFO, sys_process_get_info, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_WAIT, sys_process_wait, m);
 
 	struct channel_callbacks cbs = {
 		.read_cb = sys_process_read,

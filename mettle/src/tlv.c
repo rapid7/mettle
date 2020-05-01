@@ -349,7 +349,7 @@ struct tlv_packet * tlv_packet_response(struct tlv_handler_ctx *ctx)
 			tlv_packet_len(ctx->req) + 32);
 
 	p = tlv_packet_add_uuid(p, ctx->td);
-	p = tlv_packet_add_str(p, TLV_TYPE_METHOD, ctx->method);
+	p = tlv_packet_add_u32(p, TLV_TYPE_COMMAND_ID, ctx->command_id);
 
 	if (ctx->channel_id) {
 		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, ctx->channel_id);
@@ -370,7 +370,7 @@ struct tlv_handler {
 	tlv_handler_cb cb;
 	void *arg;
 	UT_hash_handle hh;
-	char method[];
+	uint32_t command_id;
 };
 
 struct tlv_response {
@@ -484,19 +484,18 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg)
 }
 
 int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
-		const char *method, tlv_handler_cb cb, void *arg)
+		uint32_t command_id, tlv_handler_cb cb, void *arg)
 {
-	struct tlv_handler *handler =
-		calloc(1, sizeof(*handler) + strlen(method) + 1);
+	struct tlv_handler *handler = calloc(1, sizeof(*handler));
 	if (handler == NULL) {
 		return -1;
 	}
 
-	strcpy(handler->method, method);
+	handler->command_id = command_id;
 	handler->cb = cb;
 	handler->arg = arg;
 
-	HASH_ADD_STR(td->handlers, method, handler);
+	HASH_ADD_INT(td->handlers, command_id, handler);
 	return 0;
 }
 
@@ -506,23 +505,21 @@ void tlv_dispatcher_add_encryption(struct tlv_dispatcher *td, struct tlv_encrypt
 }
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
-		const char *extension,
-		void (*cb)(const char *method, void *arg), void *arg)
+		uint32_t command_id_start, uint32_t command_id_end,
+		void (*cb)(uint32_t command_id, void *arg), void *arg)
 {
 	struct tlv_handler *handler, *tmp;
-	size_t extension_len = extension ? strlen(extension) : 0;
 	HASH_ITER(hh, td->handlers, handler, tmp) {
-		if (extension == NULL || strncmp(handler->method, extension, extension_len) == 0) {
-			cb(handler->method, arg);
+		if (command_id_start < handler->command_id && handler->command_id < command_id_end) {
+			cb(handler->command_id, arg);
 		}
 	}
 }
 
-static struct tlv_handler * find_handler(struct tlv_dispatcher *td,
-		const char *method)
+static struct tlv_handler * find_handler(struct tlv_dispatcher *td, uint32_t command_id)
 {
 	struct tlv_handler *handler = NULL;
-	HASH_FIND_STR(td->handlers, method, handler);
+	HASH_FIND_INT(td->handlers, &command_id, handler);
 	return handler;
 }
 
@@ -544,10 +541,10 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 
 	ctx->req = p;
 	ctx->td = td;
-	ctx->method = tlv_packet_get_str(p, TLV_TYPE_METHOD);
 	ctx->id = tlv_packet_get_str(p, TLV_TYPE_REQUEST_ID);
+	tlv_packet_get_u32(p, TLV_TYPE_COMMAND_ID, &ctx->command_id);
 
-	if (ctx->method == NULL) {
+	if (ctx->command_id == 0) {
 		tlv_handler_ctx_free(ctx);
 		return -1;
 	}
@@ -557,13 +554,13 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	}
 
 	struct tlv_packet *response = NULL;
-	struct tlv_handler *handler = find_handler(td, ctx->method);
+	struct tlv_handler *handler = find_handler(td, ctx->command_id);
 	if (handler == NULL) {
-		log_error("no handler found for method: '%s'", ctx->method);
+		log_error("no handler found for command id: '%u'", ctx->command_id);
 		response = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	} else {
-		log_info("processing method: '%s' id: '%s'", ctx->method, ctx->id);
+		log_info("processing command: '%u' id: '%s'", ctx->command_id, ctx->id);
 		ctx->arg = handler->arg;
 		response = handler->cb(ctx);
 	}

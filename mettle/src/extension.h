@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <tlv.h>
 #include <util.h>
+#include <command_ids.h>
 
 /*
  * Data, function, etc. declarations.
@@ -32,7 +33,7 @@ void extension_log_to_mettle(int level);
 void extension_log_to_file(int level, char const *filename);
 
 int extension_add_handler(struct extension *e,
-		const char *method, tlv_handler_cb cb, void *arg);
+		uint32_t command_id, tlv_handler_cb cb, void *arg);
 
 int extension_start(struct extension *e);
 
