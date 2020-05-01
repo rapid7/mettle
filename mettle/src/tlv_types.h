@@ -47,7 +47,7 @@
  * TLV Specific Types
  */
 #define TLV_TYPE_ANY                   (TLV_META_TYPE_NONE    | 0)
-#define TLV_TYPE_METHOD                (TLV_META_TYPE_STRING  | 1)
+#define TLV_TYPE_COMMAND_ID            (TLV_META_TYPE_UINT    | 1)
 #define TLV_TYPE_REQUEST_ID            (TLV_META_TYPE_STRING  | 2)
 #define TLV_TYPE_EXCEPTION             (TLV_META_TYPE_GROUP   | 3)
 #define TLV_TYPE_RESULT                (TLV_META_TYPE_UINT    | 4)

@@ -15,6 +15,7 @@
 #include "channel.h"
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "mic.h"
 
 void audio_mic_register_handlers(struct mettle *m)
@@ -23,9 +24,9 @@ void audio_mic_register_handlers(struct mettle *m)
     struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
     struct channelmgr *cm = mettle_get_channelmgr(m);
 
-    tlv_dispatcher_add_handler(td, "audio_mic_list", audio_mic_list, m);
-    tlv_dispatcher_add_handler(td, "audio_mic_start", audio_mic_start, m);
-    tlv_dispatcher_add_handler(td, "audio_mic_stop", audio_mic_stop, m);
+    tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_AUDIO_MIC_LIST, audio_mic_list, m);
+    tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_AUDIO_MIC_START, audio_mic_start, m);
+    tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_AUDIO_MIC_STOP, audio_mic_stop, m);
 
     struct channel_callbacks cbs = {
                 .read_cb = audio_mic_read

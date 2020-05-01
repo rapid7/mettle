@@ -782,13 +782,13 @@ int main(void)
 	struct extension *e = extension();
 
 	// Register the commands and assocaited handlers this extension provides.
-	extension_add_handler(e, "sniffer_interfaces", request_interfaces, NULL);
-	extension_add_handler(e, "sniffer_capture_start", request_capture_start, NULL);
-	extension_add_handler(e, "sniffer_capture_stop", request_capture_stop, NULL);
-	extension_add_handler(e, "sniffer_capture_stats", request_capture_stats, NULL);
-	extension_add_handler(e, "sniffer_capture_release", request_capture_release, NULL);
-	extension_add_handler(e, "sniffer_capture_dump", request_capture_dump, NULL);
-	extension_add_handler(e, "sniffer_capture_dump_read", request_capture_dump_read, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_INTERFACES, request_interfaces, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_START, request_capture_start, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_STOP, request_capture_stop, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_STATS, request_capture_stats, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_RELEASE, request_capture_release, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_DUMP, request_capture_dump, NULL);
+	extension_add_handler(e, COMMAND_ID_SNIFFER_CAPTURE_DUMP_READ, request_capture_dump_read, NULL);
 
 	// Ready to go!
 	extension_start(e);

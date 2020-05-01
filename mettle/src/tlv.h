@@ -119,7 +119,7 @@ struct tlv_encryption_ctx {
 };
 
 struct tlv_handler_ctx {
-	const char *method;
+	uint32_t command_id;
 	const char *id;
 	struct tlv_packet *req;
 	struct tlv_dispatcher *td;
@@ -150,7 +150,7 @@ struct tlv_dispatcher * tlv_dispatcher_new(tlv_response_cb cb, void *cb_arg);
 int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet *p);
 
 int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
-		const char *method, tlv_handler_cb cb, void *arg);
+		uint32_t command_id, tlv_handler_cb cb, void *arg);
 
 void tlv_dispatcher_add_encryption(struct tlv_dispatcher *td, struct tlv_encryption_ctx *ctx);
 
@@ -160,8 +160,8 @@ void * tlv_dispatcher_dequeue_response(struct tlv_dispatcher *td,
 		bool add_prepend, size_t *len);
 
 void tlv_dispatcher_iter_extension_methods(struct tlv_dispatcher *td,
-		const char *extension,
-		void (*cb)(const char *method, void *arg), void *arg);
+		uint32_t command_id_start, uint32_t command_id_end,
+		void (*cb)(uint32_t command_id, void *arg), void *arg);
 
 const char *tlv_dispatcher_get_uuid(struct tlv_dispatcher *td, size_t *len);
 
