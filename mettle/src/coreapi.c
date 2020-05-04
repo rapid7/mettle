@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static void add_method(uint32_t command_id, void *arg)
+static void add_command_id(uint32_t command_id, void *arg)
 {
 	struct tlv_packet **p = arg;
 	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
@@ -33,7 +33,7 @@ static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	tlv_dispatcher_iter_extension_methods(td, command_id_start, command_id_end, add_method, &p);
+	tlv_dispatcher_iter_extension_methods(td, command_id_start, command_id_end, add_command_id, &p);
 	return p;
 }
 
