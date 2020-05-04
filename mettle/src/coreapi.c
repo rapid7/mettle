@@ -26,10 +26,10 @@ static void add_method(uint32_t command_id, void *arg)
 static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
-  uint32_t command_id_start = 0, command_id_end = 0;
+	uint32_t command_id_start = 0, command_id_end = 0;
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_UINT, &command_id_start);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_LENGTH, &command_id_end);
-  command_id_end += command_id_start;
+	command_id_end += command_id_start;
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
