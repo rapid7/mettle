@@ -98,7 +98,7 @@ static void register_extension_commands(struct extension_process *ep,
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
 	char *cmd_id_s = strtok(cmds, "\n");
-  uint32_t cmd_id = (uint32_t)atoi(cmd_id_s);
+	uint32_t cmd_id = (uint32_t)atoi(cmd_id_s);
 	do {
 		/*
 		 * Store extension info in hash
