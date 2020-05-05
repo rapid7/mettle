@@ -103,7 +103,7 @@ static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	char *guid = tlv_packet_get_raw(ctx->req, TLV_TYPE_SESSION_GUID, &guid_len);
-	unsigned char *pkey = tlv_packet_get_raw(ctx->req, TLV_TYPE_RSA_PUB_KEY, &pkey_len);;
+	unsigned char *pkey = tlv_packet_get_raw(ctx->req, TLV_TYPE_RSA_PUB_KEY, &pkey_len);
 
 	if (pkey_len > 0) {
 		struct tlv_encryption_ctx* enc_ctx = create_tlv_encryption_context(ENC_AES256);
