@@ -22,6 +22,13 @@
 #define TLV_PREPEND_LEN 24
 #define TLV_MIN_LEN 8
 
+// NOTE: It's important that if we continue to use this method to determine
+// if there's a packet on the wire that we update this value otherwise mettle
+// will fail to stage.
+#define PACKET_LENGTH_CORE_NEGOTIATE_TLV_ENCRYPTION 545
+#define EXPECTED_FIRST_PACKET_LEN PACKET_LENGTH_CORE_NEGOTIATE_TLV_ENCRYPTION
+#define EXPECTED_FIRST_PACKET_BODY_LEN (EXPECTED_FIRST_PACKET_LEN - TLV_PREPEND_LEN)
+
 /*
  * TLV Packets
  */

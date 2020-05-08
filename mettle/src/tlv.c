@@ -494,6 +494,7 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 	handler->command_id = command_id;
 	handler->cb = cb;
 	handler->arg = arg;
+  log_debug("Registering command %u, cb %p, arg %p", command_id, cb, arg);
 
 	HASH_ADD_INT(td->handlers, command_id, handler);
 	return 0;
@@ -520,6 +521,7 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td, uint32_t com
 {
 	struct tlv_handler *handler = NULL;
 	HASH_FIND_INT(td->handlers, &command_id, handler);
+  log_debug("Handler for %u: %p", command_id, handler);
 	return handler;
 }
 
@@ -579,12 +581,12 @@ bool tlv_found_first_packet(struct buffer_queue *q)
 {
 	bool found = false;
 
-	while (buffer_queue_len(q) >= 571) {
+	while (buffer_queue_len(q) >= EXPECTED_FIRST_PACKET_LEN) {
 		struct tlv_xor_header h;
 		buffer_queue_copy(q, &h, sizeof(h));
 		tlv_xor_bytes(h.xor_key, &h.xor_key + 1, sizeof(h) - sizeof(h.xor_key)); // this just locates a header
 		size_t len = ntohl(h.tlv.len);
-		if (len == (547) && h.tlv.type == 0) {
+		if (len == (EXPECTED_FIRST_PACKET_BODY_LEN) && h.tlv.type == 0) {
 			found = true;
 			break;
 		}
