@@ -12,6 +12,7 @@
 #include <mettle.h>
 #include <sigar.h>
 #include <time.h>
+#include <pwd.h>
 
 #include "log.h"
 #include "tlv.h"
@@ -67,7 +68,12 @@ struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx)
 #   define HOST_NAME_MAX MAXHOSTNAMELEN
 #  endif
 # endif /* HOST_NAME_MAX */
-	char *username = getlogin() ? getlogin() : "no-user";
+	char *username = "no-user";
+	struct passwd *pw = getpwuid(geteuid());
+	if (pw)
+	{
+		username = pw->pw_name;
+	}
 	char hostname[HOST_NAME_MAX] = "no-hostname";
 	gethostname(hostname, HOST_NAME_MAX);
 	p = tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
