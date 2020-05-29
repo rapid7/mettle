@@ -1,7 +1,7 @@
 # -*- coding:binary -*-
 module MetasploitPayloads
   class Mettle
-    VERSION = '0.5.23'
+    VERSION = '1.0.0'
 
     def self.version
       VERSION
