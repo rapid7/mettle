@@ -12,7 +12,9 @@
 #include <mettle.h>
 #include <sigar.h>
 #include <time.h>
+#ifndef _WIN32
 #include <pwd.h>
+#endif
 
 #include "log.h"
 #include "tlv.h"
