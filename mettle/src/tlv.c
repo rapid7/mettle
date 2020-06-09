@@ -494,7 +494,7 @@ int tlv_dispatcher_add_handler(struct tlv_dispatcher *td,
 	handler->command_id = command_id;
 	handler->cb = cb;
 	handler->arg = arg;
-  log_debug("Registering command %u, cb %p, arg %p", command_id, cb, arg);
+	log_debug("Registering command %u, cb %p, arg %p", command_id, cb, arg);
 
 	HASH_ADD_INT(td->handlers, command_id, handler);
 	return 0;
@@ -521,7 +521,7 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td, uint32_t com
 {
 	struct tlv_handler *handler = NULL;
 	HASH_FIND_INT(td->handlers, &command_id, handler);
-  log_debug("Handler for %u: %p", command_id, handler);
+	log_debug("Handler for %u: %p", command_id, handler);
 	return handler;
 }
 
