@@ -96,7 +96,7 @@
 #define TLV_TYPE_UUID                  (TLV_META_TYPE_RAW     | 461)
 #define TLV_TYPE_SESSION_GUID          (TLV_META_TYPE_RAW     | 462)
 
-#define TLV_TYPE_RSA_PUB_KEY           (TLV_META_TYPE_STRING  | 550)
+#define TLV_TYPE_RSA_PUB_KEY           (TLV_META_TYPE_RAW     | 550)
 #define TLV_TYPE_SYM_KEY_TYPE          (TLV_META_TYPE_UINT    | 551)
 #define TLV_TYPE_SYM_KEY               (TLV_META_TYPE_RAW     | 552)
 #define TLV_TYPE_ENC_SYM_KEY           (TLV_META_TYPE_RAW     | 553)
