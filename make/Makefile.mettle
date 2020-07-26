@@ -80,6 +80,9 @@ $(BUILD)/bin/mettle.dylib: $(BUILD)/bin/mettle.built
 $(BUILD)/bin/mettle.sha1.dylib: $(BUILD)/bin/mettle.built
 	@./deps/app2dylib -o $(BUILD)/bin/mettle.sha1.dylib $(BUILD)/bin/mettle
 	@./deps/ldid -S $(BUILD)/bin/mettle.sha1.dylib
+ifneq (,$(findstring arm-iphone,$(BUILD)))
+	@./deps/ldid -Sdeps/ent.xml $(BUILD)/bin/mettle
+endif
 
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
