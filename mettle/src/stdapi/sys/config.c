@@ -18,6 +18,7 @@
 
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 
 static char *normalize_env_var(char *var)
 {
@@ -125,8 +126,8 @@ void sys_config_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getenv", sys_config_getenv, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_getuid", sys_config_getuid, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_sysinfo", sys_config_sysinfo, m);
-	tlv_dispatcher_add_handler(td, "stdapi_sys_config_localtime", sys_config_localtime, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_CONFIG_GETENV, sys_config_getenv, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_CONFIG_GETUID, sys_config_getuid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_CONFIG_SYSINFO, sys_config_sysinfo, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_CONFIG_LOCALTIME, sys_config_localtime, m);
 }

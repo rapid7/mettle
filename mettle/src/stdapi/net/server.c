@@ -10,6 +10,7 @@
 #include "log.h"
 #include "network_server.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "util.h"
 
 struct network_server_channel
@@ -63,7 +64,7 @@ static void open_tcp_channel(struct network_server_channel *nsc, struct bufferev
 	}
 
 	p = tlv_packet_add_uuid(p, nsc->td);
-	p = tlv_packet_add_fmt(p, TLV_TYPE_METHOD, "tcp_channel_open");
+	p = tlv_packet_add_u32(p, TLV_TYPE_COMMAND_ID, COMMAND_ID_STDAPI_NET_TCP_CHANNEL_OPEN);
 	p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID,
 			"channel-req-%d", channel_get_id(conn->channel));
 	p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(conn->channel));

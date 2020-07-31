@@ -14,6 +14,7 @@
 #include "mettle.h"
 #include "process.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "uthash.h"
 
 struct extension_process {
@@ -26,7 +27,7 @@ struct extension_process {
  * Hash of all extension commands which points to extension to send to
  */
 struct extension_data {
-	char *command;
+	uint32_t command_id;
 	struct extension_process *ep;
 	UT_hash_handle hh;
 };
@@ -36,11 +37,11 @@ struct extmgr
 	struct extension_data *extensions;
 };
 
-static struct extension_data *extension_data_new(const char *command, struct extension_process *ep)
+static struct extension_data *extension_data_new(uint32_t command_id, struct extension_process *ep)
 {
 	struct extension_data *data = calloc(1, sizeof(*data));
 	if (data) {
-		data->command = strdup(command);
+		data->command_id = command_id;
 		data->ep = ep;
 	}
 	return data;
@@ -54,10 +55,10 @@ static struct tlv_packet *tlv_send_to_extension(struct tlv_handler_ctx *ctx)
 	/*
 	 * Lookup the extension we need to forward this onto.
 	 */
-	HASH_FIND_STR(mettle_get_extmgr(m)->extensions, ctx->method, ed);
+	HASH_FIND_INT(mettle_get_extmgr(m)->extensions, &ctx->command_id, ed);
 	if (ed == NULL) {
-		log_error("TLV method request for command '%s' failed to locate an associated extension",
-				ctx->method);
+		log_error("TLV method request for command_id '%u' failed to locate an associated extension",
+				ctx->command_id);
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 
@@ -96,17 +97,17 @@ static void register_extension_commands(struct extension_process *ep,
 	}
 
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
-	char *cmd = strtok(cmds, "\n");
+	char *cmd_id_s = strtok(cmds, "\n");
+	uint32_t cmd_id = (uint32_t)atoi(cmd_id_s);
 	do {
 		/*
 		 * Store extension info in hash
 		 */
 		struct extmgr *em = mettle_get_extmgr(ep->m);
-		struct extension_data *extension_data = extension_data_new(cmd, ep);
-		HASH_ADD_KEYPTR(hh, em->extensions, extension_data->command, \
-				strlen(extension_data->command), extension_data);
-		tlv_dispatcher_add_handler(td, cmd, tlv_send_to_extension, ep->m);
-	} while ((cmd = strtok(NULL, "\n")));
+		struct extension_data *extension_data = extension_data_new(cmd_id, ep);
+		HASH_ADD_INT(em->extensions, command_id, extension_data);
+		tlv_dispatcher_add_handler(td, cmd_id, tlv_send_to_extension, ep->m);
+	} while ((cmd_id_s = strtok(NULL, "\n")));
 
 	ep->ready = 1;
 	free(cmds_previous);
@@ -212,7 +213,6 @@ void extmgr_free(struct extmgr *mgr)
 	if (mgr->extensions) {
 		struct extension_data *extension, *tmp;
 		HASH_ITER(hh, mgr->extensions, extension, tmp) {
-			free(extension->command);
 			HASH_DEL(mgr->extensions, extension);
 			free(extension);
 		}

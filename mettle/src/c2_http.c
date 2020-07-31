@@ -12,6 +12,7 @@
 #include "http_client.h"
 #include "log.h"
 #include "tlv.h"
+#include "command_ids.h"
 
 struct http_ctx {
 	struct c2_transport *t;
@@ -29,9 +30,12 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);
 	if (request) {
-		const char *method = tlv_packet_get_str(request, TLV_TYPE_METHOD);
+		uint32_t command_id;
+		tlv_packet_get_u32(request, TLV_TYPE_COMMAND_ID, &command_id);
+
 		const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
-		if (strcmp(method, "core_patch_url") == 0 && new_uri) {
+
+		if (command_id == COMMAND_ID_CORE_PATCH_URL && new_uri) {
 			char *old_uri = ctx->uri;
 			char *split = ctx->uri;
 			char *host = strstr(old_uri, "://");

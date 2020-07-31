@@ -5,6 +5,7 @@
 #include "log.h"
 #include "mettle.h"
 #include "tlv.h"
+#include "command_ids.h"
 #include "uthash.h"
 
 struct channel {
@@ -125,12 +126,12 @@ struct channel_callbacks * channel_get_callbacks(struct channel *c)
 	return &c->type->cbs;
 }
 
-static struct tlv_packet * new_request(struct channel *c, const char *method, size_t len)
+static struct tlv_packet * new_request(struct channel *c, uint32_t command_id, size_t len)
 {
 	struct tlv_packet *p = tlv_packet_new(TLV_PACKET_TYPE_REQUEST, len + 64);
 	if (p) {
 		p = tlv_packet_add_uuid(p, c->cm->td);
-		p = tlv_packet_add_fmt(p, TLV_TYPE_METHOD, "core_channel_%s", method);
+		p = tlv_packet_add_u32(p, TLV_TYPE_COMMAND_ID, command_id);
 		p = tlv_packet_add_fmt(p, TLV_TYPE_REQUEST_ID,
 				"channel-req-%d", channel_get_id(c));
 		p = tlv_packet_add_u32(p, TLV_TYPE_CHANNEL_ID, channel_get_id(c));
@@ -143,7 +144,7 @@ static ssize_t send_write_request(struct channel *c, void *buf, size_t buf_len)
 	if (buf_len == 0) {
 		return 0;
 	}
-	struct tlv_packet *p = new_request(c, "write", buf_len);
+	struct tlv_packet *p = new_request(c, COMMAND_ID_CORE_CHANNEL_WRITE, buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
@@ -154,7 +155,7 @@ ssize_t channel_enqueue_ex(struct channel *c, void *buf, size_t buf_len, struct 
 	if (buf_len == 0) {
 		return 0;
 	}
-	struct tlv_packet *p = new_request(c, "write", buf_len);
+	struct tlv_packet *p = new_request(c, COMMAND_ID_CORE_CHANNEL_WRITE, buf_len);
 	p = tlv_packet_add_raw(p, TLV_TYPE_CHANNEL_DATA, buf, buf_len);
 	p = tlv_packet_add_u32(p, TLV_TYPE_LENGTH, buf_len);
 	p = tlv_packet_merge_child(p, extra);
@@ -200,7 +201,7 @@ size_t channel_queue_len(struct channel *c)
 
 int channel_send_close_request(struct channel *c)
 {
-	struct tlv_packet *p = new_request(c, "close", 0);
+	struct tlv_packet *p = new_request(c, COMMAND_ID_CORE_CHANNEL_CLOSE, 0);
 	return tlv_dispatcher_enqueue_response(c->cm->td, p);
 };
 
@@ -533,12 +534,12 @@ void tlv_register_channelapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	tlv_dispatcher_add_handler(td, "core_channel_open", channel_open, m);
-	tlv_dispatcher_add_handler(td, "core_channel_eof", channel_eof, m);
-	tlv_dispatcher_add_handler(td, "core_channel_seek", channel_seek, m);
-	tlv_dispatcher_add_handler(td, "core_channel_tell", channel_tell, m);
-	tlv_dispatcher_add_handler(td, "core_channel_read", channel_read, m);
-	tlv_dispatcher_add_handler(td, "core_channel_write", channel_write, m);
-	tlv_dispatcher_add_handler(td, "core_channel_close", channel_close, m);
-	tlv_dispatcher_add_handler(td, "core_channel_interact", channel_interact, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_OPEN, channel_open, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_EOF, channel_eof, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_SEEK, channel_seek, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_TELL, channel_tell, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_READ, channel_read, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_WRITE, channel_write, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_CLOSE, channel_close, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_CHANNEL_INTERACT, channel_interact, m);
 }

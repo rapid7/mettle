@@ -92,6 +92,6 @@ void net_resolve_register_handlers(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	tlv_dispatcher_add_handler(td, "stdapi_net_resolve_host", net_resolve_host, m);
-	tlv_dispatcher_add_handler(td, "stdapi_net_resolve_hosts", net_resolve_hosts, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_NET_RESOLVE_HOST, net_resolve_host, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_NET_RESOLVE_HOSTS, net_resolve_hosts, m);
 }
