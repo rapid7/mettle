@@ -3,8 +3,8 @@ $(BUILD)/libdnet/configure:
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr libdnet; \
-		$(TAR) zxf $(ROOT)/deps/libdnet-1.12.tar.gz; \
-		mv libdnet-1.12 libdnet
+		$(TAR) zxf $(ROOT)/deps/libdnet-1.13.tar.gz; \
+		mv libdnet-1.13 libdnet
 
 DNET_CONFIGURE_FLAGS:=""
 ifneq "$(TARGET)" "native"
