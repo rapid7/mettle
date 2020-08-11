@@ -1,4 +1,4 @@
-LIBEIO_VERSION=1.0
+LIBEIO_VERSION=1.0.1
 
 $(BUILD)/libeio/configure:
 	@echo "Unpacking libeio for $(TARGET)"

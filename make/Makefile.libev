@@ -1,4 +1,4 @@
-LIBEV_VERSION=4.24
+LIBEV_VERSION=4.33
 
 $(BUILD)/libev/configure:
 	@echo "Unpacking libev for $(TARGET)"
