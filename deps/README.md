@@ -44,10 +44,12 @@ These libraries are built for each build target.
 
  - [curl](https://curl.haxx.se/download.html), a swiss-army knife network transfer library, supporting many different network protocols
 
- - [libev](http://software.schmorp.de/pkg/libev.html), a fast and portable event loop, similar to libevent and libuv. This version is [busterb's fork](https://github.com/busterb/libev).
+Forked libraries from upstream. These either have an inactive upstream, or it's not clear how to get fixes reincorporated.
 
- - [libeio](http://software.schmorp.de/pkg/libeio.html), an I/O library that works with libev to provide file, socket, and other Posix API primitives. This version is [busterb's fork](https://github.com/busterb/libeio)
+ - [libev](http://software.schmorp.de/pkg/libev.html), a fast and portable event loop, similar to libevent and libuv. [fork](https://github.com/busterb/libev).
 
- - [SIGAR](https://github.com/hyperic/sigar), 'System Information Gaterer And Reporter', this provides generic interfaces to system info like processes, filesystems, memory, networking configuration, and more. This version is [busterb's fork](https://github.com/busterb/sigar)
+ - [libeio](http://software.schmorp.de/pkg/libeio.html), an I/O library that works with libev to provide file, socket, and other Posix API primitives. [fork](https://github.com/busterb/libeio)
 
- - [libdnet](http://libdnet.sourceforge.net/), provides low-level network packet generation and parsing, as well as network configuration manipulation tools. This version is [busterb's fork](https://github.com/busterb/libdnet)
+ - [SIGAR](https://github.com/hyperic/sigar), 'System Information Gaterer And Reporter', OS-independent interfaces for getting system info [fork](https://github.com/busterb/sigar)
+
+ - [libdnet](http://libdnet.sourceforge.net/), provides low-level network packet generation and parsing, as well as network configuration manipulation tools. [fork](https://github.com/busterb/libdnet)
