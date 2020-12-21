@@ -156,6 +156,10 @@ static ssize_t
 tcp_client_read(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_client_channel *tcc = channel_get_ctx(c);
+	if (tcc == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	return network_client_read(tcc->nc, buf, len);
 }
 
@@ -163,6 +167,10 @@ static ssize_t
 tcp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_client_channel *tcc = channel_get_ctx(c);
+	if (tcc == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	return network_client_write(tcc->nc, buf, len);
 }
 
@@ -332,8 +340,12 @@ err:
 static ssize_t
 udp_client_read(struct channel *c, void *buf, size_t len)
 {
-	struct udp_client_channel *ucc = channel_get_ctx(c);
 	size_t msg_len;
+	struct udp_client_channel *ucc = channel_get_ctx(c);
+	if (ucc == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	void *msg_buf = network_client_read_msg(ucc->nc, &msg_len);
 	memcpy(buf, msg_buf, TYPESAFE_MIN(len, msg_len));
 	return msg_len;
@@ -343,6 +355,10 @@ static ssize_t
 udp_client_write(struct channel *c, void *buf, size_t len)
 {
 	struct udp_client_channel *ucc = channel_get_ctx(c);
+	if (ucc == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	return network_client_write(ucc->nc, buf,
 			TYPESAFE_MIN(len, IP_LEN_MAX - IP_HDR_LEN - UDP_HDR_LEN));
 }

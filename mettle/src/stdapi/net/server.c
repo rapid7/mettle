@@ -161,12 +161,20 @@ static int tcp_server_free(struct channel *c)
 static ssize_t tcp_conn_read(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_server_conn *conn = channel_get_ctx(c);
+	if (conn == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	return bufferev_read(conn->be, buf, len);
 }
 
 static ssize_t tcp_conn_write(struct channel *c, void *buf, size_t len)
 {
 	struct tcp_server_conn *conn = channel_get_ctx(c);
+	if (conn == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	return bufferev_write(conn->be, buf, len);
 }
 
