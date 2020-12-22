@@ -151,9 +151,14 @@ static int tcp_server_new(struct tlv_handler_ctx *ctx, struct channel *c)
 
 static int tcp_server_free(struct channel *c)
 {
-	struct network_server *nc = channel_get_ctx(c);
-	if (nc) {
+	struct network_server_channel *nsc = channel_get_ctx(c);
+	if (nsc) {
 		channel_set_ctx(c, NULL);
+		if (nsc->ns) {
+			network_server_free(nsc->ns);
+			nsc->ns = NULL;
+		}
+		free(nsc);
 	}
 	return 0;
 }
