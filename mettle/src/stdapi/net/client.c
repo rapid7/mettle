@@ -24,6 +24,7 @@ static void
 tcp_client_channel_free(struct tcp_client_channel *tcc)
 {
 	if (tcc) {
+		log_debug("closing tcp client channel: %p", tcc);
 		if (tcc->nc) {
 			network_client_free(tcc->nc);
 		}
@@ -214,6 +215,7 @@ static void
 udp_client_channel_free(struct udp_client_channel *ucc)
 {
 	if (ucc) {
+		log_debug("closing udp client channel: %p", ucc);
 		if (ucc->nc) {
 			network_client_free(ucc->nc);
 		}
