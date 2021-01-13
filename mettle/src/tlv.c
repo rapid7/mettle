@@ -521,7 +521,7 @@ static struct tlv_handler * find_handler(struct tlv_dispatcher *td, uint32_t com
 {
 	struct tlv_handler *handler = NULL;
 	HASH_FIND_INT(td->handlers, &command_id, handler);
-	log_debug("Handler for %u: %p", command_id, handler);
+	log_debug("handler for %u: %p", command_id, handler);
 	return handler;
 }
 
@@ -558,11 +558,11 @@ int tlv_dispatcher_process_request(struct tlv_dispatcher *td, struct tlv_packet 
 	struct tlv_packet *response = NULL;
 	struct tlv_handler *handler = find_handler(td, ctx->command_id);
 	if (handler == NULL) {
-		log_error("no handler found for command id: '%u'", ctx->command_id);
+		log_error("no handler found for command id: %u", ctx->command_id);
 		response = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	} else {
-		log_info("processing command: '%u' id: '%s'", ctx->command_id, ctx->id);
+		log_info("processing command: %u id: '%s'", ctx->command_id, ctx->id);
 		ctx->arg = handler->arg;
 		response = handler->cb(ctx);
 	}

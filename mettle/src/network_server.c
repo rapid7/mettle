@@ -143,13 +143,25 @@ struct network_server * network_server_new(struct ev_loop *loop)
 	return ns;
 }
 
+static int network_server_stop(struct network_server *ns)
+{
+	if (ns->listener == 0) {
+		return -1;
+	}
+	ev_io_stop(ns->loop, &ns->connect_event);
+	close(ns->listener);
+	ns->listener = 0;
+	return 0;
+}
+
 void network_server_free(struct network_server *ns)
 {
 	if (ns) {
-		if (ns->listener) {
-			close(ns->listener);
+		log_debug("closing network server channel: %p", ns);
+		network_server_stop(ns);
+		if (ns->host) {
+			free(ns->host);
 		}
-		free(ns->host);
 		free(ns);
 	}
 }
