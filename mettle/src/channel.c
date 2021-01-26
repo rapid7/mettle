@@ -255,6 +255,7 @@ static struct tlv_packet *channel_open(struct tlv_handler_ctx *ctx)
 
 	struct channel_callbacks *cbs = channel_get_callbacks(c);
 
+	log_info("creating new channel of type %s", channel_type);
 	/*
 	 * If there is an async new callback, only handle direct failures, success
 	 * handling is the responsibility of the callback.
@@ -324,10 +325,10 @@ void channel_set_interactive(struct channel *c, bool enable)
 	if (enable) {
 		struct channel_callbacks *cbs = channel_get_callbacks(c);
 		char buf[65535];
-		size_t buf_len = 0;
+		ssize_t buf_len = 0;
 		do {
 			buf_len = cbs->read_cb(c, buf, sizeof(buf));
-			if (buf_len) {
+			if (buf_len > 0) {
 				send_write_request(c, buf, buf_len);
 			}
 		} while (buf_len > 0);
