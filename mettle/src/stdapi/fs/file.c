@@ -160,6 +160,112 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 	return NULL;
 }
 
+static void
+fs_search_glob(eio_req *req)
+{
+	bool recurse;
+	struct tlv_packet *p;
+	struct tlv_handler_ctx *ctx = req->data;
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
+	char *search_root = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_ROOT);
+
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
+
+	if(search_root == NULL || (strcmp(search_root, "") == 0))
+	{
+    search_root = ".";
+	}
+
+	if(recurse)
+	{
+	}
+	else
+	{
+
+	}
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+static void
+fs_search_cb(eio_req *req)
+{
+	bool recurse;
+	struct tlv_packet *p = NULL, *res = NULL;
+	struct tlv_handler_ctx *ctx = req->data;
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
+	char *search_root = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_ROOT);
+
+	// choose cwd if no root is given
+	if(search_root == NULL || (strcmp(search_root, "") == 0))
+	{
+	  search_root = ".";
+	}
+
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
+	log_debug("search root: %s, file path: %s\n", search_root, path);
+	DIR *dir_str = opendir(search_root);
+	struct dirent *f_entry;
+
+	if(dir_str == NULL)
+	{
+		p = tlv_packet_response_result(ctx, EACCES);
+	}
+
+	if(recurse)
+	{
+	}
+	else
+	{
+		while((f_entry = readdir(dir_str)) != NULL)
+		{
+			// In this case there should only be one result,
+			// so bail once we find a match
+			if(strcmp(f_entry->d_name, path) == 0)
+			{
+				struct stat f_info;
+				char f_path[PATH_MAX];
+
+				snprintf(f_path, PATH_MAX, "%s/%s", search_root, f_entry->d_name);
+				stat(f_path, &f_info);
+				log_debug("file found: %s\n", f_entry->d_name);
+				p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+				res = tlv_packet_new(TLV_TYPE_SEARCH_RESULTS, 0);
+				res = tlv_packet_add_str(res, TLV_TYPE_FILE_PATH, search_root);
+				res = tlv_packet_add_str(res, TLV_TYPE_FILE_NAME, f_entry->d_name);
+				res = tlv_packet_add_u32(res, TLV_TYPE_FILE_SIZE, f_info.st_size);
+				p = tlv_packet_add_child(p, res);
+				break;
+			}
+		}
+	}
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *fs_search(struct tlv_handler_ctx *ctx)
+{
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
+
+	if(path == NULL)
+	{
+	  return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+
+#ifdef HAVE_GLOB
+	if(strchr(path, '*') != NULL)
+	{
+		// eio_custom(fs_search_glob, 0, NULL, ctx);
+	}
+	else
+#endif
+		eio_custom(fs_search_cb, 0, NULL, ctx);
+
+	return NULL;
+}
+
 static int
 fs_stat_cb(eio_req *req)
 {
@@ -520,6 +626,7 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MKDIR, fs_mkdir, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_DELETE_DIR, fs_rmdir, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_LS, fs_ls, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SEARCH, fs_search, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SEPARATOR, fs_separator, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_STAT, fs_stat, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MD5, fs_md5, m);
