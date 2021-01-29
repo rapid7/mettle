@@ -349,6 +349,10 @@ udp_client_read(struct channel *c, void *buf, size_t len)
 		return -1;
 	}
 	void *msg_buf = network_client_read_msg(ucc->nc, &msg_len);
+	if (msg_buf == NULL) {
+		errno = EIO;
+		return -1;
+	}
 	memcpy(buf, msg_buf, TYPESAFE_MIN(len, msg_len));
 	return msg_len;
 }
