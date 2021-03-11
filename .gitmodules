@@ -1,0 +1,3 @@
+[submodule "libeio"]
+	path = deps/libeio
+	url = git@github.com:busterb/libeio.git
