@@ -418,7 +418,6 @@ out:
 struct tlv_packet *fs_search(struct tlv_handler_ctx *ctx)
 {
 	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
-	bool recurse;
 
 	if(path == NULL)
 	{
