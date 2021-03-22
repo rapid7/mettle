@@ -134,7 +134,6 @@ void * encrypt_tlv(struct tlv_encryption_ctx* ctx, void *p, size_t buf_len)
 						memcpy(iv, ctx->iv, AES_IV_LEN); // grab iv before enc manipulates it.
 						unsigned char *result = calloc(enc_size, 1);
 						if (result) {
-							memset(result, 0, enc_size);
 							if ((length = aes_encrypt(ctx, tlv_data, enc_size, result)) > 0) {
 								memcpy(tlv_data, iv, AES_IV_LEN);
 								memcpy(tlv_data + AES_IV_LEN, result, length);
