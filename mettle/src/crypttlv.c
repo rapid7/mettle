@@ -1,5 +1,4 @@
 #include "crypttlv.h"
-#include "log.h"
 
 size_t aes_decrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
 {
