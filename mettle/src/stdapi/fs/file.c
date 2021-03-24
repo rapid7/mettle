@@ -31,6 +31,13 @@
 #define st_atim st_atimespec
 #endif
 
+struct search_entry
+{
+	char *dir_path;
+	struct search_entry *next;
+	struct search_entry *prev;
+};
+
 static struct tlv_packet *
 add_stat(struct tlv_packet *p, EIO_STRUCT_STAT *s)
 {
@@ -156,6 +163,274 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 		if (eio_readdir(path, EIO_READDIR_DENTS, 0, fs_ls_cb, ctx) == NULL) {
 			return tlv_packet_response_result(ctx, errno);
 		}
+
+	return NULL;
+}
+
+static void
+search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, off_t f_size)
+{
+	struct tlv_packet *res = NULL;
+
+	if(!*p)
+	{
+		*p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	}
+
+	res = tlv_packet_new(TLV_TYPE_SEARCH_RESULTS, 0);
+	res = tlv_packet_add_str(res, TLV_TYPE_FILE_PATH, sub_root);
+	res = tlv_packet_add_str(res, TLV_TYPE_FILE_NAME, f_name);
+	res = tlv_packet_add_u32(res, TLV_TYPE_FILE_SIZE, f_size);
+	*p = tlv_packet_add_child(*p, res);
+}
+
+#ifdef HAVE_GLOB
+static int
+search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name)
+{
+	glob_t glob_results;
+	struct stat s_buf;
+	char glob_path[PATH_MAX + 1];
+
+	if(snprintf(glob_path, PATH_MAX + 1, "%s/%s", sub_root, f_name) < 0)
+	{
+		return -1;
+	}
+
+#ifndef GLOB_TILDE
+#define GLOB_TILDE 0
+#endif
+
+#ifndef GLOB_PERIOD
+#define GLOB_PERIOD 0
+#endif
+
+	memset(&glob_results, 0, sizeof(glob_t));
+	memset(&s_buf, 0, sizeof(struct stat));
+	if(glob(glob_path, GLOB_TILDE | GLOB_PERIOD, NULL, &glob_results) != 0)
+	{
+		globfree(&glob_results);
+		return -1;
+	}
+
+	for(size_t i = 0; i < glob_results.gl_pathc; i++)
+	{
+#ifdef _WIN32
+		if(stat(glob_results.gl_pathv[i], &s_buf) == 0)
+#else
+		if(lstat(glob_results.gl_pathv[i], &s_buf) == 0)
+#endif
+		{
+			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size);
+		}
+	}
+
+	globfree(&glob_results);
+	return 0;
+}
+#endif
+
+static void
+fs_search_cb(eio_req *req)
+{
+	bool recurse;
+	bool perform_glob = false;
+	int rc = TLV_RESULT_SUCCESS;
+	struct tlv_packet *p = NULL;
+	struct tlv_handler_ctx *ctx = req->data;
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
+	char *search_root = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_ROOT);
+
+	DIR *dir_str;
+	struct dirent *f_entry;
+	struct search_entry *curr_entry;
+
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
+
+	if(search_root == NULL || (strcmp(search_root, "") == 0))
+	{
+		search_root = "/";
+	}
+
+	if(strchr(path, '*') != NULL)
+	{
+		perform_glob = true;
+	}
+
+	if((curr_entry = malloc(sizeof(struct search_entry))) == NULL)
+	{
+		rc = TLV_RESULT_ENOMEM;
+		goto out;
+	}
+
+	int s_root_len = strlen(search_root);
+	if(s_root_len > PATH_MAX)
+	{
+		rc = TLV_RESULT_FAILURE;
+		goto out;
+	}
+
+	curr_entry->dir_path = malloc(s_root_len + 1);
+	if(!curr_entry->dir_path)
+	{
+		free(curr_entry);
+		rc = TLV_RESULT_ENOMEM;
+		goto out;
+	}
+
+	memcpy(curr_entry->dir_path, search_root, s_root_len);
+	curr_entry->dir_path[s_root_len] = '\0';
+	curr_entry->next = NULL;
+	curr_entry->prev = NULL;
+
+	struct search_entry *tail = curr_entry;
+	if((dir_str = opendir(search_root)) == NULL)
+	{
+		rc = EACCES;
+		goto out;
+	}
+
+	while(curr_entry != NULL)
+	{
+		f_entry = readdir(dir_str);
+		if(f_entry == NULL && curr_entry->next == NULL) // nothing left to search
+		{
+			closedir(dir_str);
+#ifdef HAVE_GLOB
+			if(perform_glob)
+			{
+				search_glob(ctx, &p, curr_entry->dir_path, path);
+			}
+#endif
+
+			free(curr_entry->dir_path);
+			free(curr_entry);
+			break;
+		}
+		else if(f_entry == NULL) // finished looking at files in current directory
+		{
+			closedir(dir_str);
+
+#ifdef HAVE_GLOB
+			if(perform_glob)
+			{
+				search_glob(ctx, &p, curr_entry->dir_path, path);
+			}
+#endif
+
+			curr_entry = curr_entry->next;
+			free(curr_entry->prev->dir_path);
+			free(curr_entry->prev);
+
+			/*
+			 * ensure that the next dir to search can be opened
+			 * and that the ones that can't be opened are disposed of
+			 */
+			while((dir_str = opendir(curr_entry->dir_path)) == NULL)
+			{
+				if(!curr_entry->next)
+				{
+					free(curr_entry->dir_path);
+					free(curr_entry);
+					break;
+				}
+
+				curr_entry = curr_entry->next;
+				free(curr_entry->prev->dir_path);
+				free(curr_entry->prev);
+			}
+
+			continue;
+		}
+		else if(strcmp(f_entry->d_name, ".") == 0 || strcmp(f_entry->d_name, "..") == 0)
+		{
+			continue;
+		}
+
+		struct stat f_info;
+		char full_path[PATH_MAX + 1];
+		if(strcmp(curr_entry->dir_path, "/") == 0)
+		{
+			snprintf(full_path, PATH_MAX + 1, "%s%s", curr_entry->dir_path, f_entry->d_name);
+		}
+		else
+		{
+			snprintf(full_path, PATH_MAX + 1, "%s/%s", curr_entry->dir_path, f_entry->d_name);
+		}
+
+#ifdef _WIN32
+		if(stat(full_path, &f_info) != 0)
+#else
+		if(lstat(full_path, &f_info) != 0)
+#endif
+		{
+			continue;
+		}
+
+		/*
+		 * Add dir to check later
+		 */
+		if(S_ISDIR(f_info.st_mode) && recurse)
+		{
+			int path_len = sizeof(full_path);
+			tail->next = malloc(sizeof(struct search_entry));
+			if(tail->next)
+			{
+				tail->next->prev = tail;
+				tail = tail->next;
+				tail->dir_path = malloc(path_len + 1);
+				if(tail->dir_path)
+				{
+					memcpy(tail->dir_path, full_path, path_len);
+					tail->next = NULL;
+				}
+				else
+				{
+					tail = tail->prev;
+					free(tail->next);
+				}
+			}
+			continue;
+		}
+
+		/* no need to check literal entry names at this point */
+		if(perform_glob)
+		{
+			continue;
+		}
+
+		if(strcmp(f_entry->d_name, path) == 0)
+		{
+			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size);
+		}
+	}
+
+out:
+	if(!p)
+	{
+		p = tlv_packet_response_result(ctx, rc);
+	}
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+}
+
+struct tlv_packet *fs_search(struct tlv_handler_ctx *ctx)
+{
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_SEARCH_GLOB);
+
+	if(path == NULL)
+	{
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
+#ifndef HAVE_GLOB
+	if(strchr(path, '*') != NULL)
+	{
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+#endif
+
+	eio_custom(fs_search_cb, 0, NULL, ctx);
 
 	return NULL;
 }
@@ -520,6 +795,7 @@ void file_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MKDIR, fs_mkdir, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_DELETE_DIR, fs_rmdir, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_LS, fs_ls, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SEARCH, fs_search, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_SEPARATOR, fs_separator, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_STAT, fs_stat, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_FS_MD5, fs_md5, m);
