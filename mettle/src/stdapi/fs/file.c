@@ -249,7 +249,7 @@ fs_search_cb(eio_req *req)
 
 	if(search_root == NULL || (strcmp(search_root, "") == 0))
 	{
-		search_root = ".";
+		search_root = "/";
 	}
 
 	if(strchr(path, '*') != NULL)
