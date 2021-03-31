@@ -1,3 +1,7 @@
-[submodule "libeio"]
+[submodule "deps/libeio"]
 	path = deps/libeio
 	url = git@github.com:timwr/libeio.git
+
+[submodule "deps/libsigar"]
+	path = deps/libsigar
+	url = git@github.com:timwr/sigar.git
