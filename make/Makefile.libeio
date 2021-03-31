@@ -1,11 +1,11 @@
-LIBEIO_VERSION=1.0.2
-
 $(BUILD)/libeio/configure:
 	@echo "Copying libeio for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/libeio; \
-		cp -r $(DEPS)/libeio libeio
+		cp -r $(DEPS)/libeio libeio; \
+		cd $(BUILD)/libeio; \
+		./autogen.sh
 
 $(BUILD)/libeio/Makefile: $(TOOLS) $(BUILD)/libeio/configure $(LIBEIO_DEPS)
 	@echo "Configuring libeio for $(TARGET)"
