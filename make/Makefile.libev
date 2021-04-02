@@ -1,12 +1,11 @@
-LIBEV_VERSION=4.33
-
 $(BUILD)/libev/configure:
 	@echo "Unpacking libev for $(TARGET)"
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/libev; \
-		$(TAR) zxf $(DEPS)/libev-$(LIBEV_VERSION).tar.gz; \
-		mv libev-$(LIBEV_VERSION) libev
+		cp -r $(DEPS)/libev libev; \
+		cd $(BUILD)/libev; \
+		./autogen.sh
 
 $(BUILD)/libev/Makefile: $(TOOLS) $(BUILD)/libev/configure $(LIBEV_DEPS)
 	@echo "Configuring libev for $(TARGET)"
