@@ -1,4 +1,4 @@
-LIBPCAP_VERSION=1.10.0-PRE-GIT
+LIBPCAP_VERSION=1.9.1
 
 LIBPCAP_CONFIG_FLAGS = --disable-dbus --disable-usb --disable-rdma
 ifneq (,$(findstring -linux-,$(TARGET)))

@@ -1,4 +1,4 @@
-MBEDTLS_VERSION=2.16.5
+MBEDTLS_VERSION=2.23.0
 
 MBEDTLS_ENV=
 ifneq (,$(findstring mingw,$(TARGET)))
@@ -11,7 +11,7 @@ $(BUILD)/lib/libmbedtls.a: $(TOOLS)
 	@mkdir -p $(BUILD)/include
 	@cd $(BUILD); \
 		rm -fr $(BUILD)/mbedtls; \
-		$(TAR) zxf $(DEPS)/mbedtls-$(MBEDTLS_VERSION)-apache.tgz; \
+		$(TAR) zxf $(DEPS)/mbedtls-$(MBEDTLS_VERSION).tar.gz; \
 		mv mbedtls-$(MBEDTLS_VERSION) mbedtls; \
 		cp $(DEPS)/mbedtls-config.h mbedtls/include/mbedtls/config.h; \
 		sed -ibak 's/-no_warning_for_no_symbols//' mbedtls/library/Makefile
