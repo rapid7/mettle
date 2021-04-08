@@ -17,8 +17,32 @@ Debain, Ubuntu, and derivatives are most supported for builds. To build, you nee
 apt install curl build-essential git autoconf automake libtool bison flex gcc ruby rake bundler git mingw-w64
 ```
 
-The Dockerfile under docker/Dockerfile contains a pre-configured build
-environment as well.
+Building on Docker
+------
+
+You can download a pre-built Docker image from [Rapid7's Docker Hub account](https://hub.docker.com/u/rapid7):
+```
+docker pull rapid7/msf-ubuntu-x64-meterpreter:latest
+```
+
+Or this Docker image can be built manually:
+```
+docker build --tag rapid7/msf-ubuntu-x64-meterpreter:latest - < ./docker/Dockerfile
+```
+
+Next start an interactive console with the current directory mounted as a volume:
+
+```
+docker run -it --rm -v $(pwd):$(pwd) -w $(pwd) rapid7/msf-ubuntu-x64-meterpreter:latest /bin/bash
+```
+
+Building inside the container:
+
+```
+make all-parallel -j 4 && rake mettle:check
+```
+
+The build artifacts can now be found within the `build` folder on your host machine as normal
 
 Building on macOS
 ------------
@@ -148,4 +172,3 @@ Build CI will automatically publish new gems when commits land to master and pas
 2. Land the changes to upstream master
 3. Monitor for the new gem on rubygems.org
 4. Once the gem appears, make a PR for bumping the version in framework
-
