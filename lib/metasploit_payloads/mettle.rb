@@ -176,8 +176,12 @@ module MetasploitPayloads
       end
 
       extensions = ::Dir.entries(dir_path)
+      extensions.select! { |extension| !extension.end_with?('.bin') }
+      # The stdapi extension is baked in
+      extensions << 'stdapi'
       # Only return extensions!
-      extensions - [ '.', '..', 'mettle', 'mettle.bin' ]
+      extensions -= [ '.', '..', 'mettle', 'mettle' ]
+      extensions
     end
 
     #
