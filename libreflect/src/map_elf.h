@@ -6,10 +6,6 @@
 
 #include "reflect_common.h"
 
-#define PAGE_FLOOR(addr) ((addr) & (-PAGE_SIZE))
-#define PAGE_CEIL(addr) (PAGE_FLOOR((addr) + PAGE_SIZE - 1))
-
-
 /* ELF compatibility checks */
 #if UINTPTR_MAX > 0xffffffff
 #define ELFCLASS_NATIVE ELFCLASS64
