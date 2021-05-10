@@ -144,9 +144,9 @@ int extension_add_handler(struct extension *e,
 }
 
 /*
- * Start the extension.
+ * Initialization needed for the extension's ev...
  */
-int extension_start(struct extension *e)
+int extension_prep(struct extension *e)
 {
 	if (e == NULL) {
 		return -1;
@@ -163,8 +163,29 @@ int extension_start(struct extension *e)
 	ev_signal_init(&sigterm_w, extension_signal_handler, SIGTERM);
 	ev_signal_start(e->loop, &sigterm_w);
 
-	// And GO!!!
-	ev_run(e->loop, 0);
+	return 0;
+}
+
+/*
+ * Run the ev event loop...
+ */
+int extension_run(struct extension *e, int flags)
+{
+	if (e == NULL) {
+		return -1;
+	}
+
+	ev_run(e->loop, flags);
+	return 0;
+}
+
+/*
+ * Start the extension.
+ */
+int extension_start(struct extension *e)
+{
+	extension_prep(e);
+	extension_run(e, 0);
 	return 0;
 }
 

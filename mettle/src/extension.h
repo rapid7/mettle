@@ -35,6 +35,10 @@ void extension_log_to_file(int level, char const *filename);
 int extension_add_handler(struct extension *e,
 		uint32_t command_id, tlv_handler_cb cb, void *arg);
 
+int extension_prep(struct extension *e);
+
+int extension_run(struct extension *e, int flags);
+
 int extension_start(struct extension *e);
 
 void extension_free(struct extension *e);

