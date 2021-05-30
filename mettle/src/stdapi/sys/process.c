@@ -27,8 +27,21 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 
 	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PARENT_PID, pstate.ppid);
-	p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
+
+	sigar_proc_args_t pargs;
+	status = sigar_proc_args_get(sigar, pid, &pargs);
+	if (status != SIGAR_OK) {
+	    log_debug("error: %d (%s) proc_args(%lu)",
+	        status, sigar_strerror(sigar, status), (unsigned long)pid);
+	    return NULL;
+	}
+	if (pargs.number == 0) {
+        p = tlv_packet_add_fmt(p, TLV_TYPE_PROCESS_NAME, "[%s]", pstate.name);
+	} else {
+	    p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
 			(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
+	}
+	sigar_proc_args_destroy(sigar, &pargs);
 
 	/*
 	 * the path data comes from another sigar struct; try to get it for each
