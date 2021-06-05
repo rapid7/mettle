@@ -7,6 +7,7 @@
 #include <libgen.h>
 #include <mettle.h>
 #include <sigar.h>
+#include <string.h>
 
 #include "log.h"
 #include "tlv.h"
@@ -28,20 +29,31 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PARENT_PID, pstate.ppid);
 
-	sigar_proc_args_t pargs;
-	status = sigar_proc_args_get(sigar, pid, &pargs);
-	if (status != SIGAR_OK) {
-	    log_debug("error: %d (%s) proc_args(%lu)",
-	        status, sigar_strerror(sigar, status), (unsigned long)pid);
-	    return NULL;
-	}
-	if (pargs.number == 0) {
-        p = tlv_packet_add_fmt(p, TLV_TYPE_PROCESS_NAME, "[%s]", pstate.name);
+	if (strcasestr(BUILD_TUPLE, "linux")) {
+		/*
+		 * for linux hosts, attempt to check if arguments can be obtained and if
+		 * not wrap the process name in brackets like `ps` and the other
+		 * meterpreters do
+		 */
+		sigar_proc_args_t pargs;
+		status = sigar_proc_args_get(sigar, pid, &pargs);
+		if (status != SIGAR_OK) {
+			log_debug("error: %d (%s) proc_args(%lu)",
+				status, sigar_strerror(sigar, status), (unsigned long) pid);
+			return NULL;
+		}
+		if (pargs.number == 0) {
+			p = tlv_packet_add_fmt(p, TLV_TYPE_PROCESS_NAME,
+				"[%s]", pstate.name);
+		} else {
+			p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
+				(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
+		}
+		sigar_proc_args_destroy(sigar, &pargs);
 	} else {
-	    p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
+		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
 			(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
 	}
-	sigar_proc_args_destroy(sigar, &pargs);
 
 	/*
 	 * the path data comes from another sigar struct; try to get it for each
@@ -299,7 +311,6 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	}
 
 	if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED) {
-
 		struct channelmgr_ctx *cm_ctx = calloc(1, sizeof *ctx);
 		struct channel *c = channelmgr_channel_new(cm, "process");
 		if (c == NULL || cm_ctx == NULL) {
@@ -314,9 +325,9 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		cm_ctx->channel_id = ctx->channel_id = channel_get_id(c);
 
 		process_set_callbacks(p,
-		    process_channel_read_cb,
-		    process_channel_read_cb,
-		    process_channel_exit_cb, cm_ctx);
+			process_channel_read_cb,
+			process_channel_read_cb,
+			process_channel_exit_cb, cm_ctx);
 	}
 
 	struct tlv_packet *resp = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
