@@ -62,7 +62,7 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	sigar_proc_exe_t procexe;
 	status = sigar_proc_exe_get(sigar, pid, &procexe);
 	if (status == SIGAR_OK) {
-		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, dirname(procexe.name));
+		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, procexe.name);
 	} else {
 		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_PATH, "");
 	}
