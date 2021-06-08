@@ -180,8 +180,7 @@ module MetasploitPayloads
       # The stdapi extension is baked in
       extensions << 'stdapi'
       # Only return extensions!
-      extensions -= [ '.', '..', 'mettle', 'mettle' ]
-      extensions
+      extensions - [ '.', '..', 'mettle' ]
     end
 
     #
