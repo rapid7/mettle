@@ -29,7 +29,7 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
 	p = tlv_packet_add_u32(p, TLV_TYPE_PARENT_PID, pstate.ppid);
 
-	if (strcasestr(BUILD_TUPLE, "linux")) {
+#ifdef __linux__
 		/*
 		 * for linux hosts, attempt to check if arguments can be obtained and if
 		 * not wrap the process name in brackets like `ps` and the other
@@ -50,10 +50,10 @@ get_process_info(sigar_t *sigar, sigar_pid_t pid)
 				(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
 		}
 		sigar_proc_args_destroy(sigar, &pargs);
-	} else {
+#else
 		p = tlv_packet_add_str(p, TLV_TYPE_PROCESS_NAME,
 			(pstate.name[0] == '/') ? basename(pstate.name) : pstate.name);
-	}
+#endif
 
 	/*
 	 * the path data comes from another sigar struct; try to get it for each
