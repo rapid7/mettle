@@ -81,12 +81,12 @@ module MetasploitPayloads
       end
     end
 
-    def self.readable_path(gem_path, msf_path)
+    def self.readable_path(gem_path, msf_path=nil)
       # Try the MSF path first to see if the file exists, allowing the MSF data
       # folder to override what is in the gem. This is very helpful for
       # testing/development without having to move the binaries to the gem folder
       # each time. We only do this is MSF is installed.
-      if ::File.readable? msf_path
+      if !msf_path.nil? && ::File.readable?(msf_path)
         warn_local_path(msf_path) if ::File.readable? gem_path
         msf_path
       elsif ::File.readable? gem_path
@@ -125,7 +125,7 @@ module MetasploitPayloads
     #
     def self.path(*path_parts)
       gem_path = expand(data_directory, ::File.join(path_parts))
-      msf_path = 'thisisnotthefileyouarelookingfor'
+      msf_path = nil
       if metasploit_installed?
         msf_path = expand(Msf::Config.data_directory, ::File.join('mettle', path_parts))
       end
@@ -176,8 +176,20 @@ module MetasploitPayloads
       end
 
       extensions = ::Dir.entries(dir_path)
+      extensions.select! { |extension| !extension.end_with?('.bin') }
+      # The stdapi extension is baked in
+      extensions << 'stdapi'
       # Only return extensions!
-      extensions - [ '.', '..', 'mettle', 'mettle.bin' ]
+      extensions - [ '.', '..', 'mettle' ]
+    end
+
+    #
+    # List platforms on which the specified extension is available for loading
+    #
+    def self.available_platforms(extension)
+      ::Dir.entries(path).select do |platform|
+        !(platform_path = path(platform, 'bin')).nil? && ::File.readable?(platform_path) && available_extensions(platform).include?(extension)
+      end
     end
 
     #
