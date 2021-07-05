@@ -82,6 +82,7 @@ AC_CONFIG_FILES([
 	src/Makefile
 	extensions/Makefile
 	extensions/sniffer/Makefile
+	extensions/lua/Makefile
 ])
 
 AC_ARG_ENABLE([staticpie],
