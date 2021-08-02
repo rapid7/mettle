@@ -7,7 +7,6 @@
 #include <libgen.h>
 #include <mettle.h>
 #include <sigar.h>
-#include <string.h>
 
 #include "log.h"
 #include "tlv.h"
