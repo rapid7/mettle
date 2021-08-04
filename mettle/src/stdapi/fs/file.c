@@ -168,7 +168,7 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 }
 
 static void
-search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, off_t f_size)
+search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, off_t f_size, off_t m_time)
 {
 	struct tlv_packet *res = NULL;
 
@@ -181,12 +181,13 @@ search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_
 	res = tlv_packet_add_str(res, TLV_TYPE_FILE_PATH, sub_root);
 	res = tlv_packet_add_str(res, TLV_TYPE_FILE_NAME, f_name);
 	res = tlv_packet_add_u32(res, TLV_TYPE_FILE_SIZE, f_size);
+    res = tlv_packet_add_u32(res, TLV_TYPE_SEARCH_MTIME, m_time);
 	*p = tlv_packet_add_child(*p, res);
 }
 
 #ifdef HAVE_GLOB
 static int
-search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name)
+search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, uint32_t sd, uint32_t ed)
 {
 	glob_t glob_results;
 	struct stat s_buf;
@@ -221,7 +222,13 @@ search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, 
 		if(lstat(glob_results.gl_pathv[i], &s_buf) == 0)
 #endif
 		{
-			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size);
+            if ((sd > 0) && (sd > s_buf.st_mtim.tv_sec) ){
+				continue;
+			}
+			if ((ed > 0) && (ed < s_buf.st_mtim.tv_sec) ){
+				continue;
+			}
+			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size, s_buf.st_mtim.tv_sec);
 		}
 	}
 
@@ -235,6 +242,8 @@ fs_search_cb(eio_req *req)
 {
 	bool recurse;
 	bool perform_glob = false;
+	uint32_t sd = 0;
+	uint32_t ed = 0;
 	int rc = TLV_RESULT_SUCCESS;
 	struct tlv_packet *p = NULL;
 	struct tlv_handler_ctx *ctx = req->data;
@@ -247,6 +256,12 @@ fs_search_cb(eio_req *req)
 
 	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
 
+    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_FROM_DATE,&sd) != 0){
+        sd = 0;
+	}
+    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_TO_DATE,&ed) !=0){
+        ed = 0;
+	}
 	if(search_root == NULL || (strcmp(search_root, "") == 0))
 	{
 		search_root = "/";
@@ -299,7 +314,7 @@ fs_search_cb(eio_req *req)
 #ifdef HAVE_GLOB
 			if(perform_glob)
 			{
-				search_glob(ctx, &p, curr_entry->dir_path, path);
+				search_glob(ctx, &p, curr_entry->dir_path, path, sd, ed);
 			}
 #endif
 
@@ -314,7 +329,7 @@ fs_search_cb(eio_req *req)
 #ifdef HAVE_GLOB
 			if(perform_glob)
 			{
-				search_glob(ctx, &p, curr_entry->dir_path, path);
+				search_glob(ctx, &p, curr_entry->dir_path, path, sd, ed);
 			}
 #endif
 
@@ -401,7 +416,13 @@ fs_search_cb(eio_req *req)
 
 		if(strcmp(f_entry->d_name, path) == 0)
 		{
-			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size);
+            if ((sd > 0) && (sd > f_info.st_mtim.tv_sec) ){
+				continue;
+			}
+			if ((ed > 0) && (ed < f_info.st_mtim.tv_sec) ){
+				continue;
+			}
+			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size, f_info.st_mtim.tv_sec);
 		}
 	}
 
