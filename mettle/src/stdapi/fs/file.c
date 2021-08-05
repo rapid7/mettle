@@ -216,19 +216,22 @@ search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, 
 
 	for(size_t i = 0; i < glob_results.gl_pathc; i++)
 	{
+		uint32_t fmtime = 0;
 #ifdef _WIN32
-		if(stat(glob_results.gl_pathv[i], &s_buf) == 0)
+		if(stat(glob_results.gl_pathv[i], &s_buf) == 0) {
+			fmtime = s_buf.st_mtime;
 #else
-		if(lstat(glob_results.gl_pathv[i], &s_buf) == 0)
+		if(lstat(glob_results.gl_pathv[i], &s_buf) == 0) {
+			fmtime = s_buf.st_mtim.tv_sec;
 #endif
-		{
-            if ((sd > 0) && (sd > s_buf.st_mtim.tv_sec) ){
+		
+            if ((sd > 0) && (sd > fmtime) ){
 				continue;
 			}
-			if ((ed > 0) && (ed < s_buf.st_mtim.tv_sec) ){
+			if ((ed > 0) && (ed < fmtime) ){
 				continue;
 			}
-			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size, s_buf.st_mtim.tv_sec);
+			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size, fmtime);
 		}
 	}
 
@@ -416,13 +419,18 @@ fs_search_cb(eio_req *req)
 
 		if(strcmp(f_entry->d_name, path) == 0)
 		{
-            if ((sd > 0) && (sd > f_info.st_mtim.tv_sec) ){
+			#ifdef _WIN32
+				uint32_t fmtime = f_info.st_mtime;
+            #else
+                uint32_t fmtime = f_info.st_mtim.tv_sec;
+            #endif
+            if ((sd > 0) && (sd > fmtime) ){
 				continue;
 			}
-			if ((ed > 0) && (ed < f_info.st_mtim.tv_sec) ){
+			if ((ed > 0) && (ed < fmtime) ){
 				continue;
 			}
-			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size, f_info.st_mtim.tv_sec);
+			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size, fmtime);
 		}
 	}
 
