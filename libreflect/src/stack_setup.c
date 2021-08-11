@@ -1,6 +1,7 @@
 #include <elf.h>
 #include <link.h>
 #include <sys/types.h>
+#include <sys/auxv.h>
 
 #include <reflect.h>
 
@@ -17,6 +18,10 @@
 // none. Requires 18 * size_of(size_t) bytes of memory.
 void synthetic_auxv(size_t *auxv)
 {
+	// Save this value as it might be overwritten already as original auxv
+	// is reused and we don't know what order the entries are in.
+	unsigned long at_sysinfo_ehdr_value = getauxval(AT_SYSINFO_EHDR);
+
 	auxv[0] = AT_BASE;
 	auxv[2] = AT_PHDR;
 	auxv[4] = AT_ENTRY;
@@ -26,7 +31,8 @@ void synthetic_auxv(size_t *auxv)
 	auxv[12] = AT_SECURE;
     // Required for stack cookies on glibc, hope your payload doesn't get popped
 	auxv[14] = AT_RANDOM; auxv[15] = (size_t)auxv;
-	auxv[16] = AT_NULL; auxv[17] = 0;
+	auxv[16] = AT_SYSINFO_EHDR; auxv[17] = at_sysinfo_ehdr_value;
+	auxv[18] = AT_NULL; auxv[19] = 0;
 }
 
 // Minimum modifications for a sane auxiliary vector to run interpreted dynamic
