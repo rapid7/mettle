@@ -259,10 +259,10 @@ fs_search_cb(eio_req *req)
 
 	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
 
-    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_FROM_DATE,&sd) != 0){
+    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_START_DATE,&sd) != 0){
         sd = 0;
 	}
-    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_TO_DATE,&ed) !=0){
+    if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_END_DATE,&ed) !=0){
         ed = 0;
 	}
 	if(search_root == NULL || (strcmp(search_root, "") == 0))
