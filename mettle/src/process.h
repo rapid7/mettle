@@ -89,6 +89,11 @@ int process_kill_by_pid(struct procmgr *mgr, pid_t pid);
 pid_t process_get_pid(struct process *p);
 
 /*
+ * Returns the in_fd of the given process
+ */
+int process_get_in_fd(struct process *process);
+
+/*
  * Iterate over all managed processes
  */
 void procmgr_iter_processes(struct procmgr *mgr,

@@ -70,6 +70,7 @@ libmettle_la_SOURCES += stdapi/audio/linux_mic.c
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
 libmettle_la_SOURCES += stdapi/audio/linux_output.c
 libmettle_la_SOURCES += stdapi/audio/posix_output.c
+libmettle_la_SOURCES += stdapi/sys/linux_process.c
 endif
 
 libmettle_la_SOURCES += compat/progname.c
