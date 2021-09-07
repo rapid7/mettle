@@ -11,6 +11,7 @@ libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
+libmettle_la_LIBADD += -lutil
 
 if HAVE_REFLECT
 libmettle_la_LIBADD += -lreflect
@@ -64,13 +65,14 @@ libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
 libmettle_la_SOURCES += stdapi/ui/osx_keyboard.m
 libmettle_la_SOURCES += stdapi/ui/osx_mouse.m
 libmettle_la_SOURCES += stdapi/audio/apple_mic.m
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 if HOST_LINUX
 libmettle_la_SOURCES += stdapi/audio/linux_mic.c
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
 libmettle_la_SOURCES += stdapi/audio/linux_output.c
 libmettle_la_SOURCES += stdapi/audio/posix_output.c
-libmettle_la_SOURCES += stdapi/sys/linux_process.c
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 
 libmettle_la_SOURCES += compat/progname.c

@@ -21,11 +21,7 @@ sys_process_set_term_size(struct tlv_handler_ctx *ctx)
 			.ws_row = rows,
 			.ws_col = columns
 	};
-	printf ("lines %d\n", ws.ws_row);
-	printf ("columns %d\n", ws.ws_col);
 	ioctl(process_get_in_fd(p), TIOCSWINSZ, &ws);
-	printf ("lines %d\n", ws.ws_row);
-	printf ("columns %d\n", ws.ws_col);
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 
 }
