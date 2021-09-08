@@ -11,7 +11,7 @@
 #include "network_server.h"
 #include "tlv.h"
 #include "command_ids.h"
-#include "util.h"
+#include "utils.h"
 
 struct network_server_channel
 {

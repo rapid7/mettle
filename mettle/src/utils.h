@@ -1,11 +1,11 @@
 /**
  * Copyright 2015 Rapid7
  * @brief Miscelaneous system functions
- * @file util.h
+ * @file utils.h
  */
 
-#ifndef _UTIL_H_
-#define _UTIL_H_
+#ifndef _UTILS_H_
+#define _UTILS_H_
 
 #include <sys/socket.h>
 

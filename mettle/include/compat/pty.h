@@ -4,7 +4,7 @@
 #ifdef __linux__
 #include_next <pty.h>
 #else
-#include <util.h>
+#include_next <util.h>
 #endif
 
 #endif //METTLE_PTY_H

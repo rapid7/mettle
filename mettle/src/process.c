@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pty.h>
+#include <termios.h>
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -20,7 +21,7 @@
 #include "process.h"
 #include "buffer_queue.h"
 #include "uthash.h"
-#include "util.h"
+#include "utils.h"
 #include "../util/util-common.h"
 
 struct process_queue {

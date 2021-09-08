@@ -13,7 +13,7 @@
 #include <log.h>
 #include <pthread.h>
 #include <tlv.h>
-#include <util.h>
+#include <utils.h>
 #include <command_ids.h>
 
 /*

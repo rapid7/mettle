@@ -24,7 +24,7 @@
 #include "buffer_queue.h"
 #include "log.h"
 #include "network_client.h"
-#include "util.h"
+#include "utils.h"
 
 struct network_client_server {
 	char *uri;

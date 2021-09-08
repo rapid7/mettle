@@ -21,7 +21,7 @@
 #include "buffer_queue.h"
 #include "log.h"
 #include "bufferev.h"
-#include "util.h"
+#include "utils.h"
 
 struct bufferev {
 	struct ev_timer connect_timer;

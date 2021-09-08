@@ -11,7 +11,6 @@ libmettle_la_LIBADD += -ljson-c
 libmettle_la_LIBADD += -lpthread
 libmettle_la_LIBADD += -lsigar
 libmettle_la_LIBADD += -lz
-libmettle_la_LIBADD += -lutil
 
 if HAVE_REFLECT
 libmettle_la_LIBADD += -lreflect
@@ -52,13 +51,15 @@ else
 libmettle_la_SOURCES += console.c linenoise.c
 libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += service.c
+libmettle_la_LIBADD += -lutil
 endif
-libmettle_la_SOURCES += util.c
+libmettle_la_SOURCES += utils.c
 if HOST_APPLE
 libmettle_la_SOURCES += stdapi/webcam/apple_webcam.m
 libmettle_la_SOURCES += stdapi/audio/apple_output.m
 libmettle_la_SOURCES += stdapi/audio/posix_output.c
 libmettle_la_SOURCES += stdapi/clipboard/apple_clipboard.m
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 if HOST_OSX
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m

@@ -350,7 +350,7 @@ void sys_process_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GETPID, sys_process_getpid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GET_INFO, sys_process_get_info, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_WAIT, sys_process_wait, m);
-#ifdef __linux__
+#ifndef _WIN32
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_SET_TERM_SIZE, sys_process_set_term_size, m);
 #endif
 

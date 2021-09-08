@@ -12,7 +12,7 @@
 
 #include "log.h"
 #include "tlv.h"
-#include "util.h"
+#include "utils.h"
 
 static char * flags2string(u_short flags)
 {
