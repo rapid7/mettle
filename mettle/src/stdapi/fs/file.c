@@ -308,7 +308,7 @@ fs_search_cb(eio_req *req)
 		goto out;
 	}
 
-	while(curr_entry != NULL)
+	while(curr_entry != NULL && dir_str != NULL)
 	{
 		f_entry = readdir(dir_str);
 		if(f_entry == NULL && curr_entry->next == NULL) // nothing left to search
