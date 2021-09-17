@@ -15,7 +15,7 @@
  **/
 
 // Builds the foundation of a minimally-viable auxiliary vector when we have
-// none. Requires 18 * size_of(size_t) bytes of memory.
+// none. Requires 20 * size_of(size_t) bytes of memory.
 void synthetic_auxv(size_t *auxv)
 {
 	// Save this value as it might be overwritten already as original auxv
