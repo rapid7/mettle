@@ -23,6 +23,7 @@
 #include "uthash.h"
 #include "utils.h"
 #include "../util/util-common.h"
+#include "tlv.h"
 
 struct process_queue {
 	struct ev_io w;
@@ -161,7 +162,7 @@ void procmgr_setup_env(void)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+	const char *file, struct process_options *opts)
 {
 	char *args = NULL, *proc = NULL;
 
@@ -347,6 +348,10 @@ static struct process * process_create(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
 	struct process_options *opts)
 {
+
+	int stdin_pair[2];
+	int stdout_pair[2];
+
 	int stderr_pair[2];
 	if (pipe(stderr_pair) == -1) {
 		return NULL;
@@ -357,14 +362,36 @@ static struct process * process_create(struct procmgr *mgr,
 		return NULL;
 	}
 
-	int master;
+	pid_t pid;
+	if (opts->flags & PROCESS_EXECUTE_FLAG_PTY) {
+        int master;
 
-	pid_t pid = forkpty(&master, NULL, NULL, NULL);
-	struct termios tios;
-	tcgetattr(master, &tios);
-	tcsetattr(master, TCSADRAIN, &tios);
+		pid = forkpty(&master, NULL, NULL, NULL);
+
+        if (pid == 0) {
+            struct termios tios;
+            tcgetattr(master, &tios);
+            tcsetattr(master, TCSADRAIN, &tios);
+        }
+		stdin_pair[0] = master;
+		stdin_pair[1] = master;
+		stdout_pair[0] = master;
+		stdout_pair[1] = master;
+	} else {
+		if (pipe(stdin_pair) == -1) {
+			return NULL;
+		}
+
+		if (pipe(stdout_pair) == -1) {
+			return NULL;
+		}
+
+		pid = fork();
+	}
 
 	if (pid == 0) {
+		dup2(stdin_pair[0], STDIN_FILENO);
+		dup2(stdout_pair[1], STDOUT_FILENO);
 		dup2(stderr_pair[1], STDERR_FILENO);
 
 		close(stderr_pair[1]);
@@ -380,6 +407,10 @@ static struct process * process_create(struct procmgr *mgr,
 		return NULL;
 
 	} else if (pid == -1) {
+		close(stdin_pair[1]);
+		close(stdin_pair[0]);
+		close(stdout_pair[1]);
+		close(stdout_pair[0]);
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 		free(p);
@@ -405,17 +436,17 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Setup stdin
 	 */
-	fcntl(master, F_SETFL, O_NONBLOCK);
-	p->in_fd = master;
+	fcntl(stdin_pair[1], F_SETFL, O_NONBLOCK);
+	p->in_fd = stdin_pair[1];
 
 	/*
 	 * Register stdout watcher
 	 */
-	p->out_fd = master;
-	fcntl(master, F_SETFL, O_NONBLOCK);
+	p->out_fd = stdout_pair[0];
+	fcntl(stdout_pair[0], F_SETFL, O_NONBLOCK);
 	p->out.queue = buffer_queue_new();
 	p->out.w.data = p;
-	ev_io_init(&p->out.w, stdout_cb, master, EV_READ);
+	ev_io_init(&p->out.w, stdout_cb, stdout_pair[0], EV_READ);
 	ev_io_start(mgr->loop, &p->out.w);
 
 	/*

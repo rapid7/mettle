@@ -295,6 +295,10 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		opts.flags |= PROCESS_CREATE_SUBSHELL;
 	}
 
+	if (flags & PROCESS_EXECUTE_FLAG_PTY) {
+		opts.flags |= PROCESS_EXECUTE_FLAG_PTY;
+	}
+
 	log_debug("process_new: %s %s 0x%08x", path, args, flags);
 
 	struct process *p;
