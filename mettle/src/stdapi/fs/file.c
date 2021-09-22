@@ -31,6 +31,8 @@
 #define st_atim st_atimespec
 #endif
 
+#define FS_SEARCH_NO_DATE UINT32_MAX
+
 struct search_entry
 {
 	char *dir_path;
@@ -226,11 +228,11 @@ search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, 
 			uint32_t fmtime = s_buf.st_mtim.tv_sec;
 #endif
 
-			if((start_date != UINT32_MAX) && (start_date > fmtime))
+			if((start_date != FS_SEARCH_NO_DATE) && (start_date > fmtime))
 			{
 				continue;
 			}
-			if((end_date != UINT32_MAX) && (end_date < fmtime))
+			if((end_date != FS_SEARCH_NO_DATE) && (end_date < fmtime))
 			{
 				continue;
 			}
@@ -264,11 +266,11 @@ fs_search_cb(eio_req *req)
 
 	if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_START_DATE, &start_date))
 	{
-		start_date = UINT32_MAX;
+		start_date = FS_SEARCH_NO_DATE;
 	}
 	if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_END_DATE, &end_date))
 	{
-		end_date = UINT32_MAX;
+		end_date = FS_SEARCH_NO_DATE;
 	}
 	if(search_root == NULL || (strcmp(search_root, "") == 0))
 	{
@@ -429,11 +431,11 @@ fs_search_cb(eio_req *req)
 #else
 			uint32_t fmtime = f_info.st_mtim.tv_sec;
 #endif
-			if((start_date != UINT32_MAX) && (start_date > fmtime))
+			if((start_date != FS_SEARCH_NO_DATE) && (start_date > fmtime))
 			{
 				continue;
 			}
-			if((end_date != UINT32_MAX) && (end_date > fmtime))
+			if((end_date != FS_SEARCH_NO_DATE) && (end_date < fmtime))
 			{
 				continue;
 			}
