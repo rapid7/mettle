@@ -61,28 +61,22 @@ struct tlv_packet *sys_config_getenv(struct tlv_handler_ctx *ctx)
 
 struct tlv_packet *sys_config_getuid(struct tlv_handler_ctx *ctx)
 {
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	struct tlv_packet *p = NULL;
 
-#ifndef _WIN32
-# ifndef HOST_NAME_MAX
-#  if defined(_POSIX_HOST_NAME_MAX)
-#   define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
-#  elif defined(MAXHOSTNAMELEN)
-#   define HOST_NAME_MAX MAXHOSTNAMELEN
-#  endif
-# endif /* HOST_NAME_MAX */
-	char *username = "no-user";
+#ifdef _WIN32
+	/* not supported on Windows */
+	p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+#else
 	struct passwd *pw = getpwuid(geteuid());
+
 	if (pw)
 	{
-		username = pw->pw_name;
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		p = tlv_packet_add_str(p, TLV_TYPE_USER_NAME, pw->pw_name);
+	} else {
+		p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
-	char hostname[HOST_NAME_MAX] = "no-hostname";
-	gethostname(hostname, HOST_NAME_MAX);
-	p = tlv_packet_add_fmt(p, TLV_TYPE_USER_NAME,
-			"%s @ %s (uid=%d, gid=%d, euid=%d, egid=%d)",
-			username, hostname, getuid(), getgid(), geteuid(), getegid());
-#endif /* _WIN32 */
+#endif
 	return p;
 }
 
@@ -108,9 +102,13 @@ struct tlv_packet *sys_config_sysinfo(struct tlv_handler_ctx *ctx)
 
 struct tlv_packet *sys_config_localtime(struct tlv_handler_ctx *ctx)
 {
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	struct tlv_packet *p = NULL;
 
-#ifndef _WIN32
+#ifdef _WIN32
+	/* not supported on Windows */
+	p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+#else
+	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	char dateTime[128] = { 0 };
 	time_t t = time(NULL);
 	struct tm lt = { 0 };
