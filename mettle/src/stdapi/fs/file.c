@@ -31,6 +31,8 @@
 #define st_atim st_atimespec
 #endif
 
+#define FS_SEARCH_NO_DATE UINT32_MAX
+
 struct search_entry
 {
 	char *dir_path;
@@ -168,7 +170,7 @@ struct tlv_packet *fs_ls(struct tlv_handler_ctx *ctx)
 }
 
 static void
-search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, off_t f_size)
+search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, off_t f_size, off_t m_time)
 {
 	struct tlv_packet *res = NULL;
 
@@ -181,12 +183,13 @@ search_add_result(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_
 	res = tlv_packet_add_str(res, TLV_TYPE_FILE_PATH, sub_root);
 	res = tlv_packet_add_str(res, TLV_TYPE_FILE_NAME, f_name);
 	res = tlv_packet_add_u32(res, TLV_TYPE_FILE_SIZE, f_size);
+	res = tlv_packet_add_u32(res, TLV_TYPE_SEARCH_MTIME, m_time);
 	*p = tlv_packet_add_child(*p, res);
 }
 
 #ifdef HAVE_GLOB
 static int
-search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name)
+search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, char *f_name, uint32_t start_date, uint32_t end_date)
 {
 	glob_t glob_results;
 	struct stat s_buf;
@@ -217,11 +220,23 @@ search_glob(struct tlv_handler_ctx *ctx, struct tlv_packet **p, char *sub_root, 
 	{
 #ifdef _WIN32
 		if(stat(glob_results.gl_pathv[i], &s_buf) == 0)
+		{
+			uint32_t fmtime = s_buf.st_mtime;
 #else
 		if(lstat(glob_results.gl_pathv[i], &s_buf) == 0)
-#endif
 		{
-			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size);
+			uint32_t fmtime = s_buf.st_mtim.tv_sec;
+#endif
+
+			if((start_date != FS_SEARCH_NO_DATE) && (start_date > fmtime))
+			{
+				continue;
+			}
+			if((end_date != FS_SEARCH_NO_DATE) && (end_date < fmtime))
+			{
+				continue;
+			}
+			search_add_result(ctx, p, sub_root, basename(glob_results.gl_pathv[i]), s_buf.st_size, fmtime);
 		}
 	}
 
@@ -235,6 +250,8 @@ fs_search_cb(eio_req *req)
 {
 	bool recurse;
 	bool perform_glob = false;
+	uint32_t start_date;
+	uint32_t end_date;
 	int rc = TLV_RESULT_SUCCESS;
 	struct tlv_packet *p = NULL;
 	struct tlv_handler_ctx *ctx = req->data;
@@ -247,6 +264,14 @@ fs_search_cb(eio_req *req)
 
 	tlv_packet_get_bool(ctx->req, TLV_TYPE_SEARCH_RECURSE, &recurse);
 
+	if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_START_DATE, &start_date))
+	{
+		start_date = FS_SEARCH_NO_DATE;
+	}
+	if(tlv_packet_get_u32(ctx->req,TLV_TYPE_SEARCH_M_END_DATE, &end_date))
+	{
+		end_date = FS_SEARCH_NO_DATE;
+	}
 	if(search_root == NULL || (strcmp(search_root, "") == 0))
 	{
 		search_root = "/";
@@ -290,7 +315,7 @@ fs_search_cb(eio_req *req)
 		goto out;
 	}
 
-	while(curr_entry != NULL)
+	while(curr_entry != NULL && dir_str != NULL)
 	{
 		f_entry = readdir(dir_str);
 		if(f_entry == NULL && curr_entry->next == NULL) // nothing left to search
@@ -299,7 +324,7 @@ fs_search_cb(eio_req *req)
 #ifdef HAVE_GLOB
 			if(perform_glob)
 			{
-				search_glob(ctx, &p, curr_entry->dir_path, path);
+				search_glob(ctx, &p, curr_entry->dir_path, path, start_date, end_date);
 			}
 #endif
 
@@ -314,7 +339,7 @@ fs_search_cb(eio_req *req)
 #ifdef HAVE_GLOB
 			if(perform_glob)
 			{
-				search_glob(ctx, &p, curr_entry->dir_path, path);
+				search_glob(ctx, &p, curr_entry->dir_path, path, start_date, end_date);
 			}
 #endif
 
@@ -401,7 +426,20 @@ fs_search_cb(eio_req *req)
 
 		if(strcmp(f_entry->d_name, path) == 0)
 		{
-			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size);
+#ifdef _WIN32
+			uint32_t fmtime = f_info.st_mtime;
+#else
+			uint32_t fmtime = f_info.st_mtim.tv_sec;
+#endif
+			if((start_date != FS_SEARCH_NO_DATE) && (start_date > fmtime))
+			{
+				continue;
+			}
+			if((end_date != FS_SEARCH_NO_DATE) && (end_date < fmtime))
+			{
+				continue;
+			}
+			search_add_result(ctx, &p, curr_entry->dir_path, f_entry->d_name, f_info.st_size, fmtime);
 		}
 	}
 
