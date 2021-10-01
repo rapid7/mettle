@@ -301,7 +301,7 @@
 #define PROCESS_EXECUTE_FLAG_DESKTOP           (1 << 4)
 #define PROCESS_EXECUTE_FLAG_SESSION           (1 << 5)
 #define PROCESS_EXECUTE_FLAG_SUBSHELL          (1 << 6)
-#define PROCESS_EXECUTE_FLAG_PTY          (1 << 7)
+#define PROCESS_EXECUTE_FLAG_PTY               (1 << 7)
 
 #define PROCESS_ARCH_UNKNOWN    0
 #define PROCESS_ARCH_X86        1
