@@ -1,3 +1,9 @@
+/**
+ * Copyright 2021 Rapid7
+ * @brief System Process API
+ * @file posix_process.c
+ */
+
 #include <mettle.h>
 #include <sys/ioctl.h>
 

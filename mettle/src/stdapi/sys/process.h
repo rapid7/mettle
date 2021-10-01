@@ -1,3 +1,8 @@
+/**
+ * Copyright 2021 Rapid7
+ * @brief System Process API
+ * @file process.h
+ */
 
 #ifndef _STDAPI_PROCESS_H
 #define _STDAPI_PROCESS_H
