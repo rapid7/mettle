@@ -43,7 +43,9 @@ struct network_server {
 void connect_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 {
 	struct network_server *ns = w->data;
-	int fd = accept(ns->listener, NULL, NULL);
+	struct sockaddr_storage sockaddr;
+	socklen_t slen = sizeof(sockaddr);
+	int fd = accept(ns->listener, (struct sockaddr *)&sockaddr, &slen);
 	if (fd < 0) {
 		log_error("could not accept: %s", strerror(errno));
 	} else if (fd > FD_SETSIZE) {
