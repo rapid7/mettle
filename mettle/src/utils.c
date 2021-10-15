@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "util.h"
+#include "utils.h"
 
 int
 make_socket_nonblocking(int fd)

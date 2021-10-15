@@ -23,7 +23,7 @@
 #include "bufferev.h"
 #include "log.h"
 #include "network_server.h"
-#include "util.h"
+#include "utils.h"
 
 struct network_server {
 	struct ev_loop *loop;

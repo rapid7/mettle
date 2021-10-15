@@ -9,6 +9,8 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <pty.h>
+#include <termios.h>
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -19,8 +21,9 @@
 #include "process.h"
 #include "buffer_queue.h"
 #include "uthash.h"
-#include "util.h"
+#include "utils.h"
 #include "../util/util-common.h"
+#include "tlv.h"
 
 struct process_queue {
 	struct ev_io w;
@@ -159,7 +162,7 @@ void procmgr_setup_env(void)
 }
 
 static void exec_child(struct procmgr *mgr,
-    const char *file, struct process_options *opts)
+	const char *file, struct process_options *opts)
 {
 	char *args = NULL, *proc = NULL;
 
@@ -345,15 +348,9 @@ static struct process * process_create(struct procmgr *mgr,
 	const unsigned char *bin_image, size_t bin_image_len,
 	struct process_options *opts)
 {
-	int stdin_pair[2];
-	if (pipe(stdin_pair) == -1) {
-		return NULL;
-	}
 
+	int stdin_pair[2];
 	int stdout_pair[2];
-	if (pipe(stdout_pair) == -1) {
-		return NULL;
-	}
 
 	int stderr_pair[2];
 	if (pipe(stderr_pair) == -1) {
@@ -365,16 +362,38 @@ static struct process * process_create(struct procmgr *mgr,
 		return NULL;
 	}
 
-	pid_t pid = fork();
+	pid_t pid;
+	if (opts->flags & PROCESS_EXECUTE_FLAG_PTY) {
+		int master;
+
+		pid = forkpty(&master, NULL, NULL, NULL);
+
+		if (pid == 0) {
+			struct termios tios;
+			tcgetattr(master, &tios);
+			tcsetattr(master, TCSADRAIN, &tios);
+		}
+		stdin_pair[0] = master;
+		stdin_pair[1] = master;
+		stdout_pair[0] = master;
+		stdout_pair[1] = master;
+	} else {
+		if (pipe(stdin_pair) == -1) {
+			return NULL;
+		}
+
+		if (pipe(stdout_pair) == -1) {
+			return NULL;
+		}
+
+		pid = fork();
+	}
+
 	if (pid == 0) {
 		dup2(stdin_pair[0], STDIN_FILENO);
 		dup2(stdout_pair[1], STDOUT_FILENO);
 		dup2(stderr_pair[1], STDERR_FILENO);
 
-		close(stdin_pair[1]);
-		close(stdin_pair[0]);
-		close(stdout_pair[1]);
-		close(stdout_pair[0]);
 		close(stderr_pair[1]);
 		close(stderr_pair[0]);
 
@@ -417,7 +436,6 @@ static struct process * process_create(struct procmgr *mgr,
 	/*
 	 * Setup stdin
 	 */
-	close(stdin_pair[0]);
 	fcntl(stdin_pair[1], F_SETFL, O_NONBLOCK);
 	p->in_fd = stdin_pair[1];
 
@@ -574,4 +592,8 @@ struct procmgr *procmgr_new(struct ev_loop *loop)
 		mgr->loop = loop;
 	}
 	return mgr;
+}
+
+int process_get_in_fd(struct process *process) {
+	return process->in_fd;
 }

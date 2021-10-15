@@ -252,6 +252,9 @@
 #define TLV_TYPE_REGISTER_VALUE_32     (TLV_META_TYPE_UINT    | 2542)
 #define TLV_TYPE_REGISTER              (TLV_META_TYPE_GROUP   | 2550)
 
+#define TLV_TYPE_TERMINAL_ROWS         (TLV_META_TYPE_UINT    | 2600)
+#define TLV_TYPE_TERMINAL_COLUMNS      (TLV_META_TYPE_UINT    | 2601)
+
 /*
  * Ui
  */
@@ -301,6 +304,7 @@
 #define PROCESS_EXECUTE_FLAG_DESKTOP           (1 << 4)
 #define PROCESS_EXECUTE_FLAG_SESSION           (1 << 5)
 #define PROCESS_EXECUTE_FLAG_SUBSHELL          (1 << 6)
+#define PROCESS_EXECUTE_FLAG_PTY               (1 << 7)
 
 #define PROCESS_ARCH_UNKNOWN    0
 #define PROCESS_ARCH_X86        1

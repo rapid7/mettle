@@ -11,7 +11,7 @@
 #include "network_client.h"
 #include "tlv.h"
 #include "command_ids.h"
-#include "util.h"
+#include "utils.h"
 
 struct tcp_client_channel {
 	struct channel *channel;

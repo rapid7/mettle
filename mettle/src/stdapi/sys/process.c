@@ -11,6 +11,7 @@
 #include "log.h"
 #include "tlv.h"
 #include "command_ids.h"
+#include "process.h"
 
 static struct tlv_packet *
 get_process_info(sigar_t *sigar, sigar_pid_t pid)
@@ -294,6 +295,10 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		opts.flags |= PROCESS_CREATE_SUBSHELL;
 	}
 
+	if (flags & PROCESS_EXECUTE_FLAG_PTY) {
+		opts.flags |= PROCESS_EXECUTE_FLAG_PTY;
+	}
+
 	log_debug("process_new: %s %s 0x%08x", path, args, flags);
 
 	struct process *p;
@@ -349,6 +354,9 @@ void sys_process_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GETPID, sys_process_getpid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_GET_INFO, sys_process_get_info, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_WAIT, sys_process_wait, m);
+#ifndef _WIN32
+	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_SET_TERM_SIZE, sys_process_set_term_size, m);
+#endif
 
 	struct channel_callbacks cbs = {
 		.read_cb = sys_process_read,

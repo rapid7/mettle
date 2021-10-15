@@ -51,25 +51,29 @@ else
 libmettle_la_SOURCES += console.c linenoise.c
 libmettle_la_SOURCES += process.c
 libmettle_la_SOURCES += service.c
+libmettle_la_LIBADD += -lutil
 endif
-libmettle_la_SOURCES += util.c
+libmettle_la_SOURCES += utils.c
 if HOST_APPLE
 libmettle_la_SOURCES += stdapi/webcam/apple_webcam.m
 libmettle_la_SOURCES += stdapi/audio/apple_output.m
 libmettle_la_SOURCES += stdapi/audio/posix_output.c
 libmettle_la_SOURCES += stdapi/clipboard/apple_clipboard.m
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 if HOST_OSX
 libmettle_la_SOURCES += stdapi/ui/osx_desktop.m
 libmettle_la_SOURCES += stdapi/ui/osx_keyboard.m
 libmettle_la_SOURCES += stdapi/ui/osx_mouse.m
 libmettle_la_SOURCES += stdapi/audio/apple_mic.m
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 if HOST_LINUX
 libmettle_la_SOURCES += stdapi/audio/linux_mic.c
 libmettle_la_SOURCES += stdapi/webcam/linux_webcam.c
 libmettle_la_SOURCES += stdapi/audio/linux_output.c
 libmettle_la_SOURCES += stdapi/audio/posix_output.c
+libmettle_la_SOURCES += stdapi/sys/posix_process.c
 endif
 
 libmettle_la_SOURCES += compat/progname.c

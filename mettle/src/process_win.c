@@ -16,7 +16,7 @@
 #include "process.h"
 #include "buffer_queue.h"
 #include "uthash.h"
-#include "util.h"
+#include "utils.h"
 
 struct process_queue {
 	struct ev_io w;

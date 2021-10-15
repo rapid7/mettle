@@ -8,7 +8,7 @@
 
 #include "buffer_queue.h"
 #include "utlist.h"
-#include "util.h"
+#include "utils.h"
 
 struct buffer_queue {
 	struct buffer {
