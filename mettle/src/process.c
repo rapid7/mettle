@@ -364,15 +364,15 @@ static struct process * process_create(struct procmgr *mgr,
 
 	pid_t pid;
 	if (opts->flags & PROCESS_EXECUTE_FLAG_PTY) {
-        int master;
+		int master;
 
 		pid = forkpty(&master, NULL, NULL, NULL);
 
-        if (pid == 0) {
-            struct termios tios;
-            tcgetattr(master, &tios);
-            tcsetattr(master, TCSADRAIN, &tios);
-        }
+		if (pid == 0) {
+			struct termios tios;
+			tcgetattr(master, &tios);
+			tcsetattr(master, TCSADRAIN, &tios);
+		}
 		stdin_pair[0] = master;
 		stdin_pair[1] = master;
 		stdout_pair[0] = master;

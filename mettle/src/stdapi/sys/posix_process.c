@@ -24,8 +24,8 @@ sys_process_set_term_size(struct tlv_handler_ctx *ctx)
 
 	struct process *p = channel_get_ctx(c);
 	struct winsize ws = {
-			.ws_row = rows,
-			.ws_col = columns
+		.ws_row = rows,
+		.ws_col = columns
 	};
 	ioctl(process_get_in_fd(p), TIOCSWINSZ, &ws);
 	return tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
