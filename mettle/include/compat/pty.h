@@ -1,3 +1,9 @@
+/**
+ * Copyright 2021 Rapid7
+ * @brief PTY compat
+ * @file pty.h
+ */
+
 #ifndef METTLE_PTY_H
 #define METTLE_PTY_H
 
