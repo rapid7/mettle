@@ -136,12 +136,17 @@ fs_ls_cb(eio_req *req)
 			snprintf(fq_path, sizeof(fq_path), "%s/%s", path, name);
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_NAME, name);
 			p = tlv_packet_add_str(p, TLV_TYPE_FILE_PATH, fq_path);
+#ifdef _WIN32
+			p = tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, "", 0);
+#else
 			struct stat buf;
 			if (stat(fq_path, &buf) == 0) {
-#ifndef _WIN32
+
 				p = add_stat(p, &buf);
-#endif
+			} else {
+				p = tlv_packet_add_raw(p, TLV_TYPE_STAT_BUF, "", 0);
 			}
+#endif
 		}
 	}
 
