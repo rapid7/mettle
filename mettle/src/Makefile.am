@@ -27,6 +27,7 @@ libmettle_la_SOURCES += c2_tcp.c
 libmettle_la_SOURCES += channel.c
 libmettle_la_SOURCES += coreapi.c
 libmettle_la_SOURCES += crypttlv.c
+libmettle_la_SOURCES += eio_rmtree.c
 libmettle_la_SOURCES += extension.c
 libmettle_la_SOURCES += extensions.c
 libmettle_la_SOURCES += http_client.c
