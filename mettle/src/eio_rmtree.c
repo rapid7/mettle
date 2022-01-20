@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <linux/limits.h>
+#include <limits.h>
 
 #include "eio_rmtree.h"
 
@@ -54,7 +54,7 @@ eio_rmtree_lstat_cb(eio_req *req)
 {
 	struct rmtree_ctx *ctx = req->data;
 	const char *path = EIO_PATH(req);
-	struct stat *buf = EIO_STAT_BUF(req);
+	EIO_STRUCT_STAT *buf = (EIO_STRUCT_STAT *)req->ptr2;
 	eio_req *new_req;
 
 	if (set_dents_cb(req) < 0) {

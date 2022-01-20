@@ -551,7 +551,7 @@ fs_rmdir_cb(eio_req *req)
 {
 	struct tlv_handler_ctx *ctx = req->data;
 	const char *path = EIO_PATH(req);
-	struct stat *buf = EIO_STAT_BUF(req);
+	EIO_STRUCT_STAT *buf = (EIO_STRUCT_STAT *)req->ptr2;
 	eio_req *new_req = NULL;
 
 	if (req->result < 0) {
