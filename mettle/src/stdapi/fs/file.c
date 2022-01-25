@@ -34,6 +34,12 @@
 
 #define FS_SEARCH_NO_DATE UINT32_MAX
 
+#ifdef __MINGW32__
+#if !defined(S_ISLNK)
+#define	S_ISLNK(mode) (0)
+#endif
+#endif
+
 struct search_entry
 {
 	char *dir_path;

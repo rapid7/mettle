@@ -61,9 +61,7 @@ eio_rmtree_lstat_cb(eio_req *req)
 		return req->result;
 	}
 
-	if (S_ISLNK(buf->st_mode)) {
-		new_req = eio_unlink(path, 0, set_dents_cb, ctx);
-	} else if (S_ISDIR(buf->st_mode)) {
+	if (S_ISDIR(buf->st_mode)) {
 		new_req = eio_rmtree(path, 0, set_dents_cb, ctx);
 	} else {
 		new_req = eio_unlink(path, 0, set_dents_cb, ctx);
@@ -92,7 +90,7 @@ eio_rmtree_readdir_cb(eio_req *req)
 			return error;
 		}
 
-		name += strlen (name) + 1;
+		name += strlen(name) + 1;
 	}
 	return 0;
 }
