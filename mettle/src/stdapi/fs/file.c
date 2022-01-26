@@ -24,6 +24,7 @@
 #include "log.h"
 #include "tlv.h"
 #include "command_ids.h"
+#include "eio_rmtree.h"
 
 #ifdef __APPLE__
 #define st_mtim st_mtimespec
@@ -32,6 +33,12 @@
 #endif
 
 #define FS_SEARCH_NO_DATE UINT32_MAX
+
+#ifdef __MINGW32__
+#if !defined(S_ISLNK)
+#define	S_ISLNK(mode) (0)
+#endif
+#endif
 
 struct search_entry
 {
@@ -545,6 +552,32 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	return NULL;
 }
 
+static int
+fs_rmdir_cb(eio_req *req)
+{
+	struct tlv_handler_ctx *ctx = req->data;
+	const char *path = EIO_PATH(req);
+	EIO_STRUCT_STAT *buf = (EIO_STRUCT_STAT *)req->ptr2;
+	eio_req *new_req = NULL;
+
+	if (req->result < 0) {
+		return fs_cb(req);
+	}
+
+	if (S_ISLNK(buf->st_mode)) {
+		new_req = eio_unlink(path, 0, fs_cb, ctx);
+	} else if (S_ISDIR(buf->st_mode)) {
+		new_req = eio_rmtree(path, 0, fs_cb, ctx);
+	}
+
+	if (!new_req) {
+		req->result = -1;
+		fs_cb(req);
+	}
+
+	return req->result;
+}
+
 struct tlv_packet *
 fs_rmdir(struct tlv_handler_ctx *ctx)
 {
@@ -553,7 +586,7 @@ fs_rmdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
 
-	eio_rmdir(path, 0, fs_cb, ctx);
+	eio_lstat(path, 0, fs_rmdir_cb, ctx);
 	return NULL;
 }
 
