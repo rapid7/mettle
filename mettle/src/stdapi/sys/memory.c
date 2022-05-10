@@ -17,6 +17,55 @@
 #define MAX_STRINGS 350
 #define MIN_SEARCH_LEN 5
 
+struct tlv_packet *mem_read(struct tlv_handler_ctx *ctx)
+{
+    unsigned int pid;
+    unsigned long size;
+    unsigned long start_addr;
+    struct tlv_packet *p = NULL;
+
+    if(tlv_packet_get_u32(ctx->req, TLV_TYPE_PID, &pid) == -1)
+    {
+        log_debug("Pid was not retrieved.\n");
+        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+    }
+
+    if(tlv_packet_get_u64(ctx->req, TLV_TYPE_MEM_SEARCH_START_ADDR, &start_addr) == -1)
+    {
+        log_debug("Failed to retrieve the start address.\n");
+        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+    }
+
+    if(tlv_packet_get_u64(ctx->req, TLV_META_TYPE_QWORD, &size) == -1)
+    {
+        log_debug("Failed to retrieve search to search.\n");
+        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+    }
+
+    if(size <= 0)
+    {
+        size = MATCH_LEN_MAX;
+    }
+
+    char pid_str[8];
+    sprintf(pid_str, "%d", pid);
+    int path_len = strlen("/proc/") + strlen(pid_str) + strlen("/mem") + 1;
+
+    char *read_str = NULL;
+    char mem_path[path_len];
+    snprintf(mem_path, path_len, "/proc/%s/mem", pid_str);
+
+    FILE *fp = fopen(mem_path, "r");
+    if(fp == NULL)
+    {
+        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+    }
+
+    fseek(fp, start_addr, SEEK_SET);
+
+    fclose(fp);
+}
+
 struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
 {
     unsigned int pid;
@@ -54,12 +103,6 @@ struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
         return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
     }
 
-    char *strs = search_mem_sections(pid, min_search_len, ranges);
-    if(strs == NULL)
-    {
-        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-    }
-
     struct tlv_iterator i = {
         .packet = ctx->req,
         .value_type = TLV_TYPE_MEM_SEARCH_NEEDLE
@@ -73,6 +116,12 @@ struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
         needles[ needles_len ] = malloc(strlen(needle) + 1);
         log_debug("Current needle: %s\n", needle);
         needles_len++;
+    }
+
+    char *strs = search_mem_sections(pid, min_search_len, ranges, needles, needles_len);
+    if(strs == NULL)
+    {
+        return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
     }
 
     for(uint8_t i = 0; i < needles_len; i++)
@@ -107,7 +156,6 @@ char *get_readable_str(FILE *fp, unsigned int min_len, unsigned long *start_addr
         }
         else
         {
-            //log_debug("Ran into non-printable character\n");
             int str_len = strlen(printable);
 
             // don't collect strings smaller than min size
@@ -115,7 +163,6 @@ char *get_readable_str(FILE *fp, unsigned int min_len, unsigned long *start_addr
             {
                curr_index = 0;
                memset(printable, 0, str_len);
-               //log_debug("Erasing string, as it doesn't reach minimum length\n");
             }
             else if(str_len > 0)
             {
@@ -142,10 +189,32 @@ char *get_readable_str(FILE *fp, unsigned int min_len, unsigned long *start_addr
     }
 
     return printable;
-    
 }
 
-char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ranges)
+regmatch_t *find_match(char *str, char *needles[], int needle_amt)
+{
+    int exec_ret;
+    int compile_ret;
+    regex_t regex_arr[needle_amt];
+    regmatch_t *reg_matches = malloc(sizeof(regmatch_t) * needle_amt);
+
+    for(int i = 0; i < needle_amt; i++)
+    {
+        compile_ret = regcomp(&regex_arr[i], needles[i], REG_EXTENDED);
+        if(compile_ret)
+        {
+            log_debug("%s is an invalid regex\n", needles[i]);
+            memset(&reg_matches[i], 0, sizeof(regmatch_t));
+            continue;
+        }
+
+        regexec(&regex_arr[i], str, needle_amt + 1, &reg_matches[i], 0);
+    }
+
+    return reg_matches;
+}
+
+char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ranges, char *needles[], int needle_amt)
 {
     char pid_str[8];
     sprintf(pid_str, "%d", pid);
@@ -162,6 +231,7 @@ char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ra
         return NULL;
     }
 
+    regmatch_t *matches;
     unsigned long index = 0;
     current = first = ranges;
 
@@ -177,7 +247,11 @@ char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ra
             current = current->next;
             continue;
         }
-        // else if match(read_str), return match data
+        else if((matches = find_match(read_str, needles, needle_amt)) != NULL)
+        {
+            // add to *existing* match data
+            log_debug("Stuff");
+        }
 
         log_debug("Current string: %s, length: %ld\n", read_str, strlen(read_str));
         free(read_str);
@@ -190,6 +264,7 @@ char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ra
         }
     }
 
+    fclose(fp);
     return NULL;
 }
 
@@ -224,7 +299,6 @@ struct addr_range *parse_maps_file(pid_t pid)
         int len = strlen(line);
         if(regexec(&regex, line, 0, NULL, 0) == 0 && (line[len - 2] == ' ' || line[len - 2] == ']'))
         {
-            //log_debug("Line being searched: %s\n", line);
             char *addr_begin = strtok(line, "-");
             char *addr_end = strtok(NULL, "- ");
             struct addr_range *range = malloc(sizeof(struct addr_range));
