@@ -127,8 +127,8 @@ struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
         needles_len++;
     }
 
-    char *strs = search_mem_sections(pid, min_search_len, ranges, needles, needles_len);
-    if(strs == NULL)
+    struct match_result *matches = search_mem_sections(pid, min_search_len, ranges, needles, needles_len);
+    if(matches == NULL)
     {
         return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
     }
@@ -202,39 +202,41 @@ char *get_readable_str(FILE *fp, unsigned int min_len, unsigned long *start_addr
     return printable;
 }
 
-regmatch_t *find_match(char *str, char *needles[], int needle_amt)
+/*
+ * checks a string against one or more compiled regexes and returns those that match
+ */
+regmatch_t *find_matches(char *str, struct needle_info *needle_arr, int needle_amt)
 {
     int exec_ret;
-    int compile_ret;
-    regex_t regex_arr[needle_amt];
-    regmatch_t *reg_matches = malloc(sizeof(regmatch_t) * needle_amt * MATCH_PER_NEEDLE_MAX);
+    int num_matches = 0;
+    regmatch_t reg_matches[needle_amt * MATCH_PER_NEEDLE_MAX];
 
-    for(int i = 0, needle_ind = 0; i < needle_amt; i++, needle_ind += MATCH_PER_NEEDLE_MAX)
+    int match_index = 0;
+    regmatch_t *matches = malloc(sizeof(regmatch_t) * (needle_amt * MATCH_PER_NEEDLE_MAX));
+    for(int i = 0; i < needle_amt; i++)
     {
-        compile_ret = regcomp(&regex_arr[i], needles[i], REG_EXTENDED);
-        if(compile_ret)
+        // make sure that the regex is a compiled regex
+        if(needle_arr[i].compiled == 1)
         {
-            log_debug("%s failed to compile\n", needles[i]);
-            memset(&reg_matches[i], 0, sizeof(regmatch_t));
-            continue;
-        }
-
-        int rc = regexec(&regex_arr[i], str, MATCH_PER_NEEDLE_MAX, &reg_matches[needle_ind], 0);
-        if(rc == 0)
-        {
-            log_debug("A match was found!");
+            exec_ret = regexec(&needle_arr[i].preg, str, MATCH_PER_NEEDLE_MAX, &reg_matches[i * MATCH_PER_NEEDLE_MAX], 0);
+            if(exec_ret == 0)
+            {
+                memcpy(matches + match_index, &reg_matches[i * MATCH_PER_NEEDLE_MAX], sizeof(regmatch_t) * MATCH_PER_NEEDLE_MAX);
+                num_matches++;
+                match_index += MATCH_PER_NEEDLE_MAX;
+            }
         }
     }
 
-    for(int j = 0; j < needle_amt; j++)
+    if(num_matches == 0)
     {
-        regfree(&regex_arr[j]);
+        return NULL;
     }
 
-    return reg_matches;
+    return matches;
 }
 
-char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ranges, char *needles[], int needle_amt)
+struct match_result *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ranges, char *needles[], int needle_amt)
 {
     char pid_str[8];
     sprintf(pid_str, "%d", pid);
@@ -256,19 +258,36 @@ char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ra
     current = first = ranges;
 
     struct match_result *results = malloc(sizeof(struct match_result) * needle_amt * MATCH_PER_NEEDLE_MAX);
+    struct match_result *first_res = results;
+    memset(results, 0, sizeof(struct match_result) * needle_amt * MATCH_PER_NEEDLE_MAX);
+
     if(results == NULL)
     {
         fclose(fp);
         return NULL;
     }
 
+    // compile a version of each needle to test against each string
+    regex_t regex_arr[needle_amt];
+    struct needle_info needle_arr[needle_amt];
+    for(int i = 0; i < needle_amt; i++)
+    {
+        needle_arr[i].needle = needles[i];
+        if(regcomp(&needle_arr[i].preg, needles[i], REG_EXTENDED) != 0)
+        {
+            needle_arr[i].compiled = 0;
+        }
+        else
+        {
+            needle_arr[i].compiled = 1;
+        }
+    }
+
     unsigned long curr_addr = current->start;
-    //unsigned long sect_len = current->end - current->start;
     while(current->next != NULL)
     {
         fseek(fp, curr_addr, SEEK_SET);
 
-        //log_debug("Start address: %lu\n", current->start);
         read_str = get_readable_str(fp, min_len, &curr_addr, current->end);
         if(read_str == NULL)
         {
@@ -276,44 +295,55 @@ char *search_mem_sections(pid_t pid, unsigned int min_len, struct addr_range *ra
             curr_addr = current->start;
             continue;
         }
-        else if((matches = find_match(read_str, needles, needle_amt)) != NULL)
+        else if((matches = find_matches(read_str, needle_arr, needle_amt)) != NULL)
         {
-            int match_num = add_matches(read_str, &results + res_size, current->start, current->end, matches);
+            int match_num = add_matches(read_str, results, current->start, current->end, matches);
+            log_debug("Number of matches: %d\n", match_num);
             res_size += match_num;
         }
 
-        //log_debug("Current string: %s", read_str);
         free(read_str);
-
         if(curr_addr >= current->end)
         {
-            //log_debug("Moving to next address range\n");
             current = current->next;
             curr_addr = current->start;
-            //sect_len = current->end - current->start;
         }
     }
 
     fclose(fp);
-    return NULL;
+    for(int j = 0; j < needle_amt; j++)
+    {
+        regfree(&needle_arr[j].preg);
+    }
+
+    if(res_size == 0)
+    {
+        return NULL;
+    }
+
+    return first_res;
 }
 
-int add_matches(char *full_str, struct match_result **results, unsigned long sect_start, unsigned long sect_end, regmatch_t *matches)
+int add_matches(char *full_str, struct match_result *results, unsigned long sect_start, unsigned long sect_end, regmatch_t *matches)
 {
     int index = 0;
     regmatch_t *prev = NULL;
     regmatch_t *start = matches;
 
-    while(start)
+    do
     {
         log_debug("Start offset of match: %lu\n", start->rm_so);
-        if(start->rm_so != -1 && start->rm_eo != -1)
+        log_debug("End offset of match: %lu\n", start->rm_eo);
+        if(start->rm_so != start->rm_eo)
         {
+          log_debug("In start\n");
           int match_len = start->rm_eo - start->rm_so + 1;
-          (*results + index)->match_str = malloc(match_len);
-          if((*results + index)->match_str == NULL)
+          log_debug("Got match_len\n");
+          results->match_str = malloc(match_len);
+          log_debug("Performed malloc()\n");
+          if(results->match_str == NULL)
           {
-              //log_debug("Allocation for match_str failed");
+              log_debug("Allocation for match_str failed");
               prev = start;
               start++;
               free(prev);
@@ -324,18 +354,19 @@ int add_matches(char *full_str, struct match_result **results, unsigned long sec
            * save the start and end addresses of memory location match was found in
            * save the offset of the match, and save the matched string
            */
-          strncpy((*results + index)->match_str, full_str + start->rm_so, match_len);
-          (*results + index)->section_start = sect_start;
-          (*results + index)->section_end = sect_end;
-          (*results + index)->match_offset = sect_start + start->rm_so;
-          log_debug("Match saved: %s\n", (*results + index)->match_str);
+          strncpy(results->match_str, full_str + start->rm_so, match_len);
+          results->section_start = sect_start;
+          results->section_end = sect_end;
+          results->match_offset = sect_start + start->rm_so;
+          log_debug("Match saved: %s\n", results->match_str);
+          results++;
           index++;
         }
 
         prev = start;
         start++;
         free(prev);
-    }
+    } while(start != NULL);
 
     return index;
 }
@@ -353,7 +384,6 @@ struct addr_range *parse_maps_file(pid_t pid)
 
     char maps_path[path_len];
     snprintf(maps_path, path_len, "/proc/%s/maps", pid_str);
-    //log_debug("Opening maps file: %s\n", maps_path);
 
     FILE *fp = fopen(maps_path, "r");
     if(fp == NULL)
@@ -370,9 +400,8 @@ struct addr_range *parse_maps_file(pid_t pid)
     while(fgets(line, MAX_ADDR_DATA, fp) != NULL)
     {
         int len = strlen(line);
-        if(regexec(&regex, line, 0, NULL, 0) == 0)// && (line[len - 2] == ' ' || line[len - 2] == ']'))
+        if(regexec(&regex, line, 0, NULL, 0) == 0)
         {
-            log_debug("Line: %s\n", line);
             char *addr_begin = strtok(line, "-");
             char *addr_end = strtok(NULL, "- ");
             struct addr_range *range = malloc(sizeof(struct addr_range));
