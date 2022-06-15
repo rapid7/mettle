@@ -129,28 +129,30 @@ struct tlv_packet *
 sys_process_attach(struct tlv_handler_ctx *ctx)
 {
 	bool inherit;
-	uint64_t pid;
+	uint32_t pid;
 	struct tlv_packet *p = NULL;
 
 	tlv_packet_get_bool(ctx->req, TLV_TYPE_INHERIT, &inherit);
 	if(inherit)
 	{
-	    return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	}
 
-	tlv_packet_get_u64(ctx->req, TLV_TYPE_PID, &pid);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_PID, &pid);
 	if(pid == 0)
 	{
-	    uint64_t self_pid = getpid();
-	    p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	    p = tlv_packet_add_u64(p, TLV_TYPE_PID, self_pid);
-	    p = tlv_packet_add_u64(p, TLV_TYPE_HANDLE, self_pid);
-	    return p;
+		uint32_t self_pid = getpid();
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		p = tlv_packet_add_u32(p, TLV_TYPE_PID, self_pid);
+		p = tlv_packet_add_u32(p, TLV_TYPE_HANDLE, self_pid);
+		return p;
 	}
 
 	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-	p = tlv_packet_add_u64(p, TLV_TYPE_PID, pid);
-	p = tlv_packet_add_u64(p, TLV_TYPE_HANDLE, pid);
+	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
+
+	uint64_t handle = pid;
+	p = tlv_packet_add_u64(p, TLV_TYPE_HANDLE, handle);
 
 	return p;
 }
