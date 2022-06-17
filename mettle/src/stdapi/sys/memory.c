@@ -169,7 +169,7 @@ struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
 
 	free(matches);
 
-t:
+out:
 	for(uint8_t i = 0; i < needles_len; i++)
 	{
 		free(needles[i]);
