@@ -341,11 +341,13 @@ struct match_result *search_mem_sections(pid_t pid, uint32_t min_len, struct add
 
 			if(res_size >= results_len)
 			{
-				first_res = realloc(first_res, results_len + MATCH_PER_NEEDLE_MAX);
-				if(first_res == NULL)
+				struct match_result *new_res = realloc(first_res, results_len + MATCH_PER_NEEDLE_MAX);
+				if(new_res == NULL)
 				{
 					break;
 				}
+
+				first_res = new_res;
 				results_len += MATCH_PER_NEEDLE_MAX;
 			}
 		}
