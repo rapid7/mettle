@@ -1,3 +1,5 @@
+#ifdef __linux__
+
 #include <stdio.h>
 #include <regex.h>
 #include <fnmatch.h>
@@ -48,11 +50,9 @@ struct tlv_packet *mem_read(struct tlv_handler_ctx *ctx)
 		size = MATCH_LEN_MAX;
 	}
 
-	int path_len = strlen("/proc/") + 8 + strlen("/mem") + 1;
-
 	char *read_str = NULL;
-	char mem_path[path_len];
-	snprintf(mem_path, path_len, "/proc/%zu/mem", (size_t)pid);
+	char mem_path[PATH_MAX];
+	snprintf(mem_path, PATH_MAX, "/proc/%zu/mem", (size_t)pid);
 	log_debug("Path to read from: %s\n", mem_path);
 
 	FILE *fp = fopen(mem_path, "r");
@@ -102,7 +102,7 @@ struct tlv_packet *mem_search(struct tlv_handler_ctx *ctx)
 		match_len = MATCH_LEN_MAX;
 	}
 
-	log_debug("PID: %zu\n", (size_t) pid);
+	log_debug("Searching PID: %zu\n", (size_t) pid);
 	struct addr_range *ranges = parse_maps_file(pid);
 	if(ranges == NULL)
 	{
@@ -175,6 +175,14 @@ out:
 		free(needles[i]);
 	}
 
+	struct addr_range *range = ranges;
+	while(range != NULL)
+	{
+		struct addr_range *curr = range;
+		range = range->next;
+		free(curr);
+	}
+
 	return p;
 }
 
@@ -241,10 +249,9 @@ char *get_readable_str(FILE *fp, uint32_t min_len, uint64_t *start_addr, uint64_
 /*
  * checks a string against one or more compiled regexes and returns those that match
  */
-regmatch_t *find_matches(char *str, struct needle_info *needle_arr, int needle_amt)
+regmatch_t *find_matches(char *str, struct needle_info *needle_arr, int needle_amt, int *match_num)
 {
 	int exec_ret;
-	int num_matches = 0;
 	regmatch_t reg_matches[needle_amt * MATCH_PER_NEEDLE_MAX]; // every needle has set number of possible matches
 
 	int match_index = 0;
@@ -258,14 +265,24 @@ regmatch_t *find_matches(char *str, struct needle_info *needle_arr, int needle_a
 			exec_ret = regexec(&needle_arr[i].preg, str, MATCH_PER_NEEDLE_MAX, &reg_matches[i * MATCH_PER_NEEDLE_MAX], 0);
 			if(exec_ret == 0)
 			{
-				memcpy(matches + match_index, &reg_matches[i * MATCH_PER_NEEDLE_MAX], sizeof(regmatch_t) * MATCH_PER_NEEDLE_MAX);
-				num_matches++;
-				match_index += MATCH_PER_NEEDLE_MAX;
+				for(int j = match_index; j < match_index + MATCH_PER_NEEDLE_MAX; j++)
+				{
+					if(reg_matches[j].rm_so == -1 && reg_matches[j].rm_eo == -1)
+					{
+						continue;
+					}
+
+					memcpy(matches + *match_num, &reg_matches[j], sizeof(regmatch_t));
+					(*match_num)++;
+				}
+
 			}
+
+			match_index += MATCH_PER_NEEDLE_MAX;
 		}
 	}
 
-	if(num_matches == 0)
+	if(*match_num == 0)
 	{
 		return NULL;
 	}
@@ -275,13 +292,9 @@ regmatch_t *find_matches(char *str, struct needle_info *needle_arr, int needle_a
 
 struct match_result *search_mem_sections(pid_t pid, uint32_t min_len, struct addr_range *ranges, char *needles[], int needle_amt, int *match_len)
 {
-	char pid_str[8];
-	sprintf(pid_str, "%d", pid);
-	int path_len = strlen("/proc/") + strlen(pid_str) + strlen("/mem") + 1;
-
 	char *read_str = NULL;
-	char mem_path[path_len];
-	snprintf(mem_path, path_len, "/proc/%s/mem", pid_str);
+	char mem_path[PATH_MAX];
+	snprintf(mem_path, PATH_MAX, "/proc/%zu/mem", (size_t)pid);
 
 	struct addr_range *current = NULL, *first = NULL;
 	FILE *fp = fopen(mem_path, "r");
@@ -321,6 +334,7 @@ struct match_result *search_mem_sections(pid_t pid, uint32_t min_len, struct add
 		}
 	}
 
+	int curr_matches = 0;
 	uint64_t curr_addr = current->start;
 	while(current->next != NULL)
 	{
@@ -332,24 +346,26 @@ struct match_result *search_mem_sections(pid_t pid, uint32_t min_len, struct add
 			curr_addr = current->start;
 			continue;
 		}
-		else if((matches = find_matches(read_str, needle_arr, needle_amt)) != NULL)
+		else if((matches = find_matches(read_str, needle_arr, needle_amt, &curr_matches)) != NULL)
 		{
-			log_debug("String that matched: %s\n", read_str);
-			int match_num = add_matches(read_str, &results, curr_addr, current->start, current->end - current->start, matches);
-			res_size += match_num;
-			results += match_num;
-
-			if(res_size >= results_len)
+			if(res_size + curr_matches >= results_len)
 			{
-				struct match_result *new_res = realloc(first_res, results_len + MATCH_PER_NEEDLE_MAX);
+				struct match_result *new_res = realloc(first_res, sizeof(struct match_result) * results_len * 2);
 				if(new_res == NULL)
 				{
 					break;
 				}
 
+				memset(new_res + res_size, 0, results_len);
 				first_res = new_res;
-				results_len += MATCH_PER_NEEDLE_MAX;
+				results_len *= 2;
+				results = first_res + res_size;
 			}
+
+			int match_num = add_matches(read_str, &results, curr_addr, current->start, current->end - current->start, matches);
+			curr_matches = 0;
+			res_size += match_num;
+			results += match_num;
 		}
 
 		free(read_str);
@@ -501,3 +517,5 @@ void sys_memory_register_handlers(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_SEARCH, mem_search, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_READ, mem_read, m);
 }
+
+#endif
