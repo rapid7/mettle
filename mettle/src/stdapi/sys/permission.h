@@ -1,6 +1,8 @@
 #ifndef _PERMISSION_H
 #define _PERMISSION_H
 
+#ifndef __MINGW32__
+
 // Generic page protection flags
 #define PROT_NONE                         0
 #define PROT_READ                  (1 <<  0)
@@ -33,5 +35,7 @@
 #define PROCESS_CREATE_THREAD       (1 << 1)
 #define PROCESS_CREATE_PROCESS    0x00000080
 #define PROCESS_SUSPEND_RESUME    0x00000800
+
+#endif
 
 #endif
