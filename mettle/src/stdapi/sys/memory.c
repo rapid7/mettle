@@ -508,14 +508,16 @@ struct addr_range *parse_maps_file(pid_t pid)
 
 	return first;
 }
+#endif
 
 void sys_memory_register_handlers(struct mettle *m)
 {
+#ifdef __linux__
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_SEARCH, mem_search, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_READ, mem_read, m);
+#endif
 }
 
-#endif
