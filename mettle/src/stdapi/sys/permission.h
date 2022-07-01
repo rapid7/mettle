@@ -1,6 +1,12 @@
 #ifndef _PERMISSION_H
 #define _PERMISSION_H
 
+// Generic process open permissions
+#define PROCESS_READ               (1 <<  0)
+#define PROCESS_WRITE              (1 <<  1)
+#define PROCESS_EXECUTE            (1 <<  2)
+#define PROCESS_ALL               0xffffffff
+
 #ifndef __MINGW32__
 
 // Generic page protection flags
@@ -15,12 +21,6 @@
 #define GEN_READ                   (1 <<  0)
 #define GEN_WRITE                  (1 <<  1)
 #define GEN_EXEC                   (1 <<  2)
-
-// Generic process open permissions
-#define PROCESS_READ               (1 <<  0)
-#define PROCESS_WRITE              (1 <<  1)
-#define PROCESS_EXECUTE            (1 <<  2)
-#define PROCESS_ALL               0xffffffff
 
 // Granular process open permissions
 #define PROCESS_VM_OPERATION        (1 << 3)
