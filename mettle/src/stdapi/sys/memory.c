@@ -63,7 +63,13 @@ struct tlv_packet *mem_read(struct tlv_handler_ctx *ctx)
 
 	unsigned char buf[size];
 	fseeko(fp, start_addr, SEEK_SET);
-	fread(buf, 1, size, fp);
+	size_t res = fread(buf, 1, size, fp);
+	if(res == 0)
+	{
+		fclose(fp);
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+
 	fclose(fp);
 
 	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
