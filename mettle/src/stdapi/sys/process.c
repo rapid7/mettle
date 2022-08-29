@@ -12,6 +12,7 @@
 #include "tlv.h"
 #include "command_ids.h"
 #include "process.h"
+#include "permission.h"
 
 static struct tlv_packet *
 get_process_info(sigar_t *sigar, sigar_pid_t pid)
@@ -128,7 +129,43 @@ sys_process_get_processes(struct tlv_handler_ctx *ctx)
 struct tlv_packet *
 sys_process_attach(struct tlv_handler_ctx *ctx)
 {
-	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	bool inherit;
+	uint32_t pid;
+	uint32_t perms;
+	uint32_t real_perms = 0;
+	struct tlv_packet *p = NULL;
+
+	tlv_packet_get_bool(ctx->req, TLV_TYPE_INHERIT, &inherit);
+	if(inherit)
+	{
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_PERMS, &perms);
+	real_perms |= PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_QUERY_INFORMATION;
+	if(perms != PROCESS_READ && perms != real_perms)
+	{
+		log_debug("Requested unsupported permissions\n");
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	}
+
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_PID, &pid);
+	if(pid == 0)
+	{
+		uint32_t self_pid = getpid();
+		p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+		p = tlv_packet_add_u32(p, TLV_TYPE_PID, self_pid);
+		p = tlv_packet_add_u32(p, TLV_TYPE_HANDLE, self_pid);
+		return p;
+	}
+
+	p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	p = tlv_packet_add_u32(p, TLV_TYPE_PID, pid);
+
+	uint64_t handle = pid;
+	p = tlv_packet_add_u64(p, TLV_TYPE_HANDLE, handle);
+
+	return p;
 }
 
 struct tlv_packet *

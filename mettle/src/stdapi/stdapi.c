@@ -12,6 +12,7 @@
 #include "net/resolve.c"
 #include "sys/config.c"
 #include "sys/process.c"
+#include "sys/memory.c"
 #include "webcam/webcam.c"
 #include "ui/ui.c"
 #include "clipboard/clipboard.c"
@@ -31,6 +32,7 @@ void tlv_register_stdapi(struct mettle *m)
 
 	sys_config_register_handlers(m);
 	sys_process_register_handlers(m);
+	sys_memory_register_handlers(m);
 
 	webcam_register_handlers(m);
 	ui_register_handlers(m);
@@ -38,4 +40,5 @@ void tlv_register_stdapi(struct mettle *m)
 
 	audio_mic_register_handlers(m);
 	audio_output_register_handlers(m);
+
 }

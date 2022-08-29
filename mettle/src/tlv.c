@@ -264,6 +264,7 @@ struct tlv_packet * tlv_packet_add_result(struct tlv_packet *p, int rc)
 struct tlv_packet * tlv_packet_add_u64(struct tlv_packet *p,
 		uint32_t type, uint64_t val)
 {
+	val = dnet_htonll(val);
 	return tlv_packet_add_raw(p, type, &val, sizeof(val));
 }
 
