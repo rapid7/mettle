@@ -480,6 +480,8 @@ struct addr_range *parse_maps_file(pid_t pid)
 			if(range == NULL)
 			{
 				fclose(fp);
+				free(line);
+				regfree(&regex);
 				return first;
 			}
 
