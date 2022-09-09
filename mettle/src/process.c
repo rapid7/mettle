@@ -461,6 +461,10 @@ static struct process * process_create(struct procmgr *mgr,
 
 	log_debug("IO started on fds %d %d", p->out_fd, p->err_fd);
 
+	close(stdin_pair[0]);
+	close(stdout_pair[1]);
+	close(stderr_pair[1]);
+
 	return p;
 }
 

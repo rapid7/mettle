@@ -479,6 +479,9 @@ struct addr_range *parse_maps_file(pid_t pid)
 			struct addr_range *range = malloc(sizeof(struct addr_range));
 			if(range == NULL)
 			{
+				fclose(fp);
+				free(line);
+				regfree(&regex);
 				return first;
 			}
 
