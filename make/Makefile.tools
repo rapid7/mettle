@@ -46,6 +46,13 @@ ifneq "$(TARGET)" "native"
         OBJCFLAGS:=$(OBJCFLAGS) $(ADDFLAGS)
         LDFLAGS:=$(LDFLAGS) $(ADDFLAGS)
     endif
+		ifneq (,$(findstring aarch64-apple,$(TARGET)))
+        ADDFLAGS:=-arch arm64
+        CFLAGS:=$(CFLAGS) $(ADDFLAGS)
+        CPPFLAGS:=$(CPPFLAGS) $(ADDFLAGS)
+        OBJCFLAGS:=$(OBJCFLAGS) $(ADDFLAGS)
+        LDFLAGS:=$(LDFLAGS) $(ADDFLAGS)
+    endif
     ifneq (,$(findstring iphone,$(TARGET)))
         ifneq (,$(findstring arm,$(TARGET)))
             ADDFLAGS:=-isysroot $(SDKROOT) -mios-version-min=7.1 -arch armv7
