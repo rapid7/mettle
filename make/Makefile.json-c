@@ -11,7 +11,7 @@ $(BUILD)/json-c/configure:
 $(BUILD)/json-c/Makefile: $(TOOLS) $(BUILD)/json-c/configure
 	@echo "Configuring json-c for $(TARGET)"
 	@$(SETUP_BUILDENV) cd $(BUILD)/json-c; \
-    $(CONFIG_FIXUP) \
+		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
 
 $(BUILD)/lib/libjson-c.a: $(BUILD)/json-c/Makefile
