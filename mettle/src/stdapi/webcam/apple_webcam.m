@@ -57,7 +57,8 @@ int count;
   session = [[AVCaptureSession alloc] init];
   session.sessionPreset = AVCaptureSessionPresetMedium;
 
-  NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+  AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+  NSArray *devices = discoverySession.devices;
   int index = deviceIndex - 1;
   if (index < 0 || index >= [devices count]) {
     return false;
@@ -190,7 +191,8 @@ struct tlv_packet *webcam_list(struct tlv_handler_ctx *ctx)
 {
   struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
   @autoreleasepool {
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+    NSArray *devices = discoverySession.devices;
     for (AVCaptureDevice *device in devices) {
       const char *webcam_str = (const char *)[[device localizedName]cStringUsingEncoding:NSUTF8StringEncoding];
       p = tlv_packet_add_str(p, TLV_TYPE_WEBCAM_NAME, webcam_str);
