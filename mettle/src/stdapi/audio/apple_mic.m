@@ -68,6 +68,7 @@ float audioDataDownsamplePartialStepCount;
 - (BOOL) start: (int) deviceIndex
 {
     session = [[AVCaptureSession alloc] init];
+    
 #if (__MAC_OS_X_VERSION_MIN_REQUIRED < 101500)
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 #else
