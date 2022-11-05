@@ -29,8 +29,7 @@
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>
 #include <nfs/nfs.h>
-#endif
-
+#if defined(__aarch64__)
 struct nfsstats {
  	uint64_t        attrcache_hits;
  	uint64_t        attrcache_misses;
@@ -64,7 +63,9 @@ struct nfsstats {
  	uint64_t        srvvop_writes;
  	uint64_t        pageins;
  	uint64_t        pageouts;
- };
+};
+#endif
+#endif
 
 #include <dlfcn.h>
 #include <mach/mach_init.h>
@@ -2654,7 +2655,16 @@ int sigar_os_sys_info_get(sigar_t *sigar,
              "%s.%d",
              sysinfo->vendor_version, version_fix);
 
-    if (version_major == 10) {
+    if (version_major == 13) {
+      codename = "Ventura";
+    }
+    else if (version_major == 12) {
+      codename = "Monterey";
+    }
+    else if (version_major == 11) {
+      codename = "Big Sur";
+    }
+    else if (version_major == 10) {
         switch (version_minor) {
           case 2:
             codename = "Jaguar";
