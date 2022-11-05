@@ -29,42 +29,43 @@
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>
 #include <nfs/nfs.h>
-#endif
-
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED >= 120000)
 struct nfsstats {
-	uint64_t        attrcache_hits;
-	uint64_t        attrcache_misses;
-	uint64_t        lookupcache_hits;
-	uint64_t        lookupcache_misses;
-	uint64_t        direofcache_hits;
-	uint64_t        direofcache_misses;
-	uint64_t        biocache_reads;
-	uint64_t        read_bios;
-	uint64_t        read_physios;
-	uint64_t        biocache_writes;
-	uint64_t        write_bios;
-	uint64_t        write_physios;
-	uint64_t        biocache_readlinks;
-	uint64_t        readlink_bios;
-	uint64_t        biocache_readdirs;
-	uint64_t        readdir_bios;
-	uint64_t        rpccnt[NFS_NPROCS];
-	uint64_t        rpcretries;
-	uint64_t        srvrpccnt[NFS_NPROCS];
-	uint64_t        srvrpc_errs;
-	uint64_t        srv_errs;
-	uint64_t        rpcrequests;
-	uint64_t        rpctimeouts;
-	uint64_t        rpcunexpected;
-	uint64_t        rpcinvalid;
-	uint64_t        srvcache_inproghits;
-	uint64_t        srvcache_idemdonehits;
-	uint64_t        srvcache_nonidemdonehits;
-	uint64_t        srvcache_misses;
-	uint64_t        srvvop_writes;
-	uint64_t        pageins;
-	uint64_t        pageouts;
+ 	uint64_t        attrcache_hits;
+ 	uint64_t        attrcache_misses;
+ 	uint64_t        lookupcache_hits;
+ 	uint64_t        lookupcache_misses;
+ 	uint64_t        direofcache_hits;
+ 	uint64_t        direofcache_misses;
+ 	uint64_t        biocache_reads;
+ 	uint64_t        read_bios;
+ 	uint64_t        read_physios;
+ 	uint64_t        biocache_writes;
+ 	uint64_t        write_bios;
+ 	uint64_t        write_physios;
+ 	uint64_t        biocache_readlinks;
+ 	uint64_t        readlink_bios;
+ 	uint64_t        biocache_readdirs;
+ 	uint64_t        readdir_bios;
+ 	uint64_t        rpccnt[NFS_NPROCS];
+ 	uint64_t        rpcretries;
+ 	uint64_t        srvrpccnt[NFS_NPROCS];
+ 	uint64_t        srvrpc_errs;
+ 	uint64_t        srv_errs;
+ 	uint64_t        rpcrequests;
+ 	uint64_t        rpctimeouts;
+ 	uint64_t        rpcunexpected;
+ 	uint64_t        rpcinvalid;
+ 	uint64_t        srvcache_inproghits;
+ 	uint64_t        srvcache_idemdonehits;
+ 	uint64_t        srvcache_nonidemdonehits;
+ 	uint64_t        srvcache_misses;
+ 	uint64_t        srvvop_writes;
+ 	uint64_t        pageins;
+ 	uint64_t        pageouts;
 };
+#endif
+#endif
 
 #include <dlfcn.h>
 #include <mach/mach_init.h>
@@ -2654,7 +2655,16 @@ int sigar_os_sys_info_get(sigar_t *sigar,
              "%s.%d",
              sysinfo->vendor_version, version_fix);
 
-    if (version_major == 10) {
+    if (version_major == 13) {
+      codename = "Ventura";
+    }
+    else if (version_major == 12) {
+      codename = "Monterey";
+    }
+    else if (version_major == 11) {
+      codename = "Big Sur";
+    }
+    else if (version_major == 10) {
         switch (version_minor) {
           case 2:
             codename = "Jaguar";
