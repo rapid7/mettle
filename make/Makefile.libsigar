@@ -11,7 +11,6 @@ $(BUILD)/libsigar/Makefile: $(TOOLS) $(BUILD)/libsigar/configure
 	@mkdir -p $(BUILD)/libsigar
 	@$(SETUP_BUILDENV) cd $(BUILD)/libsigar; \
 		$(CONFIG_FIXUP) \
-		cp $(DEPS)/darwin_sigar.c src/os/darwin; \
 		$(ENV) ./$(CONFIGURE) $(LOGBUILD)
 
 $(BUILD)/lib/libsigar.a: $(BUILD)/libsigar/Makefile
