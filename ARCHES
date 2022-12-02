@@ -12,5 +12,3 @@ mips-linux-muslsf
 mipsel-linux-muslsf
 mips64-linux-muslsf
 s390x-linux-musl
-arm-iphone-darwin
-aarch64-iphone-darwin
