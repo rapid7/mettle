@@ -68,8 +68,13 @@ float audioDataDownsamplePartialStepCount;
 - (BOOL) start: (int) deviceIndex
 {
     session = [[AVCaptureSession alloc] init];
-
+    
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+#else
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+    NSArray *devices = discoverySession.devices;
+#endif
     AVCaptureDevice *device = devices[deviceIndex];
 
     // Examine available sample settings and pick a low one.
@@ -210,7 +215,12 @@ ssize_t audio_mic_read(struct channel *c, void *buf, size_t len)
 
 BOOL mic_index_valid(uint32 deviceIndex) {
     @autoreleasepool {
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
         NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+#else
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+        NSArray *devices = discoverySession.devices;
+#endif
         if (deviceIndex < [devices count]) {
             return YES;
         }
@@ -250,7 +260,12 @@ struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx)
 {
     struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     @autoreleasepool {
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
         NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+#else
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+        NSArray *devices = discoverySession.devices;
+#endif
         for (AVCaptureDevice *device in devices) {
             const char *mic_str = (const char *)[[device uniqueID]cStringUsingEncoding:NSUTF8StringEncoding];
             p = tlv_packet_add_str(p, TLV_TYPE_AUDIO_INTERFACE_NAME, mic_str);
@@ -258,4 +273,3 @@ struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx)
     }
     return p;
 }
-

@@ -61,7 +61,6 @@ $(BUILD)/mettle/Makefile: $(TOOLS) $(ROOT)/mettle/configure \
 	@echo "Configuring mettle for $(TARGET)"
 	@mkdir -p $(BUILD)/mettle
 	@$(SETUP_BUILDENV) cd $(BUILD)/mettle; \
-		$(CONFIG_FIXUP) \
 		$(ENV) $(ROOT)/mettle/$(CONFIGURE) $(METTLE_OPTS) $(LOGBUILD)
 
 $(BUILD)/bin/mettle.built: $(BUILD)/mettle/Makefile
