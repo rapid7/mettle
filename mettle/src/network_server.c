@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <ev.h>
+#include <arpa/inet.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -14,7 +15,6 @@
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #endif
@@ -78,17 +78,43 @@ int network_server_listen_tcp(struct network_server *ns,
 	if (ns == NULL) {
 		return -1;
 	}
+	int v6_only = 0;
 
 	ns->sin.sin6_family = AF_INET6;
 	ns->sin.sin6_port = htons((uint16_t)port);
 	ns->port = port;
 
-	if (host == NULL) {
+	if (host == NULL || strlen(host) == 0) {
 		ns->sin.sin6_addr = in6addr_any;
-		ns->host = strdup("0.0.0.0");
+		ns->host = strdup("::");
 	} else {
-		// TODO bind to the specified host instead
-		ns->sin.sin6_addr = in6addr_any;
+		struct addrinfo *resolved_host = NULL;
+		struct addrinfo hints = {
+			.ai_family = AF_UNSPEC,
+			.ai_flags = AI_NUMERICHOST,
+		};
+		if (getaddrinfo(host, NULL, &hints, &resolved_host) == 0) {
+			if (resolved_host->ai_family == AF_INET) {
+				char mapped_ipv6_address[INET6_ADDRSTRLEN];
+				snprintf(mapped_ipv6_address, INET6_ADDRSTRLEN, "::ffff:%s", host);
+				if (inet_pton(AF_INET6, mapped_ipv6_address, &ns->sin.sin6_addr) <= 0) {
+					ns->sin.sin6_addr = in6addr_any;
+				}
+			} else if (resolved_host->ai_family == AF_INET6) {
+				v6_only = 1;
+				struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)resolved_host->ai_addr;
+				memcpy(&ns->sin.sin6_addr, &ipv6->sin6_addr, resolved_host->ai_addrlen);
+			}
+			else {
+				log_debug("unsupported address family: %d", resolved_host->ai_family);
+				freeaddrinfo(resolved_host);
+				goto err;
+			}
+			freeaddrinfo(resolved_host);
+		}
+		else {
+			goto err;
+		}
 		ns->host = strdup(host);
 	}
 
@@ -110,8 +136,7 @@ int network_server_listen_tcp(struct network_server *ns,
 	 * Override system default and allow socket to accept IPv4 and IPv6
 	 */
 #ifdef IPV6_V6ONLY
-	int no = 0;
-	setsockopt(ns->listener, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+	setsockopt(ns->listener, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&v6_only, sizeof(v6_only));
 #endif
 
 	if (bind(ns->listener, (struct sockaddr *)&ns->sin, sizeof(ns->sin)) == -1) {
