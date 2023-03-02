@@ -5,6 +5,10 @@ ifneq (,$(findstring -linux-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS += --with-pcap=linux
 endif
 
+ifneq (,$(findstring -apple-,$(TARGET)))
+    LIBPCAP_CONFIG_FLAGS=--disable-universal
+endif
+
 ifneq (,$(findstring -iphone-,$(TARGET)))
     LIBPCAP_CONFIG_FLAGS=--with-pcap=bpf --disable-universal
     LIBPCAP_FIXUP=mkdir $(BUILD)/libpcap/net; cp ./mettle/include/compat/net/* $(BUILD)/libpcap/net/
