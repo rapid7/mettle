@@ -47,6 +47,18 @@ parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
 		struct sockaddr_in6 *s = (struct sockaddr_in6 *)addr;
 		*port = ntohs(s->sin6_port);
 		inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
+
+		if (IN6_IS_ADDR_V4MAPPED(&s->sin6_addr)) {
+			struct sockaddr_in addr4;
+
+			memset(&addr4, 0, sizeof(addr4));
+			memcpy(&addr4.sin_addr.s_addr, s->sin6_addr.s6_addr + 12, sizeof(addr4.sin_addr.s_addr));
+
+			addr4.sin_family = AF_INET;
+			addr4.sin_port   = s->sin6_port;
+
+			inet_ntop(AF_INET, &addr4.sin_addr, host, INET6_ADDRSTRLEN);
+		}
 	}
 
 	return strdup(host);
