@@ -131,8 +131,21 @@ static int add_arp_info(const struct arp_entry *entry, void *arg)
 	struct tlv_packet *p = tlv_packet_new(TLV_TYPE_ARP_ENTRY, 0);
 	p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, 0, &entry->arp_pa);
 	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, 0, &entry->arp_ha);
-	// TODO unsure how to get the device/interface name via dnet...
-	//p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, entry->intf_name);
+
+	intf_t *intf = NULL;
+	if ((intf = intf_open()) != NULL) {
+		struct intf_entry if_entry;
+		if_entry.intf_len = sizeof(if_entry);
+
+		struct addr dst;
+		memcpy(&dst, &entry->arp_pa, sizeof(dst));
+
+		if (intf_get_dst(intf, &if_entry, &dst) == 0) {
+			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, (char*)&if_entry.intf_name);
+		}
+		intf_close(intf);
+	}
+
 	*parent = tlv_packet_add_child(*parent, p);
 	return 0;
 }
