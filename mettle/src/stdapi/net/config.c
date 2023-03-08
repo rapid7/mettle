@@ -133,21 +133,15 @@ static int add_arp_info(const struct arp_entry *entry, void *arg)
 	p = tlv_packet_add_addr(p, TLV_TYPE_MAC_ADDRESS, 0, 0, &entry->arp_ha);
 
 	intf_t *intf = NULL;
-	if ((intf = intf_open()) != NULL)
-	{
-		struct intf_entry *if_entry;
-		char if_entry_buf[1024];
-		if_entry = (struct intf_entry *)if_entry_buf;
-		memset(if_entry, 0, sizeof(*if_entry));
-		if_entry->intf_len = sizeof(if_entry_buf);
+	if ((intf = intf_open()) != NULL) {
+		struct intf_entry if_entry;
+		if_entry.intf_len = sizeof(if_entry);
 
 		struct addr dst;
-		char dst_buf[128];
-		addr_ntop(&entry->arp_pa, dst_buf, 128);
-		addr_pton(dst_buf, &dst);
+		memcpy(&dst, &entry->arp_pa, sizeof(dst));
 
-		if (intf_get_dst(intf, if_entry, &dst) == 0){
-			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, if_entry->intf_name);
+		if (intf_get_dst(intf, &if_entry, &dst) == 0) {
+			p = tlv_packet_add_str(p, TLV_TYPE_MAC_NAME, (char*)&if_entry.intf_name);
 		}
 		intf_close(intf);
 	}
