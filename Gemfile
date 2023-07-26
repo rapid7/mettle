@@ -2,4 +2,10 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'rspec'
+group :development do
+  gem 'pry-byebug'
+end
+
+group :test do
+  gem 'rspec'
+end
