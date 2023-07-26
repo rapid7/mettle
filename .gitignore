@@ -19,3 +19,4 @@ build
 pkg/
 mettle.xcodeproj
 Gemfile.lock
+spec/examples.txt
