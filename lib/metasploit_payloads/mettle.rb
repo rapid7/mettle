@@ -4,6 +4,10 @@ unless defined? MetasploitPayloads::Mettle::VERSION
   require 'metasploit_payloads/mettle/version'
 end
 
+unless defined? MetasploitPayloads::Mettle::Error
+  require 'metasploit_payloads/mettle/error'
+end
+
 #
 # This module dispenses Mettle payload binary files
 #
@@ -46,7 +50,7 @@ module MetasploitPayloads
         cmd_line << "-#{short_opt(opt)} \"#{val}\" "
       end
       if cmd_line.length > CMDLINE_MAX
-        fail RuntimeError, 'mettle argument list too big', caller
+        raise Mettle::Error, 'mettle argument list too big', caller
       end
 
       cmd_line + "\x00" * (CMDLINE_MAX - cmd_line.length)
@@ -69,7 +73,7 @@ module MetasploitPayloads
       when :session_guid
         'G'
       else
-        fail RuntimeError, "unknown mettle option #{opt}", caller
+        raise Mettle::Error, "unknown mettle option #{opt}", caller
       end
     end
 
@@ -109,12 +113,12 @@ module MetasploitPayloads
           when :exec
             "#{filename}"
           else
-            fail RuntimeError, "unknown format #{format} for #{filename}", caller
+            raise Mettle::NotFoundError, "unknown format #{format} for #{filename}", caller
           end
       file_path = path("#{triple}", 'bin', file)
       if file_path.nil?
         full_path = ::File.join([triple, file])
-        fail RuntimeError, "#{full_path} not found", caller
+        raise Mettle::NotFoundError, "#{full_path} not found", caller
       end
 
       ::File.binread(file_path)
@@ -172,7 +176,7 @@ module MetasploitPayloads
       dir_path = path("#{platform}", 'bin')
       if dir_path.nil?
         full_path = ::File.join([platform, 'bin'])
-        fail RuntimeError, "#{full_path} not found", caller
+        raise Mettle::NotFoundError, "#{full_path} not found", caller
       end
 
       extensions = ::Dir.entries(dir_path)
@@ -200,7 +204,7 @@ module MetasploitPayloads
         format = :process_image
       else
         format = :exec
-        name = [name,suffix].join('.') unless suffix.blank?
+        name = [name,suffix].join('.') unless suffix&.strip&.empty?
       end
       self.read(platform, format, name)
     end
