@@ -1,0 +1,16 @@
+---
+info:
+  title: Mettle
+  description: This is an implementation of a native-code Meterpreter, designed for
+    portability, embeddability, and low resource utilization.
+  x-cortex-git:
+    github:
+      alias: r7org
+      repository: rapid7/mettle
+  x-cortex-tag: mettle
+  x-cortex-type: service
+  x-cortex-domain-parents:
+  - tag: metasploit
+openapi: 3.0.1
+servers:
+- url: "/"
