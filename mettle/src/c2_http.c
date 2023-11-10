@@ -23,7 +23,6 @@ struct http_ctx {
 	struct http_request_opts opts;
 	struct buffer_queue *egress;
 	int first_packet;
-	int running;
 };
 
 static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
@@ -91,12 +90,24 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 		}
 	}
 
-	if (got_command) {
+	int timer_changed = 0;
+
+	if (got_command && ctx->poll_timer.repeat != 0.1) {
 		ctx->poll_timer.repeat = 0.1;
-	} else {
-		if (ctx->poll_timer.repeat < 10.0) {
-			ctx->poll_timer.repeat += 0.1;
-		}
+		timer_changed = 1;
+	} else if (ctx->poll_timer.repeat && ctx->poll_timer.repeat < 10.0) {
+		ctx->poll_timer.repeat += 0.1;
+		timer_changed = 1;
+	}
+
+	/**
+	 * Only call ev_timer_again if the timer has been changed.
+	 * 
+	 * If http_transport_stop was called, poll_timer.repeat should be zero now.
+	 * Calling ev_timer_again with a repeat of zero will not cause the loop to be restarted.
+	**/
+	if (timer_changed) {
+		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
 	}
 }
 
@@ -122,10 +133,6 @@ static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int rev
 	if (!sent) {
 		http_request(ctx->uri, http_request_get, http_poll_cb, ctx,
 				&ctx->data, &ctx->opts);
-	}
-
-	if (ctx->running) {
-		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
 	}
 }
 
@@ -235,23 +242,25 @@ err:
 void http_transport_start(struct c2_transport *t)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	ctx->running = 1;
-	ctx->poll_timer.repeat = 0.01;
-	ev_timer_again(c2_transport_loop(t), &ctx->poll_timer);
+	ctx->poll_timer.repeat = 0;
+	ev_timer_start(c2_transport_loop(t), &ctx->poll_timer);
 }
 
 void http_transport_egress(struct c2_transport *t, struct buffer_queue *egress)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	buffer_queue_move_all(ctx->egress, egress);
+
+	/* Only queue egress if we're polling */
+	if (ctx->poll_timer.repeat) {
+		buffer_queue_move_all(ctx->egress, egress);
+	}
 }
 
 void http_transport_stop(struct c2_transport *t)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	if (ctx->running) {
-		ctx->running = 0;
-	}
+	ctx->poll_timer.repeat = 0;
+	ev_timer_stop(c2_transport_loop(t), &ctx->poll_timer);
 }
 
 void http_transport_free(struct c2_transport *t)
