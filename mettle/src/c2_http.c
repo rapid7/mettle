@@ -23,7 +23,6 @@ struct http_ctx {
 	struct http_request_opts opts;
 	struct buffer_queue *egress;
 	int first_packet;
-	int running;
 };
 
 static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
@@ -124,9 +123,11 @@ static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int rev
 				&ctx->data, &ctx->opts);
 	}
 
-	if (ctx->running) {
-		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
-	}
+	/**
+	 * If http_transport_stop has been called, poll_timer.repest has been set to 0
+	 * calling ev_timer_again with a repeat of 0 will not cause the timer to be restarted.
+	**/
+	ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
 }
 
 void http_ctx_free(struct http_ctx *ctx)
@@ -235,23 +236,25 @@ err:
 void http_transport_start(struct c2_transport *t)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	ctx->running = 1;
-	ctx->poll_timer.repeat = 0.01;
-	ev_timer_again(c2_transport_loop(t), &ctx->poll_timer);
+	ctx->poll_timer.repeat = 2;
+	ev_timer_start(c2_transport_loop(t), &ctx->poll_timer);
 }
 
 void http_transport_egress(struct c2_transport *t, struct buffer_queue *egress)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	buffer_queue_move_all(ctx->egress, egress);
+
+	/* Only queue egress if we're polling */
+	if (ctx->poll_timer.repeat) {
+		buffer_queue_move_all(ctx->egress, egress);
+	}
 }
 
 void http_transport_stop(struct c2_transport *t)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
-	if (ctx->running) {
-		ctx->running = 0;
-	}
+	ctx->poll_timer.repeat = 0;
+	ev_timer_stop(c2_transport_loop(t), &ctx->poll_timer);
 }
 
 void http_transport_free(struct c2_transport *t)
