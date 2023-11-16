@@ -13,6 +13,11 @@
 #include "log.h"
 #include "tlv.h"
 
+// Required to translate Metasploit's definition of AF_* to the host's defined value
+// https://github.com/rapid7/metasploit-framework/blob/56016cb3e7b19af439d5007e868f5870f03227fb/lib/rex/post/meterpreter/extensions/stdapi/constants.rb#L19C1-L20
+#define WIN_AF_INET  2
+#define WIN_AF_INET6 23
+
 static
 void resolve_host_async(struct eio_req *req)
 {
@@ -21,8 +26,12 @@ void resolve_host_async(struct eio_req *req)
 	int ret_val = TLV_RESULT_SUCCESS;
 
 	uint32_t addr_type;
-	if (tlv_packet_get_u32(ctx->req, TLV_TYPE_ADDR_TYPE, &addr_type) ||
-			(addr_type != AF_INET && addr_type != AF_INET6)) {
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_ADDR_TYPE, &addr_type);
+	if (addr_type == WIN_AF_INET) {
+		addr_type = AF_INET;
+	} else if (addr_type == WIN_AF_INET6) {
+		addr_type = AF_INET6;
+	} else {
 		log_info("Unsupported address family '%u' for hostname resolution", addr_type);
 		ret_val = TLV_RESULT_EINVAL;
 		goto done;
@@ -42,21 +51,27 @@ void resolve_host_async(struct eio_req *req)
 
 		int result = getaddrinfo(hostname, NULL, &hints, &resolved_host);
 		if (result == 0) {
-			struct addr addr_host;
+			struct tlv_packet *resolve_host_entry = tlv_packet_new(TLV_TYPE_RESOLVE_HOST_ENTRY, 0);
+			struct addrinfo* i;
+			for(i=resolved_host; i!=NULL; i=i->ai_next)
+			{
 
-			if (addr_type == AF_INET) {
-				addr_pack(&addr_host, ADDR_TYPE_IP, IP_ADDR_BITS, \
-						&((struct sockaddr_in *)(resolved_host->ai_addr))->sin_addr, \
+				struct addr addr_host;
+				if (addr_type == AF_INET) {
+					addr_pack(&addr_host, ADDR_TYPE_IP, IP_ADDR_BITS, \
+						&((struct sockaddr_in *)(i->ai_addr))->sin_addr, \
 						IP_ADDR_LEN);
-			} else {
-				addr_pack(&addr_host, ADDR_TYPE_IP6, IP6_ADDR_BITS, \
-						&((struct sockaddr_in6 *)(resolved_host->ai_addr))->sin6_addr, \
+				} else {
+					addr_pack(&addr_host, ADDR_TYPE_IP6, IP6_ADDR_BITS, \
+						&((struct sockaddr_in6 *)(i->ai_addr))->sin6_addr, \
 						IP6_ADDR_LEN);
-			}
-			p = tlv_packet_add_addr(p, TLV_TYPE_IP, 0, 0, &addr_host);
-			p = tlv_packet_add_u32(p, TLV_TYPE_ADDR_TYPE, addr_type);
+				}
 
-			// XXX: C meterpreter has comment about this free possibliy causing segfaults on Linux
+				resolve_host_entry = tlv_packet_add_addr(resolve_host_entry, TLV_TYPE_IP, 0, 0, &addr_host);
+				resolve_host_entry = tlv_packet_add_u32(resolve_host_entry, TLV_TYPE_ADDR_TYPE, addr_type);
+			}
+			p = tlv_packet_add_child(p, resolve_host_entry);
+			// XXX: C meterpreter has comment about this free possibly causing segfaults on Linux
 			freeaddrinfo(resolved_host);
 		} else {
 			log_info("Unable to resolve host '%s': %d (%s)",

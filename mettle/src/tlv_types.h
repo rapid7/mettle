@@ -179,6 +179,11 @@
 #define TLV_TYPE_SHUTDOWN_HOW          (TLV_META_TYPE_UINT    | 1530)
 
 /*
+ * Resolves host/hosts
+ */
+#define TLV_TYPE_RESOLVE_HOST_ENTRY    (TLV_META_TYPE_GROUP   | 1550)
+
+/*
  * Registry
  */
 #define TLV_TYPE_HKEY                  (TLV_META_TYPE_QWORD   | 1000)
