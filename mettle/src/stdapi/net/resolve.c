@@ -37,6 +37,8 @@ void resolve_host_async(struct eio_req *req)
 		goto done;
 	}
 
+	ret_val = TLV_RESULT_FAILURE;
+
 	struct addrinfo hints = {
 		.ai_family = addr_type,
 	};
@@ -51,6 +53,7 @@ void resolve_host_async(struct eio_req *req)
 
 		int result = getaddrinfo(hostname, NULL, &hints, &resolved_host);
 		if (result == 0) {
+			ret_val = TLV_RESULT_SUCCESS;
 			struct tlv_packet *resolve_host_entry = tlv_packet_new(TLV_TYPE_RESOLVE_HOST_ENTRY, 0);
 			struct addrinfo* i;
 			for(i=resolved_host; i!=NULL; i=i->ai_next)
