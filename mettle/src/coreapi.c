@@ -122,6 +122,7 @@ static struct tlv_packet *core_negotiate_tlv_encryption(struct tlv_handler_ctx *
 		}
 	}
 #endif
+	log_error("Failed to negotiate TLV encryption");
 	return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 }
 
