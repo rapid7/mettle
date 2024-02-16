@@ -1,4 +1,5 @@
 #include "crypttlv.h"
+#include "log.h"
 
 size_t aes_decrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
 {
@@ -52,14 +53,24 @@ struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 			mbedtls_ctr_drbg_init(&ctr_drbg);
 			if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0))) {
 				unsigned char *aes_key = calloc(sizeof(unsigned char) * AES_KEY_LEN, 1);
-				if (!(mbedtls_ctr_drbg_random(&ctr_drbg, aes_key, AES_KEY_LEN))) {
+				if (aes_key && (!(mbedtls_ctr_drbg_random(&ctr_drbg, aes_key, AES_KEY_LEN)))) {
 					ctx->key = aes_key;
 					ctx->iv = NULL;
 					ctx->initialized = false;
 					mbedtls_ctr_drbg_free(&ctr_drbg);
 					mbedtls_entropy_free(&entropy);
 					break;
+				} else {
+					log_error("Failed to generate a random AES key");
+					if (aes_key) {
+						free(aes_key);
+						aes_key = NULL;
+					}
 				}
+			} else {
+				// this is known to occur in cases where mettle is running
+				// in a chroot environment without access to /dev/random
+				log_error("Failed to seed the random number generator");
 			}
 			mbedtls_ctr_drbg_free(&ctr_drbg);
 			mbedtls_entropy_free(&entropy);
