@@ -204,11 +204,15 @@ static void exec_child(struct procmgr *mgr,
 	if (sh) {
 		execl(sh, sh, "-c", args, (char *)NULL);
 	} else {
-		size_t argc = 0;
 		char **argv = NULL;
-		argv = argv_split(args, argv, &argc);
-		if (argv[0][0] == '/' && access(argv[0], X_OK)) {
-			argv[0] = basename(argv[0]);
+		if (opts->flags & PROCESS_USE_ARG_ARRAY) {
+			argv = opts->argv;
+		} else {
+			size_t argc = 0;
+			argv = argv_split(args, argv, &argc);
+			if (argv[0][0] == '/' && access(argv[0], X_OK)) {
+				argv[0] = basename(argv[0]);
+			}
 		}
 		if (opts->flags & PROCESS_CREATE_REFLECT) {
 			log_debug("%s: reflectively executing %p with %s", __FUNCTION__, file, args);
