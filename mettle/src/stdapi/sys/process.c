@@ -323,9 +323,7 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		opts.flags |= PROCESS_EXECUTE_FLAG_PTY;
 	}
 
-    log_info("[PROCESS] %d", flags);
 	if (flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) {
-        log_info("[PROCESS] new");
 
 		opts.flags |= PROCESS_USE_ARG_ARRAY;
 
@@ -335,7 +333,7 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		};
 
 		char *arg;
-		int argc = 1;
+		int argc = 2; // cmd at start, plus null terminating at end
 		char **argv;
 		while ((arg = tlv_packet_iterate_str(&i))) {
 			argc++;
@@ -348,11 +346,8 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		while ((arg = tlv_packet_iterate_str(&i))) {
 			argv[argc++] = arg;
 		}
-		argv[argc] = NULL;
+		argv[argc] = NULL; // Not a null-byte overwrite, because we allocated one more initially
 		opts.argv = argv;
-
-		// Get the legacy one, in case subshell is used
-		opts.args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
 	} else {
 	    char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
 		opts.args = args;

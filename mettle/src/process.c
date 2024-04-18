@@ -188,14 +188,6 @@ static void exec_child(struct procmgr *mgr,
 	proc = strdup(process_name);
 
 
-	if (opts && opts->args) {
-		if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
-			abort();
-		}
-	} else {
-		args = proc;
-	}
-
 	char *sh = NULL;
 	if (opts->flags & PROCESS_CREATE_SUBSHELL) {
 		sh = shell_path();
@@ -208,6 +200,14 @@ static void exec_child(struct procmgr *mgr,
 		if (opts->flags & PROCESS_USE_ARG_ARRAY) {
 			argv = opts->argv;
 		} else {
+			if (opts && opts->args) {
+				if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
+					abort();
+				}
+			} else {
+				args = proc;
+			}
+
 			size_t argc = 0;
 			argv = argv_split(args, argv, &argc);
 			if (argv[0][0] == '/' && access(argv[0], X_OK)) {
