@@ -26,7 +26,6 @@ typedef	void (*process_read_cb_t)(struct process *, struct buffer_queue *queue, 
 struct process_options {
 	const char *args;               /* Process arguments as a string (none if not specified) */
 	char **argv;                    /* Process arguments as an arg array (none if not specified) */
-	char **argc;                    /* Number of argv elements */
 	char **env;                     /* Process environment (inherited if not specified) */
 	const char *process_name;       /* Alternate process name */
 	const char *cwd;                /* Current working directory */
