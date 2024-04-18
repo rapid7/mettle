@@ -306,12 +306,11 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct mettle *m = ctx->arg;
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 	struct procmgr *pm = mettle_get_procmgr(m);
-	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
+	char *path = NULL;
 	uint32_t flags = 0;
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_FLAGS, &flags);
 	struct process_options opts = {
-		.process_name = path,
 		.flags = 0
 	};
 
@@ -324,7 +323,8 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	}
 
 	if (flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) {
-
+		path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_UNESCAPED_PATH);
+		opts.process_name = path;
 		opts.flags |= PROCESS_USE_ARG_ARRAY;
 
 		struct tlv_iterator i = {
@@ -349,6 +349,9 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		argv[argc] = NULL; // Not a null-byte overwrite, because we allocated one more initially
 		opts.argv = argv;
 	} else {
+		path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
+		opts.process_name = path;
+
 	    char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
 		opts.args = args;
 		if (strchr(path, '$') != NULL || strchr(path, '%') != NULL) {
