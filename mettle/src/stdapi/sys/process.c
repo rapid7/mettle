@@ -314,10 +314,6 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		.flags = 0
 	};
 
-	if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) {
-		opts.flags |= PROCESS_CREATE_SUBSHELL;
-	}
-
 	if (flags & PROCESS_EXECUTE_FLAG_PTY) {
 		opts.flags |= PROCESS_EXECUTE_FLAG_PTY;
 	}
@@ -349,6 +345,11 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 		argv[argc] = NULL; // Not a null-byte overwrite, because we allocated one more initially
 		opts.argv = argv;
 	} else {
+		if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) {
+			opts.flags |= PROCESS_CREATE_SUBSHELL;
+		}
+
+
 		path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
 		opts.process_name = path;
 
