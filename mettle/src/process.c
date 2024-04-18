@@ -188,37 +188,39 @@ static void exec_child(struct procmgr *mgr,
 	proc = strdup(process_name);
 
 
-	char *sh = NULL;
-	if (opts->flags & PROCESS_CREATE_SUBSHELL) {
-		sh = shell_path();
-	}
 
-	if (sh) {
-		execl(sh, sh, "-c", args, (char *)NULL);
+	char **argv = NULL;
+	if (opts->flags & PROCESS_USE_ARG_ARRAY) {
+		argv = opts->argv;
+		execvp(file, argv);
+		free(argv);
 	} else {
-		char **argv = NULL;
-		if (opts->flags & PROCESS_USE_ARG_ARRAY) {
-			argv = opts->argv;
-		} else {
-			if (opts && opts->args) {
-				if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
-					abort();
-				}
-			} else {
-				args = proc;
+		if (opts && opts->args) {
+			if (asprintf(&args, "%s %s", proc, opts->args) <= 0) {
+				abort();
 			}
+		} else {
+			args = proc;
+		}
+		char *sh = NULL;
+		if (opts->flags & PROCESS_CREATE_SUBSHELL) {
+			sh = shell_path();
+		}
 
+		if (sh) {
+			execl(sh, sh, "-c", args, (char *)NULL);
+		} else {
 			size_t argc = 0;
 			argv = argv_split(args, argv, &argc);
 			if (argv[0][0] == '/' && access(argv[0], X_OK)) {
 				argv[0] = basename(argv[0]);
 			}
-		}
-		if (opts->flags & PROCESS_CREATE_REFLECT) {
-			log_debug("%s: reflectively executing %p with %s", __FUNCTION__, file, args);
-			reflect_execv((unsigned char *)file, argv);
-		} else {
-			execvp(file, argv);
+			if (opts->flags & PROCESS_CREATE_REFLECT) {
+				log_debug("%s: reflectively executing %p with %s", __FUNCTION__, file, args);
+				reflect_execv((unsigned char *)file, argv);
+			} else {
+				execvp(file, argv);
+			}
 		}
 	}
 	abort();
