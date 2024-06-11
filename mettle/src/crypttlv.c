@@ -1,5 +1,20 @@
 #include "crypttlv.h"
 
+#include "mtwister.h"
+#include <unistd.h>
+
+// TODO: discuss how this should be implemented inside the c2
+#define ALLOW_WEAK 1
+
+int add_weak_encryption(mbedtls_ctr_drbg_context *ctr_drbg, mbedtls_entropy_context *entropy) {
+	mbedtls_entropy_init(entropy);
+	mbedtls_ctr_drbg_init(ctr_drbg);
+	return mbedtls_entropy_add_source(	entropy,
+								mbedtls_mtwister_entropy_poll, NULL,
+								32, // MBEDTLS_ENTROPY_MIN_PLATFORM
+								MBEDTLS_ENTROPY_SOURCE_STRONG);
+}
+
 size_t aes_decrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
 {
 #ifndef __MINGW32__
@@ -47,19 +62,33 @@ struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 		case ENC_AES256: {
 			mbedtls_ctr_drbg_context ctr_drbg;
 			mbedtls_entropy_context entropy;
-
+			int error_code = 0;
+			int allow_weak = ALLOW_WEAK; // TODO: line 6.
 			mbedtls_entropy_init(&entropy);
 			mbedtls_ctr_drbg_init(&ctr_drbg);
-			if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0))) {
+
+			error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+			if (error_code != 0 && allow_weak == 1) {
+				mbedtls_ctr_drbg_free(&ctr_drbg);
+				mbedtls_entropy_free(&entropy);
+				add_weak_encryption(&ctr_drbg, &entropy);
+				error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+
+			}
+
+			if(error_code == 0) {
 				unsigned char *aes_key = calloc(sizeof(unsigned char) * AES_KEY_LEN, 1);
-				if (!(mbedtls_ctr_drbg_random(&ctr_drbg, aes_key, AES_KEY_LEN))) {
-					ctx->key = aes_key;
-					ctx->iv = NULL;
-					ctx->initialized = false;
-					mbedtls_ctr_drbg_free(&ctr_drbg);
-					mbedtls_entropy_free(&entropy);
-					break;
+				if(aes_key != NULL) {
+					if (!(mbedtls_ctr_drbg_random(&ctr_drbg, aes_key, AES_KEY_LEN))) {
+						ctx->key = aes_key;
+						ctx->iv = NULL;
+						ctx->initialized = false;
+						mbedtls_ctr_drbg_free(&ctr_drbg);
+						mbedtls_entropy_free(&entropy);
+						break;
+					}
 				}
+				if(aes_key != NULL) free(aes_key);
 			}
 			mbedtls_ctr_drbg_free(&ctr_drbg);
 			mbedtls_entropy_free(&entropy);
@@ -174,6 +203,8 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 		default:
 			break;
 	}
+	int allow_weak = ALLOW_WEAK; // TODO: line 6.
+	int error_code = 0;
 	mbedtls_pk_context pk;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_entropy_context entropy;
@@ -185,7 +216,14 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 		mbedtls_pk_init(&pk);
 	}
 	if (!(mbedtls_pk_parse_public_key(&pk, pkey, pkey_len))) {
-		if (!(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0))) {
+		error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+		if (error_code != 0 && allow_weak == 1) {
+			mbedtls_ctr_drbg_free(&ctr_drbg);
+			mbedtls_entropy_free(&entropy);
+			add_weak_encryption(&ctr_drbg, &entropy);
+			error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+		}
+		if (error_code == 0) {
 			unsigned char buf[MBEDTLS_MPI_MAX_SIZE] = { '\0' };
 
 			if (!(mbedtls_pk_encrypt(&pk, data, data_len,
