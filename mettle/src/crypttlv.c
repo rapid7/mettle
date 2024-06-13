@@ -2,9 +2,8 @@
 
 #include "mtwister.h"
 #include <unistd.h>
+#include <string.h>
 
-// TODO: discuss how this should be implemented inside the c2
-#define ALLOW_WEAK 1
 
 int add_weak_encryption(mbedtls_ctr_drbg_context *ctr_drbg, mbedtls_entropy_context *entropy) {
 	mbedtls_entropy_init(entropy);
@@ -56,24 +55,23 @@ struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 {
 	struct tlv_encryption_ctx *ctx = malloc(sizeof(struct tlv_encryption_ctx));
 	ctx->flag = enc_flag;
-
+	ctx->is_weak_key = false;
 #ifndef __MINGW32__
 	switch (enc_flag) {
 		case ENC_AES256: {
 			mbedtls_ctr_drbg_context ctr_drbg;
 			mbedtls_entropy_context entropy;
 			int error_code = 0;
-			int allow_weak = ALLOW_WEAK; // TODO: line 6.
 			mbedtls_entropy_init(&entropy);
 			mbedtls_ctr_drbg_init(&ctr_drbg);
 
 			error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
-			if (error_code != 0 && allow_weak == 1) {
+			if (error_code != 0) {
 				mbedtls_ctr_drbg_free(&ctr_drbg);
 				mbedtls_entropy_free(&entropy);
 				add_weak_encryption(&ctr_drbg, &entropy);
 				error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
-
+				if(error_code == 0) { ctx->is_weak_key = true; };
 			}
 
 			if(error_code == 0) {
@@ -193,7 +191,6 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 {
 	size_t olen = 0;
 #ifndef __MINGW32__
-	unsigned char *data = ctx->key;
 	size_t data_len = 0;
 	switch (ctx->flag)
 	{
@@ -203,7 +200,12 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 		default:
 			break;
 	}
-	int allow_weak = ALLOW_WEAK; // TODO: line 6.
+	
+	uint8_t *data = (uint8_t *)malloc(data_len + 1);
+	if (data == NULL) return 0;
+
+	memcpy(data, ctx->key, data_len);
+	data[data_len++] = ctx->is_weak_key;
 	int error_code = 0;
 	mbedtls_pk_context pk;
 	mbedtls_ctr_drbg_context ctr_drbg;
@@ -217,7 +219,7 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 	}
 	if (!(mbedtls_pk_parse_public_key(&pk, pkey, pkey_len))) {
 		error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
-		if (error_code != 0 && allow_weak == 1) {
+		if (error_code != 0) {
 			mbedtls_ctr_drbg_free(&ctr_drbg);
 			mbedtls_entropy_free(&entropy);
 			add_weak_encryption(&ctr_drbg, &entropy);
