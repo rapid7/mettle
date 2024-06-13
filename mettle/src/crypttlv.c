@@ -5,13 +5,16 @@
 #include <string.h>
 
 
-int add_weak_encryption(mbedtls_ctr_drbg_context *ctr_drbg, mbedtls_entropy_context *entropy) {
-	mbedtls_entropy_init(entropy);
-	mbedtls_ctr_drbg_init(ctr_drbg);
-	return mbedtls_entropy_add_source(	entropy,
+int add_weak_encryption(void  *ctr_drbg, void *entropy) {
+#ifndef __MINGW32__
+	mbedtls_entropy_init((mbedtls_entropy_context *) entropy);
+	mbedtls_ctr_drbg_init((mbedtls_ctr_drbg_context *)ctr_drbg);
+	return mbedtls_entropy_add_source((mbedtls_entropy_context *)entropy,
 								mbedtls_mtwister_entropy_poll, NULL,
 								32, // MBEDTLS_ENTROPY_MIN_PLATFORM
 								MBEDTLS_ENTROPY_SOURCE_STRONG);
+#endif
+	return -1;
 }
 
 size_t aes_decrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
