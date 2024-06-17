@@ -15,6 +15,4 @@ MTRand seedRand(uint32_t seed);
 uint32_t genRandLong(MTRand* rand);
 double genRand(MTRand* rand);
 
-int mbedtls_mtwister_entropy_poll( void *data, unsigned char *output, size_t len, size_t *olen );
-
 #endif /* #ifndef __MTWISTER_H */

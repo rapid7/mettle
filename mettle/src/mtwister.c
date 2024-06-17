@@ -20,36 +20,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <time.h>
 #include "mtwister.h"
-
-int mbedtls_mtwister_entropy_poll(void *data, unsigned char *output, size_t len, size_t *olen)
-{
-  MTRand r = seedRand((uint32_t)time(NULL));
-  int len_left = len;
-  int mem_size = 0;
-  uint32_t rand_val = 0;
-
-  while (len_left != 0)
-  {
-    rand_val = genRandLong(&r);
-    if (len_left >= 4)
-    {
-      mem_size = 4;
-    }
-    else
-    {
-      mem_size = len_left;
-    }
-    for (int i = 0; i < mem_size; i++)
-    {
-      output[len - len_left + i] = ((uint8_t *)&rand_val)[i];
-    }
-    len_left -= mem_size;
-    *olen += mem_size;
-  }
-  return 0;
-}
 
 inline static void m_seedRand(MTRand *rand, uint32_t seed)
 {
