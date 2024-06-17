@@ -1,8 +1,10 @@
 #include <time.h>
+#ifndef __MINGW32__
 #include "mbedtls_ext.h"
+#endif
 #include "mtwister.h"
 
-
+#ifndef __MINGW32__
 int mbedtls_entropy_remove_source(mbedtls_entropy_context *ctx, mbedtls_entropy_f_source_ptr f_source){
     int idx = 0;
     int found = 0;
@@ -52,3 +54,4 @@ int mbedtls_mtwister_entropy_poll(void *data, unsigned char *output, size_t len,
   }
   return 0;
 }
+#endif
