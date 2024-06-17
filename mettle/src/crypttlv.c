@@ -1,20 +1,7 @@
 #include "crypttlv.h"
-
-#include "mtwister.h"
 #include <unistd.h>
 #include <string.h>
-
-
-void add_weak_encryption(void  *ctr_drbg, void *entropy) {
-#ifndef __MINGW32__
-	mbedtls_entropy_init((mbedtls_entropy_context *) entropy);
-	mbedtls_ctr_drbg_init((mbedtls_ctr_drbg_context *)ctr_drbg);
-	mbedtls_entropy_add_source((mbedtls_entropy_context *)entropy,
-								mbedtls_mtwister_entropy_poll, NULL,
-								32, // MBEDTLS_ENTROPY_MIN_PLATFORM
-								MBEDTLS_ENTROPY_SOURCE_STRONG);
-#endif
-}
+#include "log.h"
 
 size_t aes_decrypt(struct tlv_encryption_ctx* ctx, const unsigned char* data, size_t data_len, unsigned char* result)
 {
@@ -69,10 +56,17 @@ struct tlv_encryption_ctx* create_tlv_encryption_context(unsigned int enc_flag)
 
 			error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
 			if (error_code != 0) {
-				mbedtls_ctr_drbg_free(&ctr_drbg);
-				mbedtls_entropy_free(&entropy);
-				add_weak_encryption(&ctr_drbg, &entropy);
+				log_debug("mbedtls_ctr_drbg_seed: %d", error_code);
+				log_debug("Removing: mbedtls_platform_entropy_poll");
+				mbedtls_entropy_remove_source(&entropy, mbedtls_platform_entropy_poll);
+				log_debug("Adding: mbedtls_mtwister_entropy_poll");
+				mbedtls_entropy_add_source(&entropy, 
+					mbedtls_mtwister_entropy_poll, 
+					NULL, 
+					MBEDTLS_ENTROPY_MIN_PLATFORM, 
+					MBEDTLS_ENTROPY_SOURCE_STRONG);
 				error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+				log_debug("mbedtls_ctr_drbg_seed: %d", error_code);
 				if(error_code == 0) { ctx->is_weak_key = true; };
 			}
 
@@ -222,9 +216,12 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 	if (!(mbedtls_pk_parse_public_key(&pk, pkey, pkey_len))) {
 		error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
 		if (error_code != 0) {
-			mbedtls_ctr_drbg_free(&ctr_drbg);
-			mbedtls_entropy_free(&entropy);
-			add_weak_encryption(&ctr_drbg, &entropy);
+			mbedtls_entropy_remove_source(&entropy, mbedtls_platform_entropy_poll);
+			mbedtls_entropy_add_source(&entropy, 
+				mbedtls_mtwister_entropy_poll, 
+				NULL, 
+				MBEDTLS_ENTROPY_MIN_PLATFORM, 
+				MBEDTLS_ENTROPY_SOURCE_STRONG);
 			error_code = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
 		}
 		if (error_code == 0) {
@@ -239,6 +236,7 @@ size_t rsa_encrypt_pkcs(unsigned char* pkey, size_t pkey_len, struct tlv_encrypt
 	}
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
+	free(data);
 #endif
 	return olen;
 }

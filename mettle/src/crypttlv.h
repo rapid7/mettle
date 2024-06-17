@@ -5,7 +5,7 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
-
+#include "mbedtls_ext.h"
 #include <string.h>
 
 #else
