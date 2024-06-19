@@ -80,6 +80,7 @@ const char *http_conn_header_value(struct http_conn *conn, const char *key)
 void http_conn_free(struct http_conn *conn)
 {
 	if (conn) {
+		log_info(" request free  %p", conn);
 		free(conn->url);
 		if (conn->response) {
 			buffer_queue_free(conn->response);
@@ -207,6 +208,7 @@ int http_request(const char *url, enum http_request req,
 	struct http_request_data *data, struct http_request_opts *opts)
 {
 	struct http_conn *conn = calloc(1, sizeof *conn);
+	log_info("request alloc %p", conn);
 	if (conn == NULL) {
 		return -1;
 	}
@@ -243,7 +245,7 @@ int http_request(const char *url, enum http_request req,
 	 */
 	curl_easy_setopt(conn->easy_handle, CURLOPT_LOW_SPEED_TIME, 60L);
 	curl_easy_setopt(conn->easy_handle, CURLOPT_LOW_SPEED_LIMIT, 1L);
-
+	
 	switch (req) {
 		case http_request_get:
 			break;
