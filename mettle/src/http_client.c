@@ -245,6 +245,25 @@ int http_request(const char *url, enum http_request req,
 	 */
 	curl_easy_setopt(conn->easy_handle, CURLOPT_LOW_SPEED_TIME, 60L);
 	curl_easy_setopt(conn->easy_handle, CURLOPT_LOW_SPEED_LIMIT, 1L);
+	  
+
+	/*
+
+	* Wait for at most 30 seconds to establish a connection,
+
+	* and 60 seconds for the transfer to complete.
+
+	*
+
+	* Just to prevent a hung connection from blocking the entire
+
+	* http transport when sending the first HTTP request.
+
+	*/
+
+	curl_easy_setopt(conn->easy_handle, CURLOPT_CONNECTTIMEOUT, 30L);
+
+	curl_easy_setopt(conn->easy_handle, CURLOPT_TIMEOUT, 60L);
 	
 	switch (req) {
 		case http_request_get:
