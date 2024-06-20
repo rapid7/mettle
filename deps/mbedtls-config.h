@@ -34,6 +34,9 @@
 #define MBEDTLS_PLATFORM_SNPRINTF_ALT
 #define MBEDTLS_HAVE_TIME
 
+// Uncomment to test the embedded Marsenne Twister PRNG algorithm 
+// #define MBEDTLS_NO_PLATFORM_ENTROPY 
+
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CBC
 #define MBEDTLS_PKCS1_V15

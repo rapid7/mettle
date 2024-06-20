@@ -123,6 +123,7 @@ struct tlv_encryption_ctx {
 
 	uint32_t flag;
 	bool initialized;
+	bool is_weak_key;
 };
 
 struct tlv_handler_ctx {
