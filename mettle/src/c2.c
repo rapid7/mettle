@@ -258,16 +258,21 @@ transport_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 		c2->transport_state = c2_transport_state_starting;
 
 	} if (c2->transport_state == c2_transport_state_unreachable) {
-		if (t->type->cbs.stop) {
-			t->type->cbs.stop(t);
-		}
+		
+		t = c2->curr_transport;    // old transport
+		choose_next_transport(c2); // new transport
 
-		t = choose_next_transport(c2);
-
-		if (t->type->cbs.start) {
-			t->type->cbs.start(t);
+		// switch transport only if they are different
+		if(t != c2->curr_transport) {
+			if (t->type->cbs.stop) {
+				t->type->cbs.stop(t);
+			}
+			t = c2->curr_transport;
+			if (t->type->cbs.start) {
+				t->type->cbs.start(t);
+			}
+			c2->transport_state = c2_transport_state_starting;
 		}
-		c2->transport_state = c2_transport_state_starting;
 	}
 }
 
