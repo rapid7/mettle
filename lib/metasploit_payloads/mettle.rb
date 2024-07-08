@@ -204,7 +204,7 @@ module MetasploitPayloads
         format = :process_image
       else
         format = :exec
-        name = [name,suffix].join('.') unless suffix&.strip&.empty?
+        name = [name,suffix].join('.') unless suffix.nil? || suffix.strip.empty?
       end
       self.read(platform, format, name)
     end

@@ -73,7 +73,7 @@ RSpec.describe MetasploitPayloads::Mettle do
             'modname',
             nil
           )
-        end.to raise_error MetasploitPayloads::Mettle::NotFoundError, 'build-tuple/modname. not found'
+        end.to raise_error MetasploitPayloads::Mettle::NotFoundError, 'build-tuple/modname not found'
       end
     end
 
@@ -86,6 +86,18 @@ RSpec.describe MetasploitPayloads::Mettle do
             'suffix'
           )
         end.to raise_error MetasploitPayloads::Mettle::NotFoundError, 'build-tuple/modname.suffix not found'
+      end
+    end
+
+    context 'when the suffix contains only whitespace' do
+      it 'raises an error' do
+        expect do
+          described_class.load_extension(
+            'build-tuple',
+            'modname',
+            '           '
+          )
+        end.to raise_error MetasploitPayloads::Mettle::NotFoundError, 'build-tuple/modname not found'
       end
     end
   end
