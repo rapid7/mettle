@@ -24,6 +24,7 @@ struct http_ctx {
 	struct buffer_queue *egress;
 	int first_packet;
 	int running;
+	bool online;
 };
 
 static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
@@ -67,9 +68,17 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 	int code = http_conn_response_code(conn);
 
 	if (code > 0) {
+		// When the c2 come back online we set the first_packet=true 
+		// to setup the session properly.
+		if(!ctx->online) {
+			ctx->first_packet = 1;
+			ctx->poll_timer.repeat = 0.1;
+			ctx->online = true;
+		}
 		c2_transport_reachable(ctx->t);
 	} else {
 		c2_transport_unreachable(ctx->t);
+		ctx->online = false;
 	}
 
 	bool got_command = false;
@@ -90,12 +99,26 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 			}
 		}
 	}
-
-	if (got_command) {
-		ctx->poll_timer.repeat = 0.1;
-	} else {
-		if (ctx->poll_timer.repeat < 10.0) {
-			ctx->poll_timer.repeat += 0.1;
+	if(ctx->online) {
+		if (got_command) {
+			ctx->poll_timer.repeat = 0.1;
+		} else {
+			if (ctx->poll_timer.repeat < 10.0) {
+				ctx->poll_timer.repeat += 0.01;
+			}
+		}
+	}else {
+		ctx->poll_timer.repeat = 10;
+	}
+	if (ctx->running) {
+		/*
+		 * Calling ev_timer_again and setting poll_timer.repeat = 0
+		 * Will result in having mettle http polling working sync instead of async.
+		 * This is used to avoid pushing data on the queue when the c2 is offline.
+		 */
+		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
+		if(!ctx->online) {
+			ctx->poll_timer.repeat = 0;
 		}
 	}
 }
@@ -122,10 +145,6 @@ static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int rev
 	if (!sent) {
 		http_request(ctx->uri, http_request_get, http_poll_cb, ctx,
 				&ctx->data, &ctx->opts);
-	}
-
-	if (ctx->running) {
-		ev_timer_again(c2_transport_loop(ctx->t), &ctx->poll_timer);
 	}
 }
 
@@ -213,9 +232,8 @@ int http_transport_init(struct c2_transport *t)
 	}
 
 	ctx->data.headers = ctx->headers;
-
 	ctx->first_packet = 1;
-
+	ctx->online = false;
 	ev_init(&ctx->poll_timer, http_poll_timer_cb);
 	ctx->poll_timer.data = ctx;
 
@@ -236,8 +254,9 @@ void http_transport_start(struct c2_transport *t)
 {
 	struct http_ctx *ctx = c2_transport_get_ctx(t);
 	ctx->running = 1;
-	ctx->poll_timer.repeat = 0.01;
+	ctx->poll_timer.repeat = 0.1;
 	ev_timer_again(c2_transport_loop(t), &ctx->poll_timer);
+	ctx->poll_timer.repeat = 0;
 }
 
 void http_transport_egress(struct c2_transport *t, struct buffer_queue *egress)
