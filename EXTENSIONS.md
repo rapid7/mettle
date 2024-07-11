@@ -49,8 +49,8 @@ A few things to know when creating your extension:
 Some Details
 ------------
 
-Communication between Mettle and extensions occurs over standard I/O (stdin, stdout, stderr).  When an extension first starts up, it sends the commands it accepts+handles (as strings delimited by newline characters) to Mettle via stdout, finally sending two newline characters back-to-back at the end to indicate that the full list of commands has been sent.  Mettle will associate these commands to the specifc extension, allowing for future incoming TLV requests to be directed to the proper handling code.
+Communication between Mettle and extensions occurs over standard I/O (stdin, stdout, stderr).  Once Mettle has started the extension subprocess, it will forward the CORE_LOADLIB command to the extension process. The extension process then replies to it with the result and command IDs that it supports. The parent Mettle process watches for the response to this CORE_LOADLIB command and will associate these commands to the specifc extension, allowing for future incoming TLV requests to be directed to the proper handling code.
 
-Once Mettle has associated an extension's commands, the stdin and stdout communications between Mettle and the extension switch over to exclusively using unencrypted TLV packets.  This allows Mettle to be the central point of all TLV en/decryption between the target and Framework endpoints, while getting the value out of reusing the known+existing TLV format and processing code.
+The stdin and stdout communications between Mettle and the extension process exclusively use unencrypted TLV packets.  This allows Mettle to be the central point of all TLV en/decryption between the target and Framework endpoints, while getting the value out of reusing the known+existing TLV format and processing code.
 
 Additionally, extensions can log error (e.g. log_error()), informational (e.g. log_info()), or debug (e.g. log_debug()) messages as plain old NULL-terminated strings to Mettle via stderr.  Currently, Mettle will treat all incoming extension messages via stderr at the "info" (2) log level.  
