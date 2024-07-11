@@ -15,13 +15,8 @@
 #include "process.h"
 #include "tlv.h"
 #include "command_ids.h"
+#include "extensions.h"
 #include "uthash.h"
-
-struct extension_process {
-	struct mettle *m;
-	struct process *p;
-	int ready;
-};
 
 /*
  * Hash of all extension commands which points to extension to send to
@@ -69,52 +64,37 @@ static struct tlv_packet *tlv_send_to_extension(struct tlv_handler_ctx *ctx)
 	return NULL;
 }
 
-static void register_extension_commands(struct extension_process *ep,
-	void *buf, size_t len)
-{
-	char *cmds = NULL;
-	static char *cmds_previous = NULL;
+static void extension_register_commands(struct extension_process *ep, struct tlv_packet *p) {
+	struct tlv_iterator i = {
+		.packet = p,
+		.value_type = TLV_TYPE_UINT
+	};
+	size_t len;
+	uint32_t result;
+	uint32_t command_id;
+	uint32_t *pcommand_id;
 
-	size_t cmds_copy_offset = 0;
-	if (cmds_previous) {
-		cmds = malloc(strlen(cmds_previous) + len + 1);
-		strncpy(cmds, cmds_previous, strlen(cmds_previous));
-		cmds_copy_offset = strlen(cmds_previous);
-	} else {
-		cmds = malloc(len + 1);
-	}
-	strncpy(&cmds[cmds_copy_offset], (char *)buf, len);
-	len += cmds_copy_offset;
-	cmds[len] = '\0';
-	if (strcmp(&cmds[len-2], "\n\n")) {
-		/*
-		 * Did not receive the full list of commands yet.
-		 * Save what we have for now until we get the whole thing.
-		 */
-		free(cmds_previous);
-		cmds_previous = cmds;
-		goto done_free_buf;
+	if (tlv_packet_get_u32(p, TLV_TYPE_RESULT, &result)) {
+		return;
 	}
 
-	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
-	char *cmd_id_s = strtok(cmds, "\n");
-	uint32_t cmd_id = (uint32_t)atoi(cmd_id_s);
-	do {
-		/*
-		 * Store extension info in hash
-		 */
+	if (result != TLV_RESULT_SUCCESS) {
+		return;
+	}
+
+	while ((pcommand_id = tlv_packet_iterate(&i, &len))) {
+		command_id = ntohl(*pcommand_id);
+		if (command_id == COMMAND_ID_CORE_LOADLIB) {
+			// Make sure extensions are not accidentally trying to register CORE_LOADLIB
+			continue;
+		}
 		struct extmgr *em = mettle_get_extmgr(ep->m);
-		struct extension_data *extension_data = extension_data_new(cmd_id, ep);
-		HASH_ADD_INT(em->extensions, command_id, extension_data);
-		tlv_dispatcher_add_handler(td, cmd_id, tlv_send_to_extension, ep->m);
-	} while ((cmd_id_s = strtok(NULL, "\n")));
-
-	ep->ready = 1;
-	free(cmds_previous);
-	free(cmds);
-
-done_free_buf:
-	free(buf);
+		struct extension_data *ed = extension_data_new(command_id, ep);
+		HASH_ADD_INT(em->extensions, command_id, ed);
+		struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
+		tlv_dispatcher_add_handler(td, command_id, tlv_send_to_extension, ep->m);
+	}
+	return;
 }
 
 static void extension_exit_cb(struct process *p, int exit_status, void *arg)
@@ -130,12 +110,18 @@ static void extension_read_cb(struct process *p, struct buffer_queue *queue, voi
 	void *buf = malloc(len);
 	if (buf) {
 		buffer_queue_remove(queue, buf, len);
-		if (ep->ready) {
-			struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
-			tlv_dispatcher_enqueue_response(td, (struct tlv_packet *)buf);
-		} else {
-			register_extension_commands(ep, buf, len);
+		struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(ep->m);
+		struct tlv_packet *p = (struct tlv_packet *)buf;
+
+		uint32_t command_id = 0;
+		if (!ep->ready) {
+			if (!((tlv_packet_get_u32(p, TLV_TYPE_COMMAND_ID, &command_id) == 0) && (command_id == COMMAND_ID_CORE_LOADLIB))) {
+				return;
+			}
+			extension_register_commands(ep, p);
+			ep->ready = true;
 		}
+		tlv_dispatcher_enqueue_response(td, p);
 	}
 }
 
@@ -158,10 +144,9 @@ static void extension_err_cb(struct process *p, struct buffer_queue *queue, void
 	}
 }
 
-static int extension_start(struct mettle *m, const char *full_path,
-	unsigned char *bin_image, size_t bin_image_len, const char* args)
+static struct extension_process * extension_start(struct mettle *m, const char *full_path,
+	const unsigned char *bin_image, size_t bin_image_len, const char* args)
 {
-	int ret_val = -1;
 	struct procmgr *pm = mettle_get_procmgr(m);
 	struct process_options opts = {
 		.process_name = full_path,
@@ -170,7 +155,7 @@ static int extension_start(struct mettle *m, const char *full_path,
 
 	struct extension_process *ep = calloc(1, sizeof(*ep));
 	if (ep == NULL) {
-		return -1;
+		return NULL;
 	}
 
 	if (bin_image) {
@@ -181,6 +166,7 @@ static int extension_start(struct mettle *m, const char *full_path,
 	if (ep->p == NULL) {
 		log_error("Failed to start extension '%s'", full_path);
 		free(ep);
+		ep = NULL;
 		goto done;
 	}
 	ep->m = m;
@@ -190,20 +176,18 @@ static int extension_start(struct mettle *m, const char *full_path,
 		extension_err_cb,
 		extension_exit_cb, ep);
 
-	ret_val = 0;
-
 done:
-	return ret_val;
+	return ep;
 }
 
-int extension_start_executable(struct mettle *m, const char *full_path,
+struct extension_process * extension_start_executable(struct mettle *m, const char *full_path,
 	const char* args)
 {
 	return extension_start(m, full_path, NULL, 0, args);
 }
 
-int extension_start_binary_image(struct mettle *m, const char *name,
-	unsigned char *bin_image, size_t bin_image_len, const char* args)
+struct extension_process * extension_start_binary_image(struct mettle *m, const char *name,
+	const unsigned char *bin_image, size_t bin_image_len, const char* args)
 {
 	return extension_start(m, name, bin_image, bin_image_len, args);
 }

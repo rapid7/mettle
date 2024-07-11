@@ -129,18 +129,27 @@ void extension_log_to_file(int level, char const * filename)
 int extension_add_handler(struct extension *e,
 		uint32_t command_id, tlv_handler_cb cb, void *arg)
 {
-	int ret_val;
-
 	if (e == NULL) {
 		return -1;
 	}
 
-	ret_val = tlv_dispatcher_add_handler(e->td, command_id, cb, arg);
-	if (ret_val == 0) {
-		fprintf(stdout, "%u\n", command_id);
-	}
+	return tlv_dispatcher_add_handler(e->td, command_id, cb, arg);
+}
 
-	return ret_val;
+static void add_command_id(uint32_t command_id, void *arg)
+{
+	if (command_id == COMMAND_ID_CORE_LOADLIB) {
+		return;
+	}
+	struct tlv_packet **p = arg;
+	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
+}
+
+static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
+{
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	tlv_dispatcher_iter_extension_methods(ctx->td, 0, UINT_MAX, add_command_id, &p);
+	return p;
 }
 
 /*
@@ -152,9 +161,8 @@ int extension_start(struct extension *e)
 		return -1;
 	}
 
-	// Empty line to indicate all supported handler names have been sent.
-	fprintf(stdout, "\n");
-	fflush(stdout);
+	// Register core loadlib so the extension can respond to the command itself
+	extension_add_handler(e, COMMAND_ID_CORE_LOADLIB, core_loadlib, NULL);
 
 	// Setup signal handling
 	ev_signal sigint_w, sigterm_w;
