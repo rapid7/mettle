@@ -23,7 +23,7 @@ static void add_command_id(uint32_t command_id, void *arg)
 	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
 }
 
-static struct tlv_packet *enumextcmd(struct tlv_handler_ctx *ctx)
+static struct tlv_packet *core_enumextcmd(struct tlv_handler_ctx *ctx)
 {
 	struct mettle *m = ctx->arg;
 	uint32_t command_id_start = 0, command_id_end = 0;
@@ -131,7 +131,8 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 	size_t extension_len;
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-	struct tlv_packet *p = tlv_packet_response(ctx);
+	struct tlv_packet *p = NULL;
+	struct extension_process *ep = NULL;
 	int fd = -1;
 	int tlv_result = TLV_RESULT_FAILURE;
 	const char *library_path = tlv_packet_get_str(ctx->req, TLV_TYPE_LIBRARY_PATH);
@@ -162,7 +163,8 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 		}
 		// TODO: free this mem when the extension no longer is running
 		memcpy(extension_copy, extension, extension_len);
-		if (extension_start_binary_image(m, library_path, extension, extension_len, NULL))
+		ep = extension_start_binary_image(m, library_path, extension, extension_len, NULL);
+		if (!ep)
 		{
 			log_error("Failed to start extension from binary image '%s'", library_path);
 			goto done;
@@ -189,7 +191,8 @@ static struct tlv_packet *core_loadlib(struct tlv_handler_ctx *ctx)
 		close(fd);
 		fd = -1;
 
-		if (extension_start_executable(m, target_path, NULL))
+		ep = extension_start_executable(m, target_path, NULL);
+		if (!ep)
 		{
 			log_error("Failed to start extension from file '%s'", target_path);
 			goto done;
@@ -203,7 +206,15 @@ done:
 	if (fd != -1) {
 		close(fd);
 	}
-	p = tlv_packet_add_result(p, tlv_result);
+
+	if ((tlv_result == TLV_RESULT_SUCCESS) && (ep)) {
+		process_write(ep->p, ctx->req, tlv_packet_len(ctx->req));
+	} else {
+		// Only transmit failures at this point, allowing the extension to send
+		// the result itself and thus raise any errors itself.
+		p = tlv_packet_response(ctx);
+		p = tlv_packet_add_result(p, tlv_result);
+	}
 
 	return p;
 }
@@ -212,7 +223,7 @@ void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 
-	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, enumextcmd, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, core_enumextcmd, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MACHINE_ID, core_machine_id, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_UUID, core_set_uuid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_GET_SESSION_GUID, core_get_session_guid, m);
