@@ -306,37 +306,67 @@ sys_process_execute(struct tlv_handler_ctx *ctx)
 	struct mettle *m = ctx->arg;
 	struct channelmgr *cm = mettle_get_channelmgr(m);
 	struct procmgr *pm = mettle_get_procmgr(m);
-	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
-	char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
-	size_t exe_len;
-	unsigned char *in_mem_exe = tlv_packet_get_raw(ctx->req, TLV_TYPE_VALUE_DATA, &exe_len);
+	char *path = NULL;
 	uint32_t flags = 0;
 
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_PROCESS_FLAGS, &flags);
-
 	struct process_options opts = {
-		.process_name = path,
-		.args = args,
 		.flags = 0
 	};
-
-	if (strchr(path, '$') != NULL || strchr(path, '%') != NULL) {
-		opts.flags |= PROCESS_CREATE_SUBSHELL;
-	}
-
-	if (args && (strchr(args, '$') != NULL || strchr(args, '%') != NULL)) {
-		opts.flags |= PROCESS_CREATE_SUBSHELL;
-	}
-
-	if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) {
-		opts.flags |= PROCESS_CREATE_SUBSHELL;
-	}
 
 	if (flags & PROCESS_EXECUTE_FLAG_PTY) {
 		opts.flags |= PROCESS_EXECUTE_FLAG_PTY;
 	}
 
-	log_debug("process_new: %s %s 0x%08x", path, args, flags);
+	if (flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) {
+		path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_UNESCAPED_PATH);
+		opts.process_name = path;
+		opts.flags |= PROCESS_USE_ARG_ARRAY;
+
+		struct tlv_iterator i = {
+			.packet = ctx->req,
+			.value_type = TLV_TYPE_PROCESS_ARGUMENT,
+		};
+
+		char *arg;
+		int argc = 2; // cmd at start, plus null terminating at end
+		char **argv;
+		while ((arg = tlv_packet_iterate_str(&i))) {
+			argc++;
+		}
+		// Reset the iterator
+		i.offset = 0;
+		argv = (char**)malloc(argc * sizeof(char*));
+		argv[0] = path;
+		argc = 1;
+		while ((arg = tlv_packet_iterate_str(&i))) {
+			argv[argc++] = arg;
+		}
+		argv[argc] = NULL; // Not a null-byte overwrite, because we allocated one more initially
+		opts.argv = argv;
+	} else {
+		if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) {
+			opts.flags |= PROCESS_CREATE_SUBSHELL;
+		}
+
+
+		path = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_PATH);
+		opts.process_name = path;
+
+	    char *args = tlv_packet_get_str(ctx->req, TLV_TYPE_PROCESS_ARGUMENTS);
+		opts.args = args;
+		if (strchr(path, '$') != NULL || strchr(path, '%') != NULL) {
+			opts.flags |= PROCESS_CREATE_SUBSHELL;
+		}
+
+		if (args && (strchr(args, '$') != NULL || strchr(args, '%') != NULL)) {
+			opts.flags |= PROCESS_CREATE_SUBSHELL;
+		}
+		log_debug("process_new: %s %s 0x%08x", path, args, flags);
+	}
+
+	size_t exe_len;
+	unsigned char *in_mem_exe = tlv_packet_get_raw(ctx->req, TLV_TYPE_VALUE_DATA, &exe_len);
 
 	struct process *p;
 	if (in_mem_exe != NULL && exe_len != 0) {
