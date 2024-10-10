@@ -24,13 +24,15 @@ typedef void (*process_exit_cb_t)(struct process *, int exit_status, void *arg);
 typedef	void (*process_read_cb_t)(struct process *, struct buffer_queue *queue, void *arg);
 
 struct process_options {
-	const char *args;               /* Process arguments (none if not specified) */
+	const char *args;               /* Process arguments as a string (none if not specified) */
+	char **argv;                    /* Process arguments as an arg array (none if not specified) */
 	char **env;                     /* Process environment (inherited if not specified) */
 	const char *process_name;       /* Alternate process name */
 	const char *cwd;                /* Current working directory */
 	const char *user;               /* User to start the process as */
 #define PROCESS_CREATE_SUBSHELL		(0x00000001 << 0)
 #define PROCESS_CREATE_REFLECT		(0x00000001 << 1)
+#define PROCESS_USE_ARG_ARRAY		(0x00000001 << 2)
 	int flags;
 };
 
