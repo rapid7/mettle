@@ -1,0 +1,245 @@
+name: Metasploit Framework Acceptance
+
+# Optional, enabling concurrency limits: https://docs.github.com/en/actions/using-jobs/using-concurrency
+#concurrency:
+#  group: ${{ github.ref }}-${{ github.workflow }}
+#  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+permissions:
+  actions: none
+  checks: none
+  contents: none
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: none
+  repository-projects: none
+  security-events: none
+  statuses: none
+
+on:
+  workflow_dispatch:
+    inputs:
+      metasploitFrameworkCommit:
+        description: 'metasploit-framework branch would like to test'
+        required: true
+        default: 'master'
+  push:
+    branches-ignore:
+      - gh-pages
+      - metakitty
+  pull_request:
+    branches:
+      - '*'
+    paths:
+      - 'build/**'
+      - 'deps/**'
+      - 'docker/**'
+      - 'lib/**'
+      - 'libreflect/**'
+      - 'make/**'
+      - 'mettle/**'
+      - 'pkg/**'
+      - 'spec/**'
+      - 'util/**'
+      - '.github/**'
+#   Example of running as a cron, to weed out flaky tests
+#  schedule:
+#    - cron: '*/15 * * * *'
+
+jobs:
+  # Run all test individually, note there is a separate final job for aggregating the test results
+  test:
+    if: always()
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-13
+          - ubuntu-20.04
+        ruby:
+          - 3.0.2
+        include:
+          - { meterpreter: { name: mettle }, os: macos-13 }
+          - { meterpreter: { name: mettle }, os: ubuntu-20.04 }
+
+    runs-on: ${{ matrix.os }}
+
+    timeout-minutes: 50
+
+    env:
+      RAILS_ENV: test
+      metasploitFrameworkCommit: ${{ github.event.inputs.metasploitFrameworkCommit || 'master' }}
+      HOST_RUNNER_IMAGE: ${{ matrix.os }}
+      SESSION: 'meterpreter/${{ matrix.meterpreter.name }}'
+      SESSION_RUNTIME_VERSION: ${{ matrix.meterpreter.runtime_version }}
+      BUNDLE_WITHOUT: "coverage development"
+
+    name: ${{ matrix.meterpreter.name }} ${{ matrix.meterpreter.runtime_version }} ${{ matrix.os }}
+    steps:
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get -y --no-install-recommends install libpcap-dev graphviz
+
+      - uses: shivammathur/setup-php@c541c155eee45413f5b09a52248675b1a2575231
+        if: ${{ matrix.meterpreter.name == 'php' }}
+        with:
+          php-version: ${{ matrix.meterpreter.runtime_version }}
+          tools: none
+
+      # The job checkout structure is:
+      #  .
+      #  ├── metasploit-framework
+      #  └── mettle
+      - name: Checkout mettle
+        uses: actions/checkout@v4
+        with:
+          repository: rapid7/mettle
+          path: mettle
+
+      - name: Get mettle version
+        run: |
+          echo "METTLE_VERSION=$(grep -oh '[0-9].[0-9].[0-9]*' lib/metasploit_payloads/mettle/version.rb)" | tee -a $GITHUB_ENV
+        working-directory: mettle
+
+      - name: Prerequisite mettle gem setup
+        run: |
+          set -x
+          ruby -pi.bak -e "gsub(/${{ env.METTLE_VERSION }}/, '${{ env.METTLE_VERSION }}-dev')" lib/metasploit_payloads/mettle/version.rb
+        working-directory: mettle
+
+      - name: Compile mettle payloads
+        if: ${{ runner.os != 'macos' }}
+        run: |
+          docker run --rm=true --tty --volume=$(pwd):/mettle --workdir=/mettle rapid7/build:mettle rake mettle:build mettle:check
+          rake build
+        working-directory: mettle
+
+      - name: Compile mettle payloads - macOS
+        if: ${{ runner.os == 'macos' }}
+        run: |
+          make TARGET=x86_64-apple-darwin
+          rake build
+        working-directory: mettle
+
+      - name: Checkout metasploit-framework code
+        uses: actions/checkout@v4
+        with:
+          repository: rapid7/metasploit-framework
+          path: metasploit-framework
+          ref: ${{ env.metasploitFrameworkCommit }}
+
+      - name: Setup Ruby
+        env:
+          BUNDLE_FORCE_RUBY_PLATFORM: true
+          # Required for macos13 pg gem compilation
+          PKG_CONFIG_PATH: "/usr/local/opt/libpq/lib/pkgconfig"
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          cache-version: 5
+          working-directory: metasploit-framework
+
+      - name: Move mettle gem into framework
+        run: |
+          cp ../mettle/pkg/metasploit_payloads-mettle-${{ env.METTLE_VERSION }}.pre.dev.gem .
+        working-directory: metasploit-framework
+
+      - name: Install mettle gem
+        run: |
+          set -x
+          bundle exec gem install metasploit_payloads-mettle-${{ env.METTLE_VERSION }}.pre.dev.gem
+          ruby -pi.bak -e "gsub(/'metasploit_payloads-mettle', '.*'/, '\'metasploit_payloads-mettle\', \'${{ env.METTLE_VERSION }}.pre.dev\'')" metasploit-framework.gemspec
+          bundle config unset deployment
+          bundle update metasploit_payloads-mettle
+          bundle install
+        working-directory: metasploit-framework
+
+      - name: Acceptance
+        env:
+          SPEC_HELPER_LOAD_METASPLOIT: false
+          SPEC_OPTS: "--tag acceptance --require acceptance_spec_helper.rb --color --format documentation --format AllureRspec::RSpecFormatter"
+        # Unix run command:
+        #   SPEC_HELPER_LOAD_METASPLOIT=false bundle exec ./spec/acceptance
+        # Windows cmd command:
+        #   set SPEC_HELPER_LOAD_METASPLOIT=false
+        #   bundle exec rspec .\spec\acceptance
+        # Note: rspec retry is intentionally not used, as it can cause issues with allure's reporting
+        # Additionally - flakey tests should be fixed or marked as flakey instead of silently retried
+        run: |
+          bundle exec rspec spec/acceptance/meterpreter_spec.rb
+        working-directory: metasploit-framework
+
+      - name: Archive results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # Provide a unique artifact for each matrix os, otherwise race conditions can lead to corrupt zips
+          name: raw-data-${{ matrix.meterpreter.name }}-${{ matrix.meterpreter.runtime_version }}-${{ matrix.os }}
+          path: metasploit-framework/tmp/allure-raw-data
+
+  # Generate a final report from the previous test results
+  report:
+    name: Generate report
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: always() && needs.test.result != 'skipped'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: rapid7/metasploit-framework
+          path: metasploit-framework
+          ref: ${{ env.metasploitFrameworkCommit }}
+
+      - name: Install system dependencies (Linux)
+        if: always()
+        run: sudo apt-get -y --no-install-recommends install libpcap-dev graphviz
+
+      - name: Setup Ruby
+        if: always()
+        env:
+          BUNDLE_FORCE_RUBY_PLATFORM: true
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          cache-version: 5
+          working-directory: metasploit-framework
+
+      - uses: actions/download-artifact@v4
+        id: raw_report_data
+        if: always()
+        with:
+          # Note: Not specifying a name will download all artifacts from the previous workflow jobs
+          path: raw-data
+
+      - name: allure generate
+        if: always()
+        run: |
+          export VERSION=2.22.1
+
+          curl -o allure-$VERSION.tgz -Ls https://github.com/allure-framework/allure2/releases/download/$VERSION/allure-$VERSION.tgz
+          tar -zxvf allure-$VERSION.tgz -C .
+
+          ls -la ${{steps.raw_report_data.outputs.download-path}}
+          ./allure-$VERSION/bin/allure generate ${{steps.raw_report_data.outputs.download-path}}/* -o ./allure-report
+
+          find ${{steps.raw_report_data.outputs.download-path}}
+          bundle exec ruby tools/dev/report_generation/support_matrix/generate.rb --allure-data ${{steps.raw_report_data.outputs.download-path}} > ./allure-report/support_matrix.html
+        working-directory: metasploit-framework
+
+      - name: archive results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-report-${{ github.run_id }}
+          path: |
+            ./allure-report
