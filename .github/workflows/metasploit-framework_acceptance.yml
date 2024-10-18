@@ -35,18 +35,6 @@ on:
   pull_request:
     branches:
       - '*'
-    paths:
-      - 'build/**'
-      - 'deps/**'
-      - 'docker/**'
-      - 'lib/**'
-      - 'libreflect/**'
-      - 'make/**'
-      - 'mettle/**'
-      - 'pkg/**'
-      - 'spec/**'
-      - 'util/**'
-      - '.github/**'
 #   Example of running as a cron, to weed out flaky tests
 #  schedule:
 #    - cron: '*/15 * * * *'
@@ -55,5 +43,5 @@ jobs:
   build:
     uses: rapid7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@master
     with:
-      metasploit-framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
+      metasploit_framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
       build_mettle: true
