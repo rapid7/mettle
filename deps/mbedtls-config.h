@@ -45,6 +45,9 @@
 #define MBEDTLS_SSL_PROTO_TLS1_1
 #define MBEDTLS_SSL_PROTO_TLS1_2
 
+/* Enable SNI in TLS handshake */
+#define MBEDTLS_SSL_SERVER_NAME_INDICATION 1
+
 /* mbed TLS modules */
 #define MBEDTLS_AES_C
 #define MBEDTLS_ASN1_PARSE_C
