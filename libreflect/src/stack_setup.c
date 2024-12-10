@@ -44,7 +44,7 @@ void load_program_info(size_t *auxv, ElfW(Ehdr) *exe, ElfW(Ehdr) *interp)
 	int ii;
 	size_t exe_loc = (size_t) exe, interp_loc = (size_t) interp;
 
-	for (ii = 0; auxv[ii]; ii += 2) {
+	for (ii = 0; auxv[ii] || auxv[ii + 1]; ii += 2) {
 		switch (auxv[ii]) {
 			case AT_BASE:
 				auxv[ii + 1] = interp_loc;
@@ -96,16 +96,16 @@ void stack_setup(size_t *stack_base, int argc, char **argv, char **env, size_t *
 	dprint("  0x%08zx\n", stack_base[1 + ii]);
 
 	for (ii = 0; env[ii]; ii++) {
-		stack_base[1 + argc + ii] = (size_t)env[ii];
-		dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
+		stack_base[2 + argc + ii] = (size_t)env[ii];
+		dprint("  0x%08zx\n", stack_base[2 + argc + ii]);
 	}
-	stack_base[1 + argc + ii] = 0;
-	dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
+	stack_base[3 + argc + ii] = 0;
+	dprint("  0x%08zx\n", stack_base[3 + argc + ii]);
 
-	auxv_base = stack_base + 1 + argc + ii + 1;
+	auxv_base = stack_base + 1 + argc + ii + 3;
 
 	if(auxv) {
-		for (ii = 0; auxv[ii]; ii++) {
+		for (ii = 0; auxv[ii] || auxv[ii + 1]; ii++) {
 			auxv_base[ii] = auxv[ii];
 		}
 		auxv_base[ii] = AT_NULL;
