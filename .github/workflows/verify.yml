@@ -33,8 +33,9 @@ jobs:
           - macos-latest
           - ubuntu-latest
         ruby:
-          - '3.0'
-          - '3.3.0-preview1'
+          - '3.2'
+          - '3.3'
+          - '3.4'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
 
