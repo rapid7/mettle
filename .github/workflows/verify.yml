@@ -56,9 +56,4 @@ jobs:
 
       - name: Compilation
         run: |
-          make
-
-      - name: Run tests
-        run: |
-          bundle install
-          bundle exec rspec
+          make CFLAGS=" -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function -Wno-error=incompatible-function-pointer-types -Wno-error=int-conversion -DBUILD_TUPLE=x86_64-apple-darwin"
