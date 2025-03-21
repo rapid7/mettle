@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
+          - macos-13
           - ubuntu-latest
         ruby:
           - '3.2'
@@ -53,6 +53,10 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+
+      - name: Compilation
+        run: |
+          make
 
       - name: Run tests
         run: |
