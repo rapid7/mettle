@@ -41,7 +41,13 @@ ifeq "$(D)" "1"
     CFLAGS:=$(CFLAGS) -g
 endif
 
+# Libraries cannot be compiled with -Werror due to the multiple compilation warnings.
+# This would be probably a good idea to update them to their latest versions and see if these issues are fixed.
 ENV:=$(ENV) ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"
+
+# Adding strict flags for Mettle
+CFLAGS:=$(CFLAGS) -Wall -Werror
+ENV_METTLE:=$(ENV) ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(BUILD)/lib $(LDFLAGS)" CC="$(CC)" CPP="$(CPP)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" OBJCFLAGS="$(OBJCFLAGS)"
 
 LOGBUILD:=>>$(LOGFILE)
 ifeq "$(V)" "1"
