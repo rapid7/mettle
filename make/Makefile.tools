@@ -1,8 +1,19 @@
 ROOT=$(shell pwd)
 TOOLS=$(ROOT)/build/tools
 TOOLS_BIN=$(TOOLS)/bin
-TOOLS_ENV=ARFLAGS="cr" AR_FLAGS="cr" LDFLAGS="-L$(TOOLS)/lib -L$(TOOLS)/lib64" CFLAGS="-I$(TOOLS)/include -g -O2"
+TOOLS_CFLAGS=-I$(TOOLS)/include -g -O2 -std=gnu99
+TOOLS_ARFLAGS=cr
+TOOLS_LDFLAGS=-L$(TOOLS)/lib -L$(TOOLS)/lib64
+TOOLS_ENV=ARFLAGS="$(TOOLS_ARFLAGS)" AR_FLAGS="$(TOOLS_ARFLAGS)" LDFLAGS="$(TOOLS_LDFLAGS)" CFLAGS="$(TOOLS_CFLAGS)"
 TOOLS_CONFIGURE=$(TOOLS_ENV) ./configure --prefix=$(TOOLS) ac_cv_path_PKGCONFIG=$(ROOT)/deps/pkg-config --disable-shared
+
+# `-Wno-int-conversion` is required by flex, otherwise the build fails.
+# Note that this has been corrected upstream and upating the flex library
+# would be a good idea.
+FLEX_CFLAGS=$(TOOLS_CFLAGS) -Wno-int-conversion
+FLEX_ENV=ARFLAGS="$(TOOLS_ARFLAGS)" AR_FLAGS="$(TOOLS_ARFLAGS)" LDFLAGS="$(TOOLS_LDFLAGS)" CFLAGS="$(FLEX_CFLAGS)"
+FLEX_CONFIGURE=$(FLEX_ENV) ./configure --prefix=$(TOOLS) ac_cv_path_PKGCONFIG=$(ROOT)/deps/pkg-config --disable-shared
+
 BUILD_HOST=linux
 TOOLCHAIN_VERSION=6
 INSTALL=install
@@ -194,7 +205,7 @@ $(TOOLS)/flex/Makefile: $(ROOT)/deps/flex-2.5.39.tar.gz
         $(TAR) xf $(ROOT)/deps/flex-2.5.39.tar.gz; \
         mv flex-2.5.39 flex; \
         cd flex; \
-        $(TOOLS_CONFIGURE) $(LOGTOOLBUILD)
+        $(FLEX_CONFIGURE) $(LOGTOOLBUILD)
 
 $(TOOLS)/bin/flex: $(TOOLS)/flex/Makefile
 	@echo "Building flex"

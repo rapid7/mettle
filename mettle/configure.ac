@@ -75,7 +75,8 @@ CHECK_LIBC_COMPAT
 CHECK_PROGNAME
 
 CFLAGS="$CFLAGS -Wall -Werror -std=gnu99 -fno-strict-aliasing -Wno-unused-variable -Wno-unused-function"
-CFLAGS="$CFLAGS -DBUILD_TUPLE=\\\"$TARGET\\\""
+AC_DEFINE_UNQUOTED([BUILD_TUPLE], ["${TARGET}]")
+AC_DEFINE([_FORTIFY_SOURCE], [0])
 
 AC_CONFIG_FILES([
 	Makefile
