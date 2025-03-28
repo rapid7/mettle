@@ -96,17 +96,18 @@ void stack_setup(size_t *stack_base, int argc, char **argv, char **env, size_t *
 	dprint("  0x%08zx\n", stack_base[1 + ii]);
 
 	for (ii = 0; env[ii]; ii++) {
-		stack_base[1 + argc + ii] = (size_t)env[ii];
-		dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
+		stack_base[1 + argc + ii + 1] = (size_t)env[ii];
+		dprint("  0x%08zx\n", stack_base[1 + argc + ii + 1]);
 	}
-	stack_base[1 + argc + ii] = 0;
-	dprint("  0x%08zx\n", stack_base[1 + argc + ii]);
+	stack_base[1 + argc + ii + 1] = 0;
+	dprint("  0x%08zx\n", stack_base[1 + argc + ii + 1]);
 
-	auxv_base = stack_base + 1 + argc + ii + 1;
+	auxv_base = stack_base + 1 + argc + ii + 1 + 1;
 
 	if(auxv) {
-		for (ii = 0; auxv[ii]; ii++) {
+		for (ii = 0; auxv[ii]; ii += 2) {
 			auxv_base[ii] = auxv[ii];
+			auxv_base[ii + 1] = auxv[ii + 1];
 		}
 		auxv_base[ii] = AT_NULL;
 		auxv_base[ii + 1] = 0;
