@@ -81,6 +81,8 @@ endif
 
 libmettle_la_SOURCES += compat/progname.c
 
+libmettle_la_SOURCES += compat/strtonum.c
+
 if HOST_IOS
 libmettle_la_SOURCES += compat/glob.c
 endif
@@ -91,10 +93,6 @@ endif
 
 if !HAVE_SETPROCTITLE
 libmettle_la_SOURCES += compat/setproctitle.c
-endif
-
-if !HAVE_STRTONUM
-libmettle_la_SOURCES += compat/strtonum.c
 endif
 
 if !HAVE_STRLCAT
