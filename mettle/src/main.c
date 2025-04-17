@@ -115,7 +115,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		case 'd':
 			{
 				const char *errstr = NULL;
-				log_level = strtonum(optarg, 0, 3, &errstr);
+				log_level = compat_strtonum(optarg, 0, 3, &errstr);
 				if (errstr != NULL) {
 					fprintf(stderr, "invalid debug level '%s': %s\n", optarg, errstr);
 					return -1;
@@ -127,7 +127,7 @@ static int parse_cmdline(int argc, char * const argv[], struct mettle *m, int fl
 		case 'b':
 			{
 				const char *errstr = NULL;
-				int val = strtonum(optarg, 0, 1, &errstr);
+				int val = compat_strtonum(optarg, 0, 1, &errstr);
 				if (errstr != NULL) {
 					fprintf(stderr, "invalid background setting '%s': %s", optarg, errstr);
 					return -1;
