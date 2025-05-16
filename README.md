@@ -7,6 +7,8 @@ smallest embedded Linux targets to big iron, and targets Android, iOS, macOS,
 Linux, and Windows, but can be ported to almost any POSIX-compliant
 environment.
 
+Other Meterpreter implementations can be found in [metasploit-payloads](https://github.com/rapid7/metasploit-payloads).
+
 Building on Linux
 ------------
 
