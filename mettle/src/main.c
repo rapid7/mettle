@@ -270,7 +270,7 @@ int main(int argc, char * argv[])
 	/*
 	 * Check to see if we were injected by metasploit
 	 */
-	if (strcmp(argv[0], "m") == 0) {
+	if (argv[0] != NULL && strcmp(argv[0], "m") == 0) {
 		flags |= PAYLOAD_INJECTED;
 
 		/*
