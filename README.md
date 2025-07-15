@@ -128,7 +128,7 @@ mettle.to_binary(format=:process_image)
 
 The formats are:
 * `:exec` - a standalone executable that can take command-line arguments (see `mettle -h`) or use pre-set ones
-* `:process_image` - a process image that must be started with a custom stack (see `doc/stack_requirements.md`)
+* `:process_image` - a process image that must be started with a [custom stack](./doc/stack_requirements.md)
 
 
 Using with Metasploit
