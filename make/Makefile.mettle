@@ -83,6 +83,30 @@ ifneq (,$(findstring arm-iphone,$(BUILD)))
 	@./deps/ldid -Sdeps/ent.xml $(BUILD)/bin/mettle
 endif
 
+# PowerPC-specific build flags
+ifneq (,$(filter $(TARGET), powerpc-linux-muslsf powerpc64le-linux-musl powerpc-e500v2-linux-musl))
+    # PowerPC-specific flags
+    CFLAGS += -mcpu=powerpc -mtune=powerpc -maltivec
+    CFLAGS += -D__powerpc__ -D__BIG_ENDIAN__=1
+    LDFLAGS += -Wl,-e,_start
+    
+    # PowerPC startup files
+    METTLE_DEPS += $(BUILD)/src/start.o
+    METTLE_DEPS += $(BUILD)/src/ppc_validate.o
+    
+    # PowerPC-specific options
+    METTLE_OPTS += --enable-powerpc-abi
+endif
+
+# PowerPC object files
+$(BUILD)/src/start.o: $(ROOT)/mettle/src/start.S
+	@echo "Building PowerPC startup code"
+	@$(SETUP_BUILDENV) $(CC) -c $< -o $@ $(CFLAGS)
+
+$(BUILD)/src/ppc_validate.o: $(ROOT)/mettle/src/ppc_validate.c
+	@echo "Building PowerPC validation"
+	@$(SETUP_BUILDENV) $(CC) -c $< -o $@ $(CFLAGS)
+
 mettle: $(BUILD)/bin/mettle.built $(METTLE_TARGETS)
 
 DATADIR:=../metasploit-framework/data
