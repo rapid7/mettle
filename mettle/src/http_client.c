@@ -56,32 +56,32 @@ int http_conn_response_code(struct http_conn *conn)
 
 const char *http_conn_header_value(struct http_conn *conn, const char *key)
 {
-    if (conn->response_headers == NULL) {
-        return NULL;
-    }
+	if (conn->response_headers == NULL) {
+		return NULL;
+	}
 
-    char *key_search = NULL;
-    int rc = asprintf(&key_search, "%s: ", key);
-    if (rc > 0 && key_search) {
-        size_t key_len = strlen(key_search);
-        struct curl_slist *header = conn->response_headers;
-        do {
-            if (!strncmp(key_search, header->data, key_len)) {
-                free(key_search);
-                return header->data + key_len;
-            }
-            header = header->next;
-        } while (header);
-    }
-    free(key_search);
-    return NULL;
+	char *key_search = NULL;
+	int rc = asprintf(&key_search, "%s: ", key);
+	if (rc > 0 && key_search) {
+		size_t key_len = strlen(key_search);
+		struct curl_slist *header = conn->response_headers;
+		do {
+			if (!strncmp(key_search, header->data, key_len)) {
+				free(key_search);
+				return header->data + key_len;
+			}
+			header = header->next;
+		} while (header);
+	}
+	free(key_search);
+	return NULL;
 }
 
 void http_conn_free(struct http_conn *conn)
 {
 	if (conn) {
-		log_info(" request free  %p", conn);
 		free(conn->url);
+		log_info(" HTTP request freed from   %p", conn);
 		if (conn->response) {
 			buffer_queue_free(conn->response);
 		}
@@ -110,34 +110,36 @@ static size_t write_cb(void *buf, size_t size, size_t nmemb, void *arg)
 
 static size_t header_cb(void *buf, size_t size, size_t nmemb, void *arg)
 {
-    struct http_conn *conn = arg;
-    size_t len = size * nmemb;
+	struct http_conn *conn = arg;
+	size_t len = size * nmemb;
 
 	/*
 	 * Ignore redirect headers
 	 */
-    if (http_conn_response_code(conn) == 302) {
-        return len;
-    }
+	if (http_conn_response_code(conn) == 302) {
+		return len;
+	}
 
-    if (len > 2) {
-        char *header = malloc(len + 1);
-        if (header) {
-            memcpy(header, buf, len);
-            header[len] = '\0';
-            for (size_t end = len - 1; end > 0 && isspace(header[end]); end--) {
-                header[end] = '\0';
-            }
-            conn->response_headers = curl_slist_append(conn->response_headers, header);
-            free(header);
-        }
-    }
-    return len;
+	if (len > 2) {
+		char *header = malloc(len + 1);
+		if (header) {
+			memcpy(header, buf, len);
+			header[len] = '\0';
+			for (size_t end = len - 1; end > 0 && isspace(header[end]); end--) {
+				header[end] = '\0';
+			}
+			conn->response_headers = curl_slist_append(conn->response_headers, header);
+			free(header);
+		}
+	}
+	return len;
 }
 
 static int request_done(struct eio_req *req)
 {
 	struct http_conn *conn = req->data;
+	int code = http_conn_response_code(conn);
+	log_info("HTTP request done, code=%d", code);
 	if (conn->cb) {
 		conn->cb(conn, conn->cb_arg);
 	}
@@ -208,7 +210,7 @@ int http_request(const char *url, enum http_request req,
 	struct http_request_data *data, struct http_request_opts *opts)
 {
 	struct http_conn *conn = calloc(1, sizeof *conn);
-	log_info("request alloc %p", conn);
+	log_info("HTTP request allocated at %p for %s", conn, url);
 	if (conn == NULL) {
 		return -1;
 	}
