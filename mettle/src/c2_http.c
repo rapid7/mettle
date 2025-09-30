@@ -34,9 +34,10 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 		uint32_t command_id;
 		tlv_packet_get_u32(request, TLV_TYPE_COMMAND_ID, &command_id);
 
-		const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
+		const char *new_uuid = tlv_packet_get_str(request, TLV_TYPE_C2_UUID);
 
-		if (command_id == COMMAND_ID_CORE_PATCH_URL && new_uri) {
+		if (command_id == COMMAND_ID_CORE_PATCH_UUID && new_uuid) {
+			log_info("HTTP patching uuid to: %s\n", new_uuid);
 			char *old_uri = ctx->uri;
 			char *split = ctx->uri;
 			char *host = strstr(old_uri, "://");
@@ -48,7 +49,7 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 			if (split) {
 				*split = '\0';
 			}
-			if (asprintf(&ctx->uri, "%s%s", ctx->uri, new_uri) > 0) {
+			if (asprintf(&ctx->uri, "%s/%s", ctx->uri, new_uuid) > 0) {
 				free(old_uri);
 			}
 		}
@@ -197,6 +198,7 @@ int http_transport_init(struct c2_transport *t)
 
 	add_header(ctx, "Connection: close");
 
+	log_info("Initializing HTTP transport with URI: %s", ctx->uri);
 	char *args = strchr(ctx->uri, '|');
 	if (args) {
 		*args = '\0';
