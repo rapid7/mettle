@@ -27,7 +27,7 @@ struct http_ctx {
 	bool online;
 };
 
-static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
+static void patch_uuid(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);
 	if (request) {
@@ -56,7 +56,7 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 	}
 	else {
 		/**
-		 * put packet in ingress? also consider making `core_patch_url` actually core
+		 * put packet in ingress? also consider making `core_patch_uuid` actually core
 		 * and expect the transport or get changed on patch request
 		**/
 	}
@@ -86,7 +86,7 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 	if (code == 200) {
 		struct buffer_queue *q = http_conn_response_queue(conn);
 		if (ctx->first_packet) {
-			patch_uri(ctx, q);
+			patch_uuid(ctx, q);
 			ctx->first_packet = 0;
 			got_command = true;
 		} else {
