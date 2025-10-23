@@ -10,6 +10,7 @@
 #include "command_ids.h"
 #include "extensions.h"
 #include "util-common.h"
+#include "base_inject.h"
 
 #include <mettle.h>
 #include <errno.h>
@@ -21,6 +22,13 @@ static void add_command_id(uint32_t command_id, void *arg)
 {
 	struct tlv_packet **p = arg;
 	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
+}
+static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
+{
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+  return p;
 }
 
 static struct tlv_packet *core_enumextcmd(struct tlv_handler_ctx *ctx)
@@ -226,6 +234,7 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, core_enumextcmd, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MACHINE_ID, core_machine_id, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_UUID, core_set_uuid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MIGRATE, core_migrate, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_GET_SESSION_GUID, core_get_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_SESSION_GUID, core_set_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption, m);
