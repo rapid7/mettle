@@ -26,7 +26,34 @@ static void add_command_id(uint32_t command_id, void *arg)
 static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 {
 
-	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	uint32_t pid;
+  uint32_t destination_arch;
+  size_t payload_length, uuid_length, stub_length;
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
+  
+	char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
+  
+  // payload cannot be NULL
+  if (!payload || payload_length == 0)
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	
+  char *uuid = tlv_packet_get_raw(ctx->req, TLV_TYPE_UUID, &uuid_length);
+
+	char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
+  
+  // stub cannot be NULL
+  if (!migrate_stub || stub_length == 0)
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+  if(migrate(pid, migrate_stub, stub_length, payload, payload_length))
+  {
+    
+	  struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+    return p;
+  }
+  
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
   return p;
 }
