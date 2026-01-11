@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <arpa/inet.h>
 #include <eio.h>
 #include <sigar.h>
 
@@ -32,7 +33,7 @@ struct mettle {
 
 	sigar_t *sigar;
 	sigar_sys_info_t sysinfo;
-	char fqdn[SIGAR_MAXDOMAINNAMELEN];
+	char fqdn[SIGAR_FQDN_LEN];
 	struct ev_loop *loop;
 	struct ev_timer heartbeat;
 };
@@ -255,6 +256,20 @@ struct mettle *mettle(void)
 	m->em = extmgr_new();
 
 	sigar_fqdn_get(m->sigar, m->fqdn, sizeof(m->fqdn));
+
+	// sigar_fqdn_get() can return an IP address if the hostname is not a FQDN,
+	// so we need to check and get the hostname instead in that case.
+	unsigned char buf[sizeof(struct in6_addr)];
+	int is_ipv4 = inet_pton(AF_INET, m->fqdn, buf) == 1;
+	int is_ipv6 = inet_pton(AF_INET6, m->fqdn, buf) == 1;
+
+	if (is_ipv4 || is_ipv6) {
+		sigar_net_info_t net_info;
+		if (sigar_net_info_get(m->sigar, &net_info) == 0 && net_info.host_name[0] != '\0') {
+			snprintf(m->fqdn, sizeof(m->fqdn), "%s", net_info.host_name);
+		}
+		// Fall back to IP address if we can't get the FQDN or hostname
+	}
 
 	sigar_sys_info_get(m->sigar, &m->sysinfo);
 
