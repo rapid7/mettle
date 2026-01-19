@@ -10,6 +10,7 @@
 #include "command_ids.h"
 #include "extensions.h"
 #include "util-common.h"
+#include "base_inject.h"
 
 #include <mettle.h>
 #include <errno.h>
@@ -21,6 +22,40 @@ static void add_command_id(uint32_t command_id, void *arg)
 {
 	struct tlv_packet **p = arg;
 	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
+}
+static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
+{
+
+	uint32_t pid;
+  uint32_t destination_arch;
+  size_t payload_length, uuid_length, stub_length;
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
+	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
+  
+	char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
+  
+  // payload cannot be NULL
+  if (!payload || payload_length == 0)
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+	
+  char *uuid = tlv_packet_get_raw(ctx->req, TLV_TYPE_UUID, &uuid_length);
+
+	char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
+  
+  // stub cannot be NULL
+  if (!migrate_stub || stub_length == 0)
+		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+  if(migrate(pid, migrate_stub, stub_length, payload, payload_length))
+  {
+    
+	  struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+    return p;
+  }
+  
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+  return p;
 }
 
 static struct tlv_packet *core_enumextcmd(struct tlv_handler_ctx *ctx)
@@ -226,6 +261,7 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, core_enumextcmd, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MACHINE_ID, core_machine_id, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_UUID, core_set_uuid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MIGRATE, core_migrate, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_GET_SESSION_GUID, core_get_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_SESSION_GUID, core_set_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption, m);
