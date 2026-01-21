@@ -72,7 +72,7 @@ float audioDataDownsamplePartialStepCount;
 #if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 #else
-    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
     NSArray *devices = discoverySession.devices;
 #endif
     AVCaptureDevice *device = devices[deviceIndex];
@@ -218,7 +218,7 @@ BOOL mic_index_valid(uint32 deviceIndex) {
 #if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
         NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 #else
-        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
         NSArray *devices = discoverySession.devices;
 #endif
         if (deviceIndex < [devices count]) {
@@ -263,7 +263,7 @@ struct tlv_packet *audio_mic_list(struct tlv_handler_ctx *ctx)
 #if (__MAC_OS_X_VERSION_MIN_REQUIRED <= 101406)
         NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 #else
-        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeMicrophone] mediaType:AVMediaTypeAudio position:AVCaptureDevicePositionUnspecified];
         NSArray *devices = discoverySession.devices;
 #endif
         for (AVCaptureDevice *device in devices) {
