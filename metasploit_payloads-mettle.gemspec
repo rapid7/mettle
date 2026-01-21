@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.description   = %q{Compiled binaries for Metasploit's next-gen Meterpreter}
   spec.summary       = %q{This gem contains the compiled binaries required to make
                         Mettle function, and eventually their stages and stagers}
-  spec.homepage      = 'http://www.metasploit.com'
+  spec.homepage      = 'https://www.metasploit.com'
   spec.license       = '3-clause (or "modified") BSD'
 
   spec.files         = `git ls-files lib/`.split("\n")
