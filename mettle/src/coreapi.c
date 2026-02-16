@@ -29,26 +29,42 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 	uint32_t pid;
   uint32_t destination_arch;
   size_t payload_length, uuid_length, stub_length;
+	struct mettle *m = ctx->arg;
+  struct c2 * c2 = mettle_get_c2(m);
+  struct c2_transport * transport = c2_get_current_transport(c2);
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
 	tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
   
 	char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
   
+
   // payload cannot be NULL
   if (!payload || payload_length == 0)
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 	
-  char *uuid = tlv_packet_get_raw(ctx->req, TLV_TYPE_UUID, &uuid_length);
+  //char *uuid = tlv_packet_get_raw(ctx->req, TLV_TYPE_UUID, &uuid_length);
+  const char *uuid = tlv_dispatcher_get_uuid(td,&uuid_length);
 
 	char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
   
   // stub cannot be NULL
   if (!migrate_stub || stub_length == 0)
 		return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+  printf("Received UUID: %s\n", uuid);
+  
+  // --- DEBUG ----
+  FILE *ptr;
+  ptr = fopen("/tmp/test.bin", "wb");
+  fwrite(payload, sizeof(char), payload_length, ptr);
+  fclose(ptr);
+  // --- DEBUG ----
 
-  if(migrate(pid, migrate_stub, stub_length, payload, payload_length))
+  getchar();
+  if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid))
   {
     
+	  ev_break(mettle_get_loop(m), EVBREAK_ALL);
 	  struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
     return p;
   }
