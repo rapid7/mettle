@@ -17,7 +17,7 @@ int is_root();
 
 int inject_procfs();
 
-int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length);
+int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid);
 int get_process_sections();
 
 unsigned long find_codecave();

