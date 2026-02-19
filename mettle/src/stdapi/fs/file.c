@@ -543,12 +543,59 @@ fs_cb(eio_req *req)
 struct tlv_packet *
 fs_mkdir(struct tlv_handler_ctx *ctx)
 {
-	const char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	char * dir;
+	char * base_dir;
+	char * tmp;
+	struct stat f_info;
+	char * path_dup;
+	char *path = tlv_packet_get_str(ctx->req, TLV_TYPE_DIRECTORY_PATH);
+	
 	if (path == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
+	path_dup = strdup(path);
 
-	eio_mkdir(path, 0777, 0, fs_cb, ctx);
+	// take into account null byte at the end of path and the one we add in sprintf
+	base_dir = malloc(strlen(path_dup)+2);
+	tmp = malloc(strlen(path_dup)+2);
+	dir = strtok(path_dup, "/");
+	
+	//address absolute paths — check original path since strtok modifies path_dup
+	if (path[0] == '/')
+	{
+		sprintf(base_dir, "/%s/", dir);
+	}
+	else
+	{	
+		sprintf(base_dir, "%s/", dir);
+	}
+
+	while(dir != NULL)
+	{
+		#ifdef _WIN32
+				if(stat(base_dir, &f_info) != 0)
+		#else
+				if(lstat(base_dir, &f_info) != 0)
+		#endif
+				{
+					eio_mkdir(base_dir, 0777, 0, NULL, NULL);
+				}
+		memset(&f_info, 0, sizeof(struct stat));
+		dir = strtok(NULL, "/");
+		if(dir != NULL)
+		{
+			sprintf(tmp, "%s%s/", base_dir, dir);
+			strcpy(base_dir, tmp);
+		}
+	}
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx,TLV_RESULT_SUCCESS);
+
+	tlv_dispatcher_enqueue_response(ctx->td, p);
+	tlv_handler_ctx_free(ctx);
+	free(tmp);
+	free(base_dir);
+	free(path_dup);
 	return NULL;
 }
 
@@ -887,3 +934,4 @@ void file_register_handlers(struct mettle *m)
 	};
 	channelmgr_add_channel_type(cm, "stdapi_fs_file", &cbs);
 }
+
