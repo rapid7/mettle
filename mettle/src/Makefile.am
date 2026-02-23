@@ -44,6 +44,7 @@ libmettle_la_SOURCES += ringbuf.c
 libmettle_la_SOURCES += sha1.c
 libmettle_la_SOURCES += tlv.c
 libmettle_la_SOURCES += stdapi/stdapi.c
+libmettle_la_SOURCES += base_inject.c
 if HOST_WIN
 libmettle_la_SOURCES += console-unsupported.c
 libmettle_la_SOURCES += inet_ntop.c inet_pton.c
