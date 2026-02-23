@@ -118,7 +118,6 @@ int copy_payload(int pid, unsigned long target_addr, char * payload, int payload
   char mem_file_path[80];
   FILE * mem_handler;
   struct user_regs_struct regs;
-  unsigned long original_rip;
 
   strcpy(mem_file_path, "/proc/");
 
@@ -138,7 +137,6 @@ int copy_payload(int pid, unsigned long target_addr, char * payload, int payload
   
   ptrace(PTRACE_GETREGS, pid, NULL, &regs);
 
-  original_rip = regs.rip;
   *restore_addr = (long)regs.rip;
   
   regs.rip = target_addr+2;
@@ -154,7 +152,6 @@ int inject_payload(int pid, long target_addr, char * payload, size_t payload_len
   char mem_file_path[80];
   FILE * mem_handler;
   struct user_regs_struct regs;
-  unsigned long original_rip;
 
   strcpy(mem_file_path, "/proc/");
 
