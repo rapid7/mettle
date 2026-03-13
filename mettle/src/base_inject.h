@@ -4,12 +4,17 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stddef.h>
+#include <dlfcn.h>
 
 //temporarly using PTRACE
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 
-#define SIZE_OF_ADDRESS 12
+#define SIZE_OF_ADDRESS 32
+
+// SYSCALL instruction in x86_64
+// INT3 instruction in x86_64
+#define DO_SYSCALL "\x0f\x05\xcc"  
 
 struct user_regs_struct
 {
@@ -42,26 +47,21 @@ struct user_regs_struct
   unsigned long gs;
 };
 
+typedef struct process_section {
+    unsigned long start_address;
+    unsigned long end_address;
+} process_section_t, *process_section_ptr;
+
+typedef struct writable_section {
+	int pid;
+	process_section_t sections[255];
+} writable_section_t, *writable_section_ptr;
+
+int migrate_support();
 
 int is_root();
 
-int inject_procfs();
+int get_yama_ptrace_scope();
 
 int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid);
-int get_process_sections();
 
-unsigned long find_codecave();
-
-void read_process_memory();
-
-int is_readable(char * line);
-
-char *get_permissions_from_line(char *line);
-
-long get_end_address_from_maps_line(char *line);
-
-long get_start_address_from_maps_line(char *line);
-
-int copy_and_run_payload(int pid, unsigned long target_addr, char * payload, int payload_length);
-
-int inject_payload(int pid, long target_addr, char * payload, size_t payload_length);
