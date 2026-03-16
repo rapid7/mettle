@@ -63,5 +63,5 @@ int is_root();
 
 int get_yama_ptrace_scope();
 
-int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid);
+int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid, int fd);
 
