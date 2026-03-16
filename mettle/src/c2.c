@@ -57,6 +57,12 @@ struct c2 {
 	void *cb_arg;
 };
 
+int c2_get_fd(struct c2 *c2)
+{
+	struct tcp_ctx *ctx = (struct tcp_ctx*)(c2_transport_get_ctx(c2->curr_transport));
+	return 1;
+}
+
 int
 c2_register_transport_type(struct c2 *c2, const char *proto,
 		struct c2_transport_cbs *cbs)

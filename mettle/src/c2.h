@@ -71,4 +71,6 @@ void c2_transport_unreachable(struct c2_transport *t);
 void c2_transport_ingress_buf(struct c2_transport *t, void *buf, size_t buflen);
 void c2_transport_ingress_queue(struct c2_transport *t, struct buffer_queue *src);
 
+int c2_transport_get_socket_fd(struct c2_transport *t);
+
 #endif

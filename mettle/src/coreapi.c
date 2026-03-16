@@ -3,13 +3,14 @@
  * @brief Core API calls
  * @file tlv_coreapi.c
  */
-
 #include "crypttlv.h"
 #include "log.h"
 #include "tlv.h"
 #include "command_ids.h"
 #include "extensions.h"
 #include "util-common.h"
+#include "bufferev.h"
+#include "network_client.h"
 #include "base_inject.h"
 
 #include <mettle.h>
@@ -29,6 +30,7 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 	uint32_t pid;
 	uint32_t destination_arch;
   	size_t payload_length, uuid_length, stub_length;
+
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
 	
@@ -36,7 +38,7 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 	{
 		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
 		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
-		printf("PID: %d, Destination Arch: %d\n", pid, destination_arch);
+
 		char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
 		
 		// payload cannot be NULL
@@ -51,8 +53,12 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 		// stub cannot be NULL
 		if (!migrate_stub || stub_length == 0)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+		
+		struct c2 *c2 = mettle_get_c2(m);
+		struct c2_transport * transport = c2_get_current_transport(c2);
+		int fd = c2_transport_get_socket_fd(transport);
 
-		if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid))
+		if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid, fd))
 		{
 		      struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 		      ev_break(mettle_get_loop(m), EVBREAK_ALL);

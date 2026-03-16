@@ -24,6 +24,8 @@ struct bufferev * bufferev_new(struct ev_loop *loop);
 
 int bufferev_connect_tcp_sock(struct bufferev *be, int sock);
 
+int bufferev_get_socket_fd(struct bufferev *be);
+
 int bufferev_connect_addrinfo(struct bufferev *be,
 	struct addrinfo *src_addr, struct addrinfo *dst_addr, float timeout_s);
 
