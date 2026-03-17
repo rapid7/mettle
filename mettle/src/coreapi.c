@@ -12,6 +12,7 @@
 #include "bufferev.h"
 #include "network_client.h"
 #include "base_inject.h"
+#include "c2.h"
 
 #include <mettle.h>
 #include <errno.h>
@@ -267,6 +268,28 @@ done:
 	return p;
 }
 
+static struct tlv_packet *core_transport_list(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	struct c2 *c2 = mettle_get_c2(m);
+	struct c2_transport * transport = c2_get_current_transport(c2);
+	struct c2_transport * current_transport = c2_get_current_transport(c2);
+	
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+	do {
+		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0);
+		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));	
+		if (packet_group) {
+			printf("Adding transport '%s' to transport list response\n", c2_transport_uri(current_transport));
+			p = tlv_packet_add_child(p, packet_group);
+		}
+		current_transport =  c2_get_next_transport(current_transport);
+	} while(current_transport != transport);
+
+	return p;
+}
+
 void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
@@ -280,4 +303,5 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_LOADLIB, core_loadlib, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SHUTDOWN, core_shutdown, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_TRANSPORT_LIST, core_transport_list, m);
 }
