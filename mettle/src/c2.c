@@ -121,6 +121,10 @@ c2_remove_transports(struct c2 *c2)
 	return 0;
 }
 
+struct c2_transport* c2_get_next_transport(struct c2_transport *t){
+	return t->next;
+}
+
 int c2_add_transport_uri(struct c2 *c2, const char *uri)
 {
 	struct c2_transport *t = NULL;
