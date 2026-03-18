@@ -5,12 +5,18 @@
 #include <fcntl.h>
 #include <stddef.h>
 #include <dlfcn.h>
+#include <sigar.h>
+#include <sigar_private.h>
+#include <sigar_util.h>
 
 //temporarly using PTRACE
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 
 #define SIZE_OF_ADDRESS 32
+#define SIGAR_PROC_FILENAME(buffer, pid, fname) \
+    sigar_proc_filename(buffer, sizeof(buffer), \
+                        pid, fname, SSTRLEN(fname))
 
 // SYSCALL instruction in x86_64
 // INT3 instruction in x86_64

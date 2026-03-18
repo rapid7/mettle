@@ -96,35 +96,18 @@ long get_start_address_from_maps_line(char *line) {
 }
 
 
-char* itoa(int val, int base){
-	
-	static char buf[32] = {0};
-	
-	int i = 30;
-	
-	for(; val && i ; --i, val /= base)
-	
-		buf[i] = "0123456789abcdef"[val % base];
-	
-	return &buf[i+1];
-	
-}
-
-
 void get_process_writable_sections(int pid, writable_section_ptr process_sections)
 {
 
   FILE * maps_handler;
-  char maps_file_path[80];
   char * line = NULL;
   size_t len = 0;
   int section_count = 0;
-	
-  strcpy(maps_file_path, "/proc/");
+  char pid_str[5]; 
+  char maps_file_path[8192];
 
-  strcat(maps_file_path, itoa(pid, 10));
-  strcat(maps_file_path, "/maps");
-  
+  SIGAR_PROC_FILENAME(maps_file_path, pid, "/maps");	
+
   maps_handler = fopen(maps_file_path, "r");
   
   char * permissions;
@@ -169,20 +152,17 @@ void get_process_writable_sections(int pid, writable_section_ptr process_section
 
 unsigned long find_codecave(int pid, int cave_size, writable_section_ptr process_sections)
 {
-	char mem_file_path[80];
 	char * mem_data = NULL;
 	FILE * mem_handler = NULL;
 	int current_cave_size = 0;
+  	char mem_file_path[8192];
 
 	if(process_sections->pid == 0)
 	{
 		get_process_writable_sections(pid, process_sections);
 	}
 	
-	strcpy(mem_file_path, "/proc/");
-
-	strcat(mem_file_path, itoa(pid, 10));
-	strcat(mem_file_path, "/mem");
+  	SIGAR_PROC_FILENAME(mem_file_path, pid, "/mem");	
 	
 	mem_handler = fopen(mem_file_path, "r");
 	
