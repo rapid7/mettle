@@ -50,6 +50,8 @@ struct tlv_dispatcher;
 
 struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len);
 
+struct tlv_packet *tlv_packet_from_raw(uint32_t type, const void *data, size_t len);
+
 bool tlv_found_first_packet(struct buffer_queue *q);
 
 struct tlv_packet * tlv_packet_read_buffer_queue(struct tlv_dispatcher *td , struct buffer_queue *q);
