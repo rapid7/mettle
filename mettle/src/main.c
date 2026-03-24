@@ -16,6 +16,7 @@
 #include "log.h"
 #include "mettle.h"
 #include "service.h"
+#include "tlv.h"
 
 static void usage(const char *name)
 {
@@ -239,6 +240,106 @@ void parse_default_args(struct mettle *m, int flags)
 	}
 }
 
+#define CONFIG_BLOCK_MAX 8192
+#define CONFIG_BLOCK_SIG "CONFIG_BLOCK"
+#define CONFIG_BLOCK_SIG_LEN 12
+
+/*
+ * 8KB placeholder for TLV-based configuration block.
+ * The framework patches this with a XOR-encoded TLV config packet.
+ */
+static char config_block_data[CONFIG_BLOCK_MAX] = CONFIG_BLOCK_SIG;
+
+static int parse_config_block(struct mettle *m)
+{
+	/* Check if the config block has been patched (signature overwritten) */
+	if (strncasecmp(config_block_data, CONFIG_BLOCK_SIG, CONFIG_BLOCK_SIG_LEN) == 0) {
+		return -1;
+	}
+
+	/* Find the actual data length by scanning backward past null padding */
+	size_t data_len = CONFIG_BLOCK_MAX;
+	for (size_t i = CONFIG_BLOCK_MAX - 1; i > 0; i--) {
+		if (config_block_data[i] != '\0') {
+			data_len = i + 1;
+			break;
+		}
+	}
+
+	/* Feed the raw config bytes through the standard TLV packet reader */
+	struct buffer_queue *q = buffer_queue_new();
+	if (q == NULL) {
+		return -1;
+	}
+	buffer_queue_add(q, config_block_data, data_len);
+	struct tlv_packet *config = tlv_packet_read_buffer_queue(NULL, q);
+	buffer_queue_free(q);
+	if (config == NULL) {
+		log_error("failed to parse config block");
+		return -1;
+	}
+
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	struct c2 *c2 = mettle_get_c2(m);
+
+	/* Extract UUID */
+	size_t uuid_len = 0;
+	void *uuid = tlv_packet_get_raw(config, TLV_TYPE_UUID, &uuid_len);
+	if (uuid && uuid_len > 0) {
+		tlv_dispatcher_set_uuid(td, uuid, uuid_len);
+	}
+
+	/* Extract Session GUID */
+	size_t guid_len = 0;
+	void *guid = tlv_packet_get_raw(config, TLV_TYPE_SESSION_GUID, &guid_len);
+	if (guid && guid_len > 0) {
+		tlv_dispatcher_set_session_guid(td, guid);
+	}
+
+	/* Extract session expiry */
+	uint32_t session_expiry = 0;
+	tlv_packet_get_u32(config, TLV_TYPE_SESSION_EXPIRY, &session_expiry);
+
+	/* Extract debug log path */
+	const char *debug_log = tlv_packet_get_str(config, TLV_TYPE_DEBUG_LOG);
+	if (debug_log) {
+		FILE *log_fp = fopen(debug_log, "a");
+		if (log_fp) {
+			log_init_file(log_fp);
+			log_set_level(3);
+		}
+	}
+
+	/* Iterate C2 transport groups */
+	struct tlv_iterator i = {
+		.packet = config,
+		.offset = 0,
+		.value_type = TLV_TYPE_C2,
+	};
+	size_t group_len = 0;
+	void *group_data;
+	while ((group_data = tlv_packet_iterate(&i, &group_len)) != NULL) {
+		/*
+		 * Wrap the group bytes in a temporary tlv_packet so we can
+		 * use the standard accessors to extract child TLVs.
+		 */
+		struct tlv_packet *group = tlv_packet_from_raw(TLV_TYPE_C2, group_data, group_len);
+		if (group == NULL) {
+			continue;
+		}
+
+		const char *url = tlv_packet_get_str(group, TLV_TYPE_C2_URL);
+		if (url) {
+			c2_add_transport_uri(c2, url);
+		}
+
+		tlv_packet_free(group);
+	}
+
+	tlv_packet_free(config);
+	return 0;
+}
+
 /* Saves a copy of argv for setproctitle emulation */
 #ifndef HAVE_SETPROCTITLE
 static char **saved_argv;
@@ -268,9 +369,15 @@ int main(int argc, char * argv[])
 	}
 
 	/*
-	 * Check to see if we were injected by metasploit
+	 * Try TLV config block first — if present, it contains all config.
+	 * Fall back to CLI args / DEFAULT_OPTS if no config block.
 	 */
-	if (argv[0] != NULL && strcmp(argv[0], "m") == 0) {
+	if (parse_config_block(m) == 0) {
+		log_info("loaded configuration from TLV config block");
+	} else if (argv[0] != NULL && strcmp(argv[0], "m") == 0) {
+		/*
+		 * Check to see if we were injected by metasploit
+		 */
 		flags |= PAYLOAD_INJECTED;
 
 		/*

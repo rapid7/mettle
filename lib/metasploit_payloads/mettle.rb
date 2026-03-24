@@ -16,6 +16,8 @@ module MetasploitPayloads
 
     CMDLINE_MAX = 2000
     CMDLINE_SIG = 'DEFAULT_OPTS'.freeze
+    CONFIG_BLOCK_MAX = 8192
+    CONFIG_BLOCK_SIG = 'CONFIG_BLOCK'.freeze
     #
     # Config is a hash. Valid keys are:
     #  :uri to connect to
@@ -36,6 +38,9 @@ module MetasploitPayloads
     def to_binary(format=:process_image)
       bin = self.class.read(@platform, format)
       unless @config.empty?
+        if @config[:config_block]
+          bin = add_config_block(bin, @config[:config_block])
+        end
         params = generate_argv
         bin = add_args(bin, params)
       end
@@ -75,6 +80,14 @@ module MetasploitPayloads
       else
         raise Mettle::Error, "unknown mettle option #{opt}", caller
       end
+    end
+
+    def add_config_block(bin, config_bytes)
+      if config_bytes.length > CONFIG_BLOCK_MAX
+        raise Mettle::Error, 'mettle config block too large', caller
+      end
+      padded = config_bytes + "\x00" * (CONFIG_BLOCK_MAX - config_bytes.length)
+      bin.sub(CONFIG_BLOCK_SIG + "\x00" * (CONFIG_BLOCK_MAX - CONFIG_BLOCK_SIG.length), padded)
     end
 
     def add_args(bin, params)
