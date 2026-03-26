@@ -9,11 +9,53 @@
 #include <ev.h>
 #include "buffer_queue.h"
 
+/*
+ * C2 Profile configuration for GET/POST verbs
+ */
+struct c2_verb_config {
+	char *uri;
+	int enc;
+	void *prefix;
+	size_t prefix_len;
+	void *suffix;
+	size_t suffix_len;
+	int prefix_skip;
+	int suffix_skip;
+	char *uuid_get;
+	char *uuid_header;
+	char *uuid_cookie;
+};
+
+/*
+ * Per-transport configuration parsed from TLV config block
+ */
+struct c2_transport_config {
+	uint32_t comm_timeout;
+	uint32_t retry_total;
+	uint32_t retry_wait;
+	char *proxy_url;
+	char *user_agent;
+	char *custom_headers;
+	void *cert_hash;
+	size_t cert_hash_len;
+	struct c2_verb_config *c2_get;
+	struct c2_verb_config *c2_post;
+};
+
+void c2_verb_config_free(struct c2_verb_config *vc);
+void c2_transport_config_free(struct c2_transport_config *tc);
+
+/*
+ * C2 Manager
+ */
 struct c2;
 
 struct c2 * c2_new(struct ev_loop *loop);
 
 int c2_add_transport_uri(struct c2 *c2, const char *uri);
+
+int c2_add_transport_uri_config(struct c2 *c2, const char *uri,
+	struct c2_transport_config *config);
 
 int c2_start(struct c2 *c2);
 
@@ -57,6 +99,8 @@ int c2_register_transport_type(struct c2 *c2, const char *proto,
 	struct c2_transport_cbs *cbs);
 
 struct c2_transport* c2_get_current_transport(struct c2 *c2);
+
+struct c2_transport_config * c2_transport_get_config(struct c2_transport *t);
 
 const char * c2_transport_uri(struct c2_transport *t);
 const char * c2_transport_dest(struct c2_transport *t);

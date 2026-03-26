@@ -250,6 +250,63 @@ void parse_default_args(struct mettle *m, int flags)
  */
 static char config_block_data[CONFIG_BLOCK_MAX] = CONFIG_BLOCK_SIG;
 
+static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uint32_t group_type)
+{
+	size_t vlen = 0;
+	void *vdata = tlv_packet_get_raw(parent, group_type, &vlen);
+	if (vdata == NULL || vlen == 0) {
+		return NULL;
+	}
+
+	struct tlv_packet *vp = tlv_packet_from_raw(group_type, vdata, vlen);
+	if (vp == NULL) {
+		return NULL;
+	}
+
+	struct c2_verb_config *vc = calloc(1, sizeof(*vc));
+	if (vc == NULL) {
+		tlv_packet_free(vp);
+		return NULL;
+	}
+
+	const char *s;
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_URI);
+	if (s) vc->uri = strdup(s);
+
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC, (uint32_t *)&vc->enc);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_PREFIX_SKIP, (uint32_t *)&vc->prefix_skip);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_SUFFIX_SKIP, (uint32_t *)&vc->suffix_skip);
+
+	size_t len = 0;
+	void *raw;
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_PREFIX, &len);
+	if (raw && len > 0) {
+		vc->prefix = malloc(len);
+		if (vc->prefix) {
+			memcpy(vc->prefix, raw, len);
+			vc->prefix_len = len;
+		}
+	}
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_SUFFIX, &len);
+	if (raw && len > 0) {
+		vc->suffix = malloc(len);
+		if (vc->suffix) {
+			memcpy(vc->suffix, raw, len);
+			vc->suffix_len = len;
+		}
+	}
+
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_GET);
+	if (s) vc->uuid_get = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_HEADER);
+	if (s) vc->uuid_header = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_COOKIE);
+	if (s) vc->uuid_cookie = strdup(s);
+
+	tlv_packet_free(vp);
+	return vc;
+}
+
 static int parse_config_block(struct mettle *m)
 {
 	/* Check if the config block has been patched (signature overwritten) */
@@ -319,20 +376,50 @@ static int parse_config_block(struct mettle *m)
 	size_t group_len = 0;
 	void *group_data;
 	while ((group_data = tlv_packet_iterate(&i, &group_len)) != NULL) {
-		/*
-		 * Wrap the group bytes in a temporary tlv_packet so we can
-		 * use the standard accessors to extract child TLVs.
-		 */
 		struct tlv_packet *group = tlv_packet_from_raw(TLV_TYPE_C2, group_data, group_len);
 		if (group == NULL) {
 			continue;
 		}
 
 		const char *url = tlv_packet_get_str(group, TLV_TYPE_C2_URL);
-		if (url) {
-			c2_add_transport_uri(c2, url);
+		if (url == NULL) {
+			tlv_packet_free(group);
+			continue;
 		}
 
+		struct c2_transport_config *tc = calloc(1, sizeof(*tc));
+		if (tc == NULL) {
+			tlv_packet_free(group);
+			continue;
+		}
+
+		tlv_packet_get_u32(group, TLV_TYPE_C2_COMM_TIMEOUT, &tc->comm_timeout);
+		tlv_packet_get_u32(group, TLV_TYPE_C2_RETRY_TOTAL, &tc->retry_total);
+		tlv_packet_get_u32(group, TLV_TYPE_C2_RETRY_WAIT, &tc->retry_wait);
+
+		const char *s;
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_URL);
+		if (s) tc->proxy_url = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_UA);
+		if (s) tc->user_agent = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_HEADERS);
+		if (s) tc->custom_headers = strdup(s);
+
+		size_t hash_len = 0;
+		void *hash = tlv_packet_get_raw(group, TLV_TYPE_C2_CERT_HASH, &hash_len);
+		if (hash && hash_len > 0) {
+			tc->cert_hash = malloc(hash_len);
+			if (tc->cert_hash) {
+				memcpy(tc->cert_hash, hash, hash_len);
+				tc->cert_hash_len = hash_len;
+			}
+		}
+
+		/* Parse C2 GET/POST profile sub-groups */
+		tc->c2_get = parse_c2_verb_group(group, TLV_TYPE_C2_GET);
+		tc->c2_post = parse_c2_verb_group(group, TLV_TYPE_C2_POST);
+
+		c2_add_transport_uri_config(c2, url, tc);
 		tlv_packet_free(group);
 	}
 
