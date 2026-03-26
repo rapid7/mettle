@@ -26,6 +26,7 @@ struct c2_transport {
 	struct c2 *c2;
 	struct c2_transport_type *type;
 	void *ctx;
+	struct c2_transport_config *config;
 };
 
 struct c2_transport_type {
@@ -109,6 +110,7 @@ c2_remove_transports(struct c2 *c2)
 		if (t->type->cbs.free) {
 			t->type->cbs.free(t);
 		}
+		c2_transport_config_free(t->config);
 		free(t->uri);
 		free(t);
 	}
@@ -156,6 +158,49 @@ err:
 		free(t);
 	}
 	return -1;
+}
+
+void c2_verb_config_free(struct c2_verb_config *vc)
+{
+	if (vc) {
+		free(vc->uri);
+		free(vc->prefix);
+		free(vc->suffix);
+		free(vc->uuid_get);
+		free(vc->uuid_header);
+		free(vc->uuid_cookie);
+		free(vc);
+	}
+}
+
+void c2_transport_config_free(struct c2_transport_config *tc)
+{
+	if (tc) {
+		free(tc->proxy_url);
+		free(tc->user_agent);
+		free(tc->custom_headers);
+		free(tc->cert_hash);
+		c2_verb_config_free(tc->c2_get);
+		c2_verb_config_free(tc->c2_post);
+		free(tc);
+	}
+}
+
+struct c2_transport_config * c2_transport_get_config(struct c2_transport *t)
+{
+	return t->config;
+}
+
+int c2_add_transport_uri_config(struct c2 *c2, const char *uri,
+		struct c2_transport_config *config)
+{
+	int rc = c2_add_transport_uri(c2, uri);
+	if (rc == 0 && config) {
+		/* Find the last-added transport (tail of CDL) */
+		struct c2_transport *t = c2->transports->prev;
+		t->config = config;
+	}
+	return rc;
 }
 
 static struct c2_transport *
