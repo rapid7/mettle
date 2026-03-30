@@ -21,6 +21,7 @@ int c2_close(struct c2 *c2);
 
 void c2_free(struct c2 *c2);
 
+
 #define C2_REACHABLE 0x01
 
 typedef void (*c2_data_cb)(struct c2 *c2, void *arg);
@@ -74,4 +75,6 @@ void c2_transport_ingress_queue(struct c2_transport *t, struct buffer_queue *src
 
 int c2_transport_get_socket_fd(struct c2_transport *t);
 
+struct c2_transport_type * c2_get_transport_type(struct c2_transport *t);
+char * c2_get_proto(struct c2_transport *t);
 #endif

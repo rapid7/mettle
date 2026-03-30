@@ -320,6 +320,15 @@ void * c2_transport_get_ctx(struct c2_transport *t)
 	return t->ctx;
 }
 
+struct c2_transport_type * c2_get_transport_type(struct c2_transport *t)
+{
+	return t->type;
+}
+
+char * c2_get_proto(struct c2_transport *t){
+	return t->type->proto;
+}
+
 void c2_transport_set_ctx(struct c2_transport *t, void *ctx)
 {
 	t->ctx = ctx;
