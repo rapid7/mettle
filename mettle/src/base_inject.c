@@ -1,6 +1,5 @@
 #include "base_inject.h"
 
-
 int is_root()
 {
 	return getuid() == 0;
@@ -130,7 +129,10 @@ void get_process_writable_sections(int pid, writable_section_ptr process_section
     }
     
     if(*permission == 0)
+    {
+      free(permissions);
       continue;
+    }
 
     free(permissions);
 
@@ -145,7 +147,7 @@ void get_process_writable_sections(int pid, writable_section_ptr process_section
     
   }
   
-  free(maps_handler);
+  fclose(maps_handler);
 
 }
 
@@ -246,6 +248,7 @@ int remote_mmap(int pid, long mmap_stub, long length, long prot, long flags, lon
 
 	ptrace(PTRACE_GETREGS, pid, NULL, &saved_regs);
 
+#if defined(__x86_64__)
 	regs.rip 	= mmap_stub;
 	regs.rax	= 9;
 	regs.rdi 	= 0;
@@ -255,17 +258,32 @@ int remote_mmap(int pid, long mmap_stub, long length, long prot, long flags, lon
 	regs.r8 	= fd;
 	regs.rsp	= saved_regs.rsp+0x100;
 	regs.rbp	= saved_regs.rbp;
+#elif defined(__i386__)
+	regs.eip  = mmap_stub;
+	regs.eax  = 192;                   // sys_mmap2
+	regs.ebx  = 0;                     // addr (NULL)
+	regs.ecx  = length;
+	regs.edx  = prot;
+	regs.esi  = flags;
+	regs.edi  = fd;
+	regs.ebp  = offset / 4096;         // mmap2 offset is in 4096-byte pages
+	regs.esp  = saved_regs.esp + 0x100;
+#endif
 
 	ptrace(PTRACE_SETREGS, pid, NULL, &regs);
-	
+
 	ptrace(PTRACE_CONT, pid, NULL, NULL);
-	
+
 	wait(&status);
 
 	if(WIFSTOPPED(status) && WSTOPSIG(status) == 5)
 	{
 		ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+#if defined(__x86_64__)
 		*mmaped_address = regs.rax;
+#elif defined(__i386__)
+		*mmaped_address = regs.eax;
+#endif
 
 		ptrace(PTRACE_SETREGS, pid, NULL, &saved_regs);
 		ptrace(PTRACE_CONT, pid, NULL, NULL);
@@ -310,17 +328,27 @@ int remote_call_payload(int pid, long payload_address, long stub_address, int fd
 		return 0;
 	}
 
+
+#if defined(__x86_64__)
 	regs.rip 	= stub_address;
 	regs.rsp	= saved_regs.rsp+0x100;
 	regs.rbp	= saved_regs.rbp;
-	regs.r9		= payload_address;
-	regs.r10	= getpid();
-	regs.r11	= fd;
+	regs.rax	= payload_address;
+	regs.rbx	= getpid();
+	regs.rcx	= fd;
+#elif defined(__i386__)
+	regs.eip  = stub_address;
+	regs.esp  = saved_regs.esp + 0x100;
+	regs.ebp  = saved_regs.ebp;
+	regs.eax  = payload_address;       // payload mmap base
+	regs.ebx  = getpid();              // current pid (for pidfd_open in child)
+	regs.ecx  = fd;                    // socket fd (for pidfd_getfd in child)
+#endif
 
 	ptrace(PTRACE_SETREGS, pid, NULL, &regs);
-	
+
 	ptrace(PTRACE_CONT, pid, NULL, NULL);
-	
+
 	wait(&status);
 
 	if(WIFSTOPPED(status) && WSTOPSIG(status) == 5)
