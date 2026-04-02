@@ -697,16 +697,16 @@ int http_transport_init(struct c2_transport *t)
 	if (args) {
 		*args = '\0';
 		if (strlen(++args)) {
-			size_t argc = 0;
-			char **argv = argv_split(args, NULL, &argc);
-			for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
-				if (strcmp(argv[i], "--host") == 0) {
-					char *host_header = NULL;
-					if (asprintf(&host_header, "Host: %s", argv[i + 1]) != -1) {
-						add_header(ctx, host_header);
-						free(host_header);
-					}
-				}
+	const char *ua = c2_transport_ua(t);
+	if (ua) {
+		ctx->data.ua = strdup(ua);
+		log_info("ua: %s", ctx->data.ua);
+	}
+
+	const char *raw_args = c2_transport_args(t);
+	if (raw_args && strlen(raw_args)) {
+		char *args = strdup(raw_args);
+		if (args) {
 				if (strcmp(argv[i], "--ua") == 0) {
 					free(ctx->data.ua);
 					ctx->data.ua = strdup(argv[i + 1]);
@@ -721,6 +721,7 @@ int http_transport_init(struct c2_transport *t)
 					add_header(ctx, argv[i + 1]);
 				}
 			}
+			free(args);
 		}
 	}
 

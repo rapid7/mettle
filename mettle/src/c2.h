@@ -113,6 +113,8 @@ struct c2_transport* c2_get_next_transport(struct c2_transport *t);
 struct c2_transport_config * c2_transport_get_config(struct c2_transport *t);
 
 const char * c2_transport_uri(struct c2_transport *t);
+const char * c2_transport_ua(struct c2_transport *t);
+const char * c2_transport_args(struct c2_transport *t);
 const char * c2_transport_dest(struct c2_transport *t);
 struct ev_loop * c2_transport_loop(struct c2_transport *loop);
 
