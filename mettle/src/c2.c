@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "argv_split.h"
 #include "c2.h"
 #include "c2_transports.h"
 #include "network_client.h"
@@ -23,6 +24,8 @@
 struct c2_transport {
 	struct c2_transport *prev, *next;
 	char *uri, *dest;
+	char *user_agent;
+	char *transport_args;
 	struct c2 *c2;
 	struct c2_transport_type *type;
 	void *ctx;
@@ -116,6 +119,8 @@ c2_remove_transports(struct c2 *c2)
 			t->type->cbs.free(t);
 		}
 		free(t->uri);
+		free(t->transport_args);
+		free(t->user_agent);
 		free(t);
 	}
 	return 0;
@@ -144,6 +149,30 @@ int c2_add_transport_uri(struct c2 *c2, const char *uri)
 		goto err;
 	}
 
+	/* Strip transport args from URI and parse user agent */
+	char *pipe = strchr(t->uri, '|');
+	if (pipe != NULL) {
+		t->transport_args = strdup(pipe + 1);
+		*pipe = '\0';
+		if (t->transport_args != NULL) {
+			char *args_copy = strdup(t->transport_args);
+			if (args_copy != NULL) {
+				size_t argc = 0;
+				char **argv = argv_split(args_copy, NULL, &argc);
+				if (argv != NULL) {
+					for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
+						if (strcmp(argv[i], "--ua") == 0) {
+							t->user_agent = strdup(argv[i + 1]);
+							break;
+						}
+					}
+					free(argv);
+				}
+				free(args_copy);
+			}
+		}
+	}
+
 	/*
 	 * t->dest points to the string beyond the protocol specifier
 	 */
@@ -163,6 +192,8 @@ int c2_add_transport_uri(struct c2 *c2, const char *uri)
 err:
 	if (t) {
 		free(t->uri);
+		free(t->transport_args);
+		free(t->user_agent);
 		free(t);
 	}
 	return -1;
@@ -303,6 +334,16 @@ void c2_transport_unreachable(struct c2_transport *t)
 const char * c2_transport_uri(struct c2_transport *t)
 {
 	return t->uri;
+}
+
+const char * c2_transport_ua(struct c2_transport *t)
+{
+	return t->user_agent;
+}
+
+const char * c2_transport_args(struct c2_transport *t)
+{
+	return t->transport_args;
 }
 
 const char * c2_transport_dest(struct c2_transport *t)

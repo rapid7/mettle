@@ -283,6 +283,10 @@ static struct tlv_packet *core_transport_list(struct tlv_handler_ctx *ctx)
 	do {
 		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0);
 		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));
+//		const char *ua = c2_transport_ua(current_transport);
+//		if (ua) {
+//			packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_UA, ua);
+//		}
 
 		if (packet_group) {
 			p = tlv_packet_add_child(p, packet_group);
