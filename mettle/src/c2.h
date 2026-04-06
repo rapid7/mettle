@@ -61,6 +61,7 @@ struct c2_transport* c2_get_current_transport(struct c2 *c2);
 struct c2_transport* c2_get_next_transport(struct c2_transport *t);
 
 const char * c2_transport_uri(struct c2_transport *t);
+void c2_transport_set_uri(struct c2_transport *t, const char *uri);
 const char * c2_transport_ua(struct c2_transport *t);
 const char * c2_transport_args(struct c2_transport *t);
 const char * c2_transport_dest(struct c2_transport *t);

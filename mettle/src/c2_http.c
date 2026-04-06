@@ -50,6 +50,7 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 			}
 			if (asprintf(&ctx->uri, "%s%s", ctx->uri, new_uri) > 0) {
 				free(old_uri);
+				c2_transport_set_uri(ctx->t, ctx->uri);
 			}
 		}
 	}
@@ -197,43 +198,37 @@ int http_transport_init(struct c2_transport *t)
 
 	add_header(ctx, "Connection: close");
 
-	const char *ua = c2_transport_ua(t);
-	if (ua) {
-		ctx->data.ua = strdup(ua);
-		log_info("ua: %s", ctx->data.ua);
-	}
-
-	const char *raw_args = c2_transport_args(t);
-	if (raw_args && strlen(raw_args)) {
-		char *args = strdup(raw_args);
-		if (args) {
+	char *args = strchr(ctx->uri, '|');
+	if (args) {
+		*args = '\0';
+		if (strlen(++args)) {
 			size_t argc = 0;
 			char **argv = argv_split(args, NULL, &argc);
-			if (argv) {
-				for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
-					if (strcmp(argv[i], "--host") == 0) {
-						char *host_header = NULL;
-						if (asprintf(&host_header, "Host: %s", argv[i + 1]) != -1) {
-							add_header(ctx, host_header);
-							free(host_header);
-						}
-					}
-					if (strcmp(argv[i], "--referer") == 0) {
-						ctx->data.referer = strdup(argv[i + 1]);
-						log_info("referer: %s", ctx->data.referer);
-					}
-					if (strcmp(argv[i], "--cookie") == 0) {
-						ctx->data.cookie_list = strdup(argv[i + 1]);
-						log_info("cookie: %s", ctx->data.cookie_list);
-					}
-					if (strcmp(argv[i], "--header") == 0) {
-						add_header(ctx, argv[i + 1]);
-						log_info("header: %s", argv[i + 1]);
+			for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
+				if (strcmp(argv[i], "--host") == 0) {
+					char *host_header = NULL;
+					if (asprintf(&host_header, "Host: %s", argv[i + 1]) != -1) {
+						add_header(ctx, host_header);
+						free(host_header);
 					}
 				}
-				free(argv);
+				if (strcmp(argv[i], "--ua") == 0) {
+					ctx->data.ua = strdup(argv[i + 1]);
+					log_info("ua: %s", ctx->data.ua);
+				}
+				if (strcmp(argv[i], "--referer") == 0) {
+					ctx->data.referer = strdup(argv[i + 1]);
+					log_info("referer: %s", ctx->data.referer);
+				}
+				if (strcmp(argv[i], "--cookie") == 0) {
+					ctx->data.cookie_list = strdup(argv[i + 1]);
+					log_info("cookie: %s", ctx->data.cookie_list);
+				}
+				if (strcmp(argv[i], "--header") == 0) {
+					add_header(ctx, argv[i + 1]);
+					log_info("header: %s", argv[i + 1]);
+				}
 			}
-			free(args);
 		}
 	}
 
