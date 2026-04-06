@@ -669,6 +669,7 @@ int http_transport_init(struct c2_transport *t)
 
 	add_header(ctx, "Connection: close");
 
+<<<<<<< HEAD
 	/* Apply config from TLV config block if available */
 	struct c2_transport_config *tc = c2_transport_get_config(t);
 	if (tc) {
@@ -693,10 +694,6 @@ int http_transport_init(struct c2_transport *t)
 	}
 
 	/* Legacy: parse args after | in URI */
-	char *args = strchr(ctx->uri, '|');
-	if (args) {
-		*args = '\0';
-		if (strlen(++args)) {
 	const char *ua = c2_transport_ua(t);
 	if (ua) {
 		ctx->data.ua = strdup(ua);
@@ -721,7 +718,6 @@ int http_transport_init(struct c2_transport *t)
 					add_header(ctx, argv[i + 1]);
 				}
 			}
-			free(args);
 		}
 	}
 
