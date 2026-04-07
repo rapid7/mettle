@@ -41,7 +41,6 @@ struct http_ctx {
 	bool online;
 };
 
-static int add_header(struct http_ctx *ctx, const char *header);
 static void reset_profile_headers(struct http_ctx *ctx);
 static void http_ctx_free(struct http_ctx *ctx);
 
@@ -51,6 +50,14 @@ static void http_ctx_free(struct http_ctx *ctx);
  * with the other encode/decode helpers; the buffer is null-terminated.
  */
 static unsigned char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
+
+int http_transport_egress_pending(struct c2_transport *t)
+{
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	return buffer_queue_len(ctx->egress) > 0;
+}
+
+static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	unsigned char *b64 = malloc(B64_ENCODED_LEN(src_len));
 	if (!b64) return NULL;
@@ -669,7 +676,6 @@ int http_transport_init(struct c2_transport *t)
 
 	add_header(ctx, "Connection: close");
 
-<<<<<<< HEAD
 	/* Apply config from TLV config block if available */
 	struct c2_transport_config *tc = c2_transport_get_config(t);
 	if (tc) {
