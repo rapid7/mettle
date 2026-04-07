@@ -20,7 +20,7 @@ struct tcp_ctx {
 int c2_transport_get_socket_fd(struct c2_transport *t)
 {
 
-	if (t == NULL || strcmp(c2_get_proto(t),"tcp") ) {
+	if (t == NULL || ( strcmp(c2_get_proto(t),"tcp") && strcmp(c2_get_proto(t),"fd") )) {
 		return -1;
 	}
 	struct tcp_ctx *ctx = (struct tcp_ctx *)c2_transport_get_ctx(t);
