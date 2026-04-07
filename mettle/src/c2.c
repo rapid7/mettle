@@ -187,6 +187,17 @@ static void transport_tx(struct c2 *c2)
 	}
 }
 
+int c2_transport_egress_pending(struct c2 *c2)
+{
+	struct c2_transport *t = c2->curr_transport;
+	
+	if (strcmp(c2_get_proto(t), "tcp") == 0) {                                                                                  
+        	return 0;                                                                                                               
+        }
+
+	return http_transport_egress_pending(t);
+}
+
 ssize_t c2_read(struct c2 *c2, void *buf, size_t buflen)
 {
 	return buffer_queue_remove(c2->ingress, buf, buflen);

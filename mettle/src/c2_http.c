@@ -27,6 +27,12 @@ struct http_ctx {
 	bool online;
 };
 
+int http_transport_egress_pending(struct c2_transport *t)
+{
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	return buffer_queue_len(ctx->egress) > 0;
+}
+
 static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);

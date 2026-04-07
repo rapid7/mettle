@@ -23,6 +23,11 @@
 
 static void migrate_break_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
+	struct mettle *m = w->data;
+	struct c2 *c2 = mettle_get_c2(m);
+	
+	while(c2_transport_egress_pending(c2)){};
+
 	free(w);
 	ev_break(loop, EVBREAK_ALL);
 }
@@ -64,15 +69,17 @@ static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
 		if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid, fd))
 		{
 			struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
-
+			
 			/*
-			 * The HTTP transport can take a while to detect the migrated session, so we need to wait here until it does. 2 seconds should be more than enough time for the transport to detect the new session and kill this one.
+			 * The TCP response is sent faster than HTTP response, so we need to make sure that the Mettle is killed after the response is sent.
 			 */
 			ev_timer *break_timer = malloc(sizeof(ev_timer));
 			if (break_timer) {
-				ev_timer_init(break_timer, migrate_break_cb, 2.0, 0);
+				break_timer->data = m;
+				ev_timer_init(break_timer, migrate_break_cb, 0.5, 0);
 				ev_timer_start(mettle_get_loop(m), break_timer);
 			} else {
+				// I guess the mettle dies
 				ev_break(mettle_get_loop(m), EVBREAK_ALL);
 			}
 			return p;

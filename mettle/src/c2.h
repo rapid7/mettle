@@ -54,6 +54,8 @@ struct c2_transport_cbs {
 	void (*free)(struct c2_transport *t);
 };
 
+
+
 int c2_register_transport_type(struct c2 *c2, const char *proto,
 	struct c2_transport_cbs *cbs);
 
@@ -77,6 +79,8 @@ void c2_transport_ingress_buf(struct c2_transport *t, void *buf, size_t buflen);
 void c2_transport_ingress_queue(struct c2_transport *t, struct buffer_queue *src);
 
 int c2_transport_get_socket_fd(struct c2_transport *t);
+
+int c2_transport_egress_pending(struct c2 *c2);
 
 struct c2_transport_type * c2_get_transport_type(struct c2_transport *t);
 char * c2_get_proto(struct c2_transport *t);
