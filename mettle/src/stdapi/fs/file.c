@@ -553,11 +553,31 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	if (path == NULL) {
 		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
 	}
+
 	path_dup = strdup(path);
+
+	if (path_dup == NULL) {
+		return tlv_packet_response_result(ctx, TLV_RESULT_ENOMEM);
+	}
 
 	// take into account null byte at the end of path and the one we add in sprintf
 	base_dir = malloc(strlen(path_dup)+2);
+	
+	if(base_dir == NULL)
+	{
+		free(path_dup);
+		return tlv_packet_response_result(ctx, TLV_RESULT_ENOMEM);
+	}
+
 	tmp = malloc(strlen(path_dup)+2);
+	
+	if(tmp == NULL)
+	{
+		free(path_dup);
+		free(base_dir);
+		return tlv_packet_response_result(ctx, TLV_RESULT_ENOMEM);
+	}
+
 	dir = strtok(path_dup, "/");
 	
 	//address absolute paths — check original path since strtok modifies path_dup
@@ -578,7 +598,13 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 				if(lstat(base_dir, &f_info) != 0)
 		#endif
 				{
-					eio_mkdir(base_dir, 0777, 0, NULL, NULL);
+					if(!eio_mkdir(base_dir, 0777, 0, NULL, NULL))
+					{
+						free(path_dup);
+						free(base_dir);
+						free(tmp);
+						return tlv_packet_response_result(ctx, errno);
+					}
 				}
 		memset(&f_info, 0, sizeof(struct stat));
 		dir = strtok(NULL, "/");
