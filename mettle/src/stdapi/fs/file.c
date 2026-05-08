@@ -598,7 +598,7 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 				if(lstat(base_dir, &f_info) != 0)
 		#endif
 				{
-					if(!eio_mkdir(base_dir, 0777, 0, NULL, NULL))
+					if(mkdir(base_dir, 0777) != 0)
 					{
 						free(path_dup);
 						free(base_dir);
