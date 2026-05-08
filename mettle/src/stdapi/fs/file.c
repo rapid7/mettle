@@ -598,7 +598,11 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 				if(lstat(base_dir, &f_info) != 0)
 		#endif
 				{
+					#ifndef __MINGW32__
 					if(mkdir(base_dir, 0777) != 0)
+					#else
+					if(mkdir(base_dir) != 0)
+					#endif
 					{
 						free(path_dup);
 						free(base_dir);
