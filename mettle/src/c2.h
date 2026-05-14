@@ -34,10 +34,13 @@ struct c2_transport_config {
 	uint32_t retry_total;
 	uint32_t retry_wait;
 	char *proxy_url;
+	char *proxy_user;
+	char *proxy_pass;
 	char *user_agent;
 	char *custom_headers;
 	void *cert_hash;
 	size_t cert_hash_len;
+	char *c2_uuid;
 	struct c2_verb_config *c2_get;
 	struct c2_verb_config *c2_post;
 };

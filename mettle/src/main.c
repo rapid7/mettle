@@ -400,10 +400,16 @@ static int parse_config_block(struct mettle *m)
 		const char *s;
 		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_URL);
 		if (s) tc->proxy_url = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_USER);
+		if (s) tc->proxy_user = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_PASS);
+		if (s) tc->proxy_pass = strdup(s);
 		s = tlv_packet_get_str(group, TLV_TYPE_C2_UA);
 		if (s) tc->user_agent = strdup(s);
 		s = tlv_packet_get_str(group, TLV_TYPE_C2_HEADERS);
 		if (s) tc->custom_headers = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_UUID);
+		if (s) tc->c2_uuid = strdup(s);
 
 		size_t hash_len = 0;
 		void *hash = tlv_packet_get_raw(group, TLV_TYPE_C2_CERT_HASH, &hash_len);

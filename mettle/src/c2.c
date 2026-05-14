@@ -177,9 +177,12 @@ void c2_transport_config_free(struct c2_transport_config *tc)
 {
 	if (tc) {
 		free(tc->proxy_url);
+		free(tc->proxy_user);
+		free(tc->proxy_pass);
 		free(tc->user_agent);
 		free(tc->custom_headers);
 		free(tc->cert_hash);
+		free(tc->c2_uuid);
 		c2_verb_config_free(tc->c2_get);
 		c2_verb_config_free(tc->c2_post);
 		free(tc);
