@@ -52,6 +52,10 @@ module MetasploitPayloads
     def generate_argv
       cmd_line = 'mettle '
       @config.each do |opt, val|
+        # :config_block is embedded into the binary via add_config_block (a
+        # TLV blob parsed natively); it is not a command-line option.
+        next if opt == :config_block
+
         cmd_line << "-#{short_opt(opt)} \"#{val}\" "
       end
       if cmd_line.length > CMDLINE_MAX
