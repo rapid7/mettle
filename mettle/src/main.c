@@ -297,22 +297,10 @@ static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uin
 			vc->suffix_len = len;
 		}
 	}
-	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_UUID_PREFIX, &len);
-	if (raw && len > 0) {
-		vc->uuid_prefix = malloc(len);
-		if (vc->uuid_prefix) {
-			memcpy(vc->uuid_prefix, raw, len);
-			vc->uuid_prefix_len = len;
-		}
-	}
-	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_UUID_SUFFIX, &len);
-	if (raw && len > 0) {
-		vc->uuid_suffix = malloc(len);
-		if (vc->uuid_suffix) {
-			memcpy(vc->uuid_suffix, raw, len);
-			vc->uuid_suffix_len = len;
-		}
-	}
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_PREFIX);
+	if (s) vc->uuid_prefix = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_SUFFIX);
+	if (s) vc->uuid_suffix = strdup(s);
 
 	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_GET);
 	if (s) vc->uuid_get = strdup(s);

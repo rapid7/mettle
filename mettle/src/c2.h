@@ -21,10 +21,8 @@ struct c2_verb_config {
 	size_t prefix_len;
 	void *suffix;
 	size_t suffix_len;
-	void *uuid_prefix;
-	size_t uuid_prefix_len;
-	void *uuid_suffix;
-	size_t uuid_suffix_len;
+	char *uuid_prefix;
+	char *uuid_suffix;
 	int prefix_skip;
 	int suffix_skip;
 	char *uuid_get;
