@@ -160,20 +160,22 @@ static char *render_uuid(struct c2_verb_config *vc, const char *uuid)
 	void *encoded = c2_encode(uuid, uuid_len, vc->enc_uuid, &encoded_len);
 	if (!encoded) return NULL;
 
-	size_t total = vc->uuid_prefix_len + encoded_len + vc->uuid_suffix_len;
+	size_t prefix_len = vc->uuid_prefix ? strlen(vc->uuid_prefix) : 0;
+	size_t suffix_len = vc->uuid_suffix ? strlen(vc->uuid_suffix) : 0;
+	size_t total = prefix_len + encoded_len + suffix_len;
 	char *out = malloc(total + 1);
 	if (!out) { free(encoded); return NULL; }
 
 	char *p = out;
-	if (vc->uuid_prefix_len > 0) {
-		memcpy(p, vc->uuid_prefix, vc->uuid_prefix_len);
-		p += vc->uuid_prefix_len;
+	if (prefix_len > 0) {
+		memcpy(p, vc->uuid_prefix, prefix_len);
+		p += prefix_len;
 	}
 	memcpy(p, encoded, encoded_len);
 	p += encoded_len;
-	if (vc->uuid_suffix_len > 0) {
-		memcpy(p, vc->uuid_suffix, vc->uuid_suffix_len);
-		p += vc->uuid_suffix_len;
+	if (suffix_len > 0) {
+		memcpy(p, vc->uuid_suffix, suffix_len);
+		p += suffix_len;
 	}
 	*p = '\0';
 	free(encoded);
