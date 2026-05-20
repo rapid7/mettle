@@ -275,6 +275,7 @@ static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uin
 
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_INBOUND, (uint32_t *)&vc->enc_inbound);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_OUTBOUND, (uint32_t *)&vc->enc_outbound);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_UUID, (uint32_t *)&vc->enc_uuid);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_PREFIX_SKIP, (uint32_t *)&vc->prefix_skip);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_SUFFIX_SKIP, (uint32_t *)&vc->suffix_skip);
 
@@ -294,6 +295,22 @@ static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uin
 		if (vc->suffix) {
 			memcpy(vc->suffix, raw, len);
 			vc->suffix_len = len;
+		}
+	}
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_UUID_PREFIX, &len);
+	if (raw && len > 0) {
+		vc->uuid_prefix = malloc(len);
+		if (vc->uuid_prefix) {
+			memcpy(vc->uuid_prefix, raw, len);
+			vc->uuid_prefix_len = len;
+		}
+	}
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_UUID_SUFFIX, &len);
+	if (raw && len > 0) {
+		vc->uuid_suffix = malloc(len);
+		if (vc->uuid_suffix) {
+			memcpy(vc->uuid_suffix, raw, len);
+			vc->uuid_suffix_len = len;
 		}
 	}
 

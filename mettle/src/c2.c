@@ -166,6 +166,8 @@ void c2_verb_config_free(struct c2_verb_config *vc)
 		free(vc->uri);
 		free(vc->prefix);
 		free(vc->suffix);
+		free(vc->uuid_prefix);
+		free(vc->uuid_suffix);
 		free(vc->uuid_get);
 		free(vc->uuid_header);
 		free(vc->uuid_cookie);
