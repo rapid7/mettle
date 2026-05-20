@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "argv_split.h"
+#include "extensions.h"
 #include "log.h"
 #include "mettle.h"
 #include "service.h"
@@ -433,6 +434,30 @@ static int parse_config_block(struct mettle *m)
 
 		c2_add_transport_uri_config(c2, url, tc);
 		tlv_packet_free(group);
+	}
+
+	/* Hot-load extensions baked into the config block (EXTENSIONS=) so
+	 * their commands are registered before the first C2 dispatch. */
+	struct tlv_iterator ext_it = {
+		.packet = config,
+		.offset = 0,
+		.value_type = TLV_TYPE_EXTENSION,
+	};
+	size_t ext_group_len = 0;
+	void *ext_group_data;
+	while ((ext_group_data = tlv_packet_iterate(&ext_it, &ext_group_len)) != NULL) {
+		struct tlv_packet *ext_group = tlv_packet_from_raw(TLV_TYPE_EXTENSION, ext_group_data, ext_group_len);
+		if (ext_group == NULL) {
+			continue;
+		}
+		size_t data_len = 0;
+		const unsigned char *ext_data = tlv_packet_get_raw(ext_group, TLV_TYPE_DATA, &data_len);
+		if (ext_data && data_len > 0) {
+			if (!extension_start_binary_image(m, "baked", ext_data, data_len, NULL)) {
+				log_error("Failed to hot-load baked extension");
+			}
+		}
+		tlv_packet_free(ext_group);
 	}
 
 	tlv_packet_free(config);
