@@ -160,10 +160,20 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 	const char *profile_uri = vc->uri;
 	int needs_slash = (profile_uri[0] != '/');
 
-	/* Calculate max URL length */
+	/*
+	 * When the profile does not specify a placement for the UUID
+	 * (no uuid_get/uuid_header/uuid_cookie), the handler still needs to
+	 * locate the session via the request path — append the UUID to the
+	 * URI path. Matches PHP/Python behaviour.
+	 */
+	bool uuid_in_path = uuid && !vc->uuid_get && !vc->uuid_header && !vc->uuid_cookie;
+
 	size_t url_len = base_len + 1 + strlen(profile_uri) + 1;
 	if (uuid && vc->uuid_get) {
 		url_len += 1 + strlen(vc->uuid_get) + 1 + strlen(uuid);
+	}
+	if (uuid_in_path) {
+		url_len += 1 + strlen(uuid);
 	}
 
 	char *url = malloc(url_len + 1);
@@ -174,6 +184,12 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 		needs_slash ? "/" : "",
 		profile_uri);
 
+	if (uuid_in_path) {
+		bool need_sep = written > 0 && url[written - 1] != '/';
+		written += snprintf(url + written, url_len + 1 - written, "%s%s",
+			need_sep ? "/" : "", uuid);
+	}
+
 	if (uuid && vc->uuid_get) {
 		char sep = strchr(url, '?') ? '&' : '?';
 		snprintf(url + written, url_len + 1 - written, "%c%s=%s", sep, vc->uuid_get, uuid);
@@ -182,64 +198,87 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 	return url;
 }
 
-static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
+static void *decode_response_with_profile(struct buffer_queue *response_q,
+	struct c2_verb_config *vc, size_t *out_len);
+
+static void patch_uuid(struct http_ctx *ctx, struct buffer_queue *q)
 {
-	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, q);
+	struct c2_transport_config *tc = c2_transport_get_config(ctx->t);
+	struct c2_verb_config *get_profile = tc ? tc->c2_get : NULL;
+
+	/*
+	 * The framework wraps the patch-uuid response via the GET profile's
+	 * outbound transform (prefix/suffix + encoding). Decode through the
+	 * same profile before parsing the TLV.
+	 */
+	size_t decoded_len = 0;
+	void *decoded = decode_response_with_profile(q, get_profile, &decoded_len);
+	if (!decoded) {
+		return;
+	}
+
+	struct buffer_queue *decoded_q = buffer_queue_new();
+	if (!decoded_q) {
+		free(decoded);
+		return;
+	}
+	buffer_queue_add(decoded_q, decoded, decoded_len);
+	free(decoded);
+
+	struct tlv_packet *request = tlv_packet_read_buffer_queue(NULL, decoded_q);
+	buffer_queue_free(decoded_q);
 	if (request) {
 		uint32_t command_id = 0;
 		tlv_packet_get_u32(request, TLV_TYPE_COMMAND_ID, &command_id);
 
-		if (command_id == COMMAND_ID_CORE_PATCH_URL) {
-			/*
-			 * Two encodings supported:
-			 *  - TLV_TYPE_C2_UUID (newer): bare UUID string; replace the
-			 *    last path segment and update tc->c2_uuid so subsequent
-			 *    profile placement (uuid_get/header/cookie) picks it up.
-			 *  - TLV_TYPE_TRANS_URL (legacy): the full URI suffix.
-			 */
+		if (command_id == COMMAND_ID_CORE_PATCH_UUID) {
 			const char *new_uuid = tlv_packet_get_str(request, TLV_TYPE_C2_UUID);
-			const char *new_uri = tlv_packet_get_str(request, TLV_TYPE_TRANS_URL);
-
-			char *replacement = NULL;
-			if (new_uuid) {
-				if (asprintf(&replacement, "/%s", new_uuid) < 0) {
-					replacement = NULL;
-				}
-				struct c2_transport_config *tc = c2_transport_get_config(ctx->t);
-				if (tc) {
-					free(tc->c2_uuid);
-					tc->c2_uuid = strdup(new_uuid);
-				}
-			} else if (new_uri) {
-				replacement = strdup(new_uri);
-			}
-
-			if (replacement) {
-				char *old_uri = ctx->uri;
-				char *split = ctx->uri;
-				char *host = strstr(old_uri, "://");
-				if (host) {
-					split = strchr(host + 3, '/');
-				} else {
-					split = strrchr(old_uri, '/');
-				}
-				if (split) {
-					*split = '\0';
-				}
-				if (asprintf(&ctx->uri, "%s%s", ctx->uri, replacement) > 0) {
-					free(old_uri);
-				}
-				free(replacement);
+			if (new_uuid && tc) {
+				free(tc->c2_uuid);
+				tc->c2_uuid = strdup(new_uuid);
 			}
 		}
 		tlv_packet_free(request);
 	}
-	else {
-		/**
-		 * put packet in ingress? also consider making `core_patch_url` actually core
-		 * and expect the transport or get changed on patch request
-		**/
+}
+
+/*
+ * Drain a response queue and apply the inbound C2 profile transform
+ * (prefix/suffix skip + encoding). Returns a malloc'd buffer the caller
+ * must free, or NULL on empty/error. *out_len is set on success.
+ */
+static void *decode_response_with_profile(struct buffer_queue *response_q,
+	struct c2_verb_config *vc, size_t *out_len)
+{
+	void *raw = NULL;
+	ssize_t raw_len = buffer_queue_remove_all(response_q, &raw);
+	if (!raw || raw_len <= 0) {
+		free(raw);
+		return NULL;
 	}
+
+	if (!vc) {
+		*out_len = (size_t)raw_len;
+		return raw;
+	}
+
+	int start = vc->prefix_skip;
+	int end = raw_len - vc->suffix_skip;
+	if (start >= end || start < 0 || end > (int)raw_len) {
+		start = 0;
+		end = raw_len;
+	}
+	size_t stripped_len = end - start;
+
+	size_t decoded_len = 0;
+	void *decoded = c2_decode((char *)raw + start, stripped_len, vc->enc_inbound, &decoded_len);
+	free(raw);
+	if (!decoded || decoded_len == 0) {
+		free(decoded);
+		return NULL;
+	}
+	*out_len = decoded_len;
+	return decoded;
 }
 
 /*
@@ -254,31 +293,12 @@ static void process_response_with_profile(struct http_ctx *ctx,
 		return;
 	}
 
-	void *raw = NULL;
-	ssize_t raw_len = buffer_queue_remove_all(response_q, &raw);
-	if (!raw || raw_len <= 0) {
-		free(raw);
-		return;
-	}
-
-	/* Strip prefix/suffix bytes */
-	int start = vc->prefix_skip;
-	int end = raw_len - vc->suffix_skip;
-	if (start >= end || start < 0 || end > (int)raw_len) {
-		start = 0;
-		end = raw_len;
-	}
-	size_t stripped_len = end - start;
-
-	/* Decode */
 	size_t decoded_len = 0;
-	void *decoded = c2_decode((char *)raw + start, stripped_len, vc->enc, &decoded_len);
-	free(raw);
-
-	if (decoded && decoded_len > 0) {
+	void *decoded = decode_response_with_profile(response_q, vc, &decoded_len);
+	if (decoded) {
 		c2_transport_ingress_buf(ctx->t, decoded, decoded_len);
+		free(decoded);
 	}
-	free(decoded);
 }
 
 /*
@@ -293,7 +313,7 @@ static void *encode_egress_with_profile(void *data, size_t data_len,
 	}
 
 	size_t encoded_len = 0;
-	void *encoded = c2_encode(data, data_len, vc->enc, &encoded_len);
+	void *encoded = c2_encode(data, data_len, vc->enc_outbound, &encoded_len);
 	free(data);
 	if (!encoded) return NULL;
 
@@ -347,7 +367,7 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 	if (code == 200) {
 		struct buffer_queue *q = http_conn_response_queue(conn);
 		if (ctx->first_packet) {
-			patch_uri(ctx, q);
+			patch_uuid(ctx, q);
 			ctx->first_packet = 0;
 			got_command = true;
 		} else {

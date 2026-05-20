@@ -273,7 +273,8 @@ static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uin
 	s = tlv_packet_get_str(vp, TLV_TYPE_C2_URI);
 	if (s) vc->uri = strdup(s);
 
-	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC, (uint32_t *)&vc->enc);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_INBOUND, (uint32_t *)&vc->enc_inbound);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_OUTBOUND, (uint32_t *)&vc->enc_outbound);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_PREFIX_SKIP, (uint32_t *)&vc->prefix_skip);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_SUFFIX_SKIP, (uint32_t *)&vc->suffix_skip);
 

@@ -14,7 +14,8 @@
  */
 struct c2_verb_config {
 	char *uri;
-	int enc;
+	int enc_inbound;
+	int enc_outbound;
 	void *prefix;
 	size_t prefix_len;
 	void *suffix;
