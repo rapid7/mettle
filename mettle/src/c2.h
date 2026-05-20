@@ -16,10 +16,15 @@ struct c2_verb_config {
 	char *uri;
 	int enc_inbound;
 	int enc_outbound;
+	int enc_uuid;
 	void *prefix;
 	size_t prefix_len;
 	void *suffix;
 	size_t suffix_len;
+	void *uuid_prefix;
+	size_t uuid_prefix_len;
+	void *uuid_suffix;
+	size_t uuid_suffix_len;
 	int prefix_skip;
 	int suffix_skip;
 	char *uuid_get;

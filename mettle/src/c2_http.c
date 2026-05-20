@@ -144,6 +144,42 @@ static char *get_transport_uuid(struct http_ctx *ctx)
 	return get_uuid_from_uri(ctx->uri);
 }
 
+/*
+ * Apply the profile's UUID transform (encode + prepend + append) to the
+ * raw UUID before placement. Returns a malloc'd null-terminated string
+ * the caller must free, or NULL on failure / empty input.
+ * If vc is NULL, returns a plain strdup(uuid).
+ */
+static char *render_uuid(struct c2_verb_config *vc, const char *uuid)
+{
+	if (!uuid || !*uuid) return NULL;
+	if (!vc) return strdup(uuid);
+
+	size_t uuid_len = strlen(uuid);
+	size_t encoded_len = 0;
+	void *encoded = c2_encode(uuid, uuid_len, vc->enc_uuid, &encoded_len);
+	if (!encoded) return NULL;
+
+	size_t total = vc->uuid_prefix_len + encoded_len + vc->uuid_suffix_len;
+	char *out = malloc(total + 1);
+	if (!out) { free(encoded); return NULL; }
+
+	char *p = out;
+	if (vc->uuid_prefix_len > 0) {
+		memcpy(p, vc->uuid_prefix, vc->uuid_prefix_len);
+		p += vc->uuid_prefix_len;
+	}
+	memcpy(p, encoded, encoded_len);
+	p += encoded_len;
+	if (vc->uuid_suffix_len > 0) {
+		memcpy(p, vc->uuid_suffix, vc->uuid_suffix_len);
+		p += vc->uuid_suffix_len;
+	}
+	*p = '\0';
+	free(encoded);
+	return out;
+}
+
 static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, const char *uuid)
 {
 	if (!vc || !vc->uri) {
@@ -160,24 +196,26 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 	const char *profile_uri = vc->uri;
 	int needs_slash = (profile_uri[0] != '/');
 
+	char *rendered = render_uuid(vc, uuid);
+
 	/*
 	 * When the profile does not specify a placement for the UUID
 	 * (no uuid_get/uuid_header/uuid_cookie), the handler still needs to
 	 * locate the session via the request path — append the UUID to the
 	 * URI path. Matches PHP/Python behaviour.
 	 */
-	bool uuid_in_path = uuid && !vc->uuid_get && !vc->uuid_header && !vc->uuid_cookie;
+	bool uuid_in_path = rendered && !vc->uuid_get && !vc->uuid_header && !vc->uuid_cookie;
 
 	size_t url_len = base_len + 1 + strlen(profile_uri) + 1;
-	if (uuid && vc->uuid_get) {
-		url_len += 1 + strlen(vc->uuid_get) + 1 + strlen(uuid);
+	if (rendered && vc->uuid_get) {
+		url_len += 1 + strlen(vc->uuid_get) + 1 + strlen(rendered);
 	}
 	if (uuid_in_path) {
-		url_len += 1 + strlen(uuid);
+		url_len += 1 + strlen(rendered);
 	}
 
 	char *url = malloc(url_len + 1);
-	if (!url) return NULL;
+	if (!url) { free(rendered); return NULL; }
 
 	int written = snprintf(url, url_len + 1, "%.*s%s%s",
 		(int)base_len, base_uri,
@@ -187,14 +225,15 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 	if (uuid_in_path) {
 		bool need_sep = written > 0 && url[written - 1] != '/';
 		written += snprintf(url + written, url_len + 1 - written, "%s%s",
-			need_sep ? "/" : "", uuid);
+			need_sep ? "/" : "", rendered);
 	}
 
-	if (uuid && vc->uuid_get) {
+	if (rendered && vc->uuid_get) {
 		char sep = strchr(url, '?') ? '&' : '?';
-		snprintf(url + written, url_len + 1 - written, "%c%s=%s", sep, vc->uuid_get, uuid);
+		snprintf(url + written, url_len + 1 - written, "%c%s=%s", sep, vc->uuid_get, rendered);
 	}
 
+	free(rendered);
 	return url;
 }
 
@@ -408,21 +447,25 @@ static void add_profile_headers(struct http_ctx *ctx, struct c2_verb_config *vc)
 	char *uuid = get_transport_uuid(ctx);
 	if (!uuid) return;
 
+	char *rendered = render_uuid(vc, uuid);
+	free(uuid);
+	if (!rendered) return;
+
 	if (vc->uuid_header) {
 		char *hdr = NULL;
-		if (asprintf(&hdr, "%s: %s", vc->uuid_header, uuid) != -1) {
+		if (asprintf(&hdr, "%s: %s", vc->uuid_header, rendered) != -1) {
 			add_header(ctx, hdr);
 			free(hdr);
 		}
 	}
 	if (vc->uuid_cookie) {
 		char *cookie = NULL;
-		if (asprintf(&cookie, "%s=%s", vc->uuid_cookie, uuid) != -1) {
+		if (asprintf(&cookie, "%s=%s", vc->uuid_cookie, rendered) != -1) {
 			free(ctx->data.cookie_list);
 			ctx->data.cookie_list = cookie;
 		}
 	}
-	free(uuid);
+	free(rendered);
 }
 
 static void http_poll_timer_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
