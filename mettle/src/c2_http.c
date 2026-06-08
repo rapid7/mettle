@@ -184,16 +184,27 @@ static char *render_uuid(struct c2_verb_config *vc, const char *uuid)
 
 static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, const char *uuid)
 {
-	if (!vc || !vc->uri) {
-		return strdup(base_uri);
-	}
-
 	/* Extract scheme://host:port from base URI */
 	const char *proto_end = strstr(base_uri, "://");
 	if (!proto_end) return strdup(base_uri);
 	const char *host_start = proto_end + 3;
 	const char *path_start = strchr(host_start, '/');
 	size_t base_len = path_start ? (size_t)(path_start - base_uri) : strlen(base_uri);
+
+	/*
+	 * Non-MC2 mode: replace the URL path with /uuid/ so the framework
+	 * can route requests to the session created by PATCH_UUID. Without
+	 * this, the client keeps polling the original stageless init URL
+	 * and the handler reissues a fresh redirect every time.
+	 */
+	if (!vc || !vc->uri) {
+		if (!uuid || !*uuid) return strdup(base_uri);
+		size_t url_len = base_len + 1 + strlen(uuid) + 1;
+		char *url = malloc(url_len + 1);
+		if (!url) return NULL;
+		snprintf(url, url_len + 1, "%.*s/%s", (int)base_len, base_uri, uuid);
+		return url;
+	}
 
 	const char *profile_uri = vc->uri;
 	int needs_slash = (profile_uri[0] != '/');
