@@ -16,6 +16,11 @@
 #include "tlv.h"
 #include "command_ids.h"
 
+/* Encoded output is 4 chars per 3 input bytes (rounded up) + null. */
+#define B64_ENCODED_LEN(len) (((len + 2) / 3) * 4 + 1)
+/* Decoded output is at most 3 bytes per 4 input chars + null. */
+#define B64_DECODED_LEN(len) (((len + 3) / 4) * 3 + 1)
+
 struct http_ctx {
 	struct c2_transport *t;
 	char *uri;
@@ -37,8 +42,7 @@ static void http_ctx_free(struct http_ctx *ctx);
  */
 static char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
 {
-	size_t b64_len = ((src_len + 2) / 3) * 4 + 1;
-	char *b64 = malloc(b64_len);
+	char *b64 = malloc(B64_ENCODED_LEN(src_len));
 	if (!b64) return NULL;
 
 	int len = base64encode(b64, src, src_len);
@@ -56,8 +60,7 @@ static char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
 static void *c2_encode(const void *data, size_t len, int enc, size_t *out_len)
 {
 	if (enc == C2_ENCODING_B64) {
-		size_t b64_len = ((len + 2) / 3) * 4 + 1;
-		char *out = malloc(b64_len);
+		char *out = malloc(B64_ENCODED_LEN(len));
 		if (!out) return NULL;
 		int olen = base64encode(out, data, len);
 		out[olen] = '\0';
@@ -78,8 +81,7 @@ static void *c2_decode(const void *data, size_t len, int enc, size_t *out_len)
 {
 	if (enc == C2_ENCODING_B64 || enc == C2_ENCODING_B64URL) {
 		/* base64decode handles both standard and URL-safe variants */
-		size_t max_len = ((len + 3) / 4) * 3 + 1;
-		char *out = malloc(max_len);
+		char *out = malloc(B64_DECODED_LEN(len));
 		if (!out) return NULL;
 		/* Need null-terminated string for base64decode */
 		char *tmp = malloc(len + 1);
