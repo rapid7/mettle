@@ -86,11 +86,17 @@ module MetasploitPayloads
       end
     end
 
+    # Layout in the binary: [length:4 BE][config_bytes][zero padding] within
+    # the CONFIG_BLOCK_MAX-byte slot. Carrying the length explicitly avoids
+    # a trailing-null ambiguity — the XOR-encoded config can legitimately
+    # end in 0x00, which would otherwise be eaten by a backward scan.
     def add_config_block(bin, config_bytes)
-      if config_bytes.length > CONFIG_BLOCK_MAX
+      usable = CONFIG_BLOCK_MAX - 4
+      if config_bytes.length > usable
         raise Mettle::Error, 'mettle config block too large', caller
       end
-      padded = config_bytes + "\x00" * (CONFIG_BLOCK_MAX - config_bytes.length)
+      payload = [config_bytes.length].pack('N') + config_bytes
+      padded = payload + "\x00" * (CONFIG_BLOCK_MAX - payload.length)
       bin.sub(CONFIG_BLOCK_SIG + "\x00" * (CONFIG_BLOCK_MAX - CONFIG_BLOCK_SIG.length), padded)
     end
 

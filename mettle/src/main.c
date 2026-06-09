@@ -4,9 +4,11 @@
  * @file main.c
  */
 
+#include <arpa/inet.h>
 #include <getopt.h>
 #include <libgen.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -321,13 +323,15 @@ static int parse_config_block(struct mettle *m)
 		return -1;
 	}
 
-	/* Find the actual data length by scanning backward past null padding */
-	size_t data_len = CONFIG_BLOCK_MAX;
-	for (size_t i = CONFIG_BLOCK_MAX - 1; i > 0; i--) {
-		if (config_block_data[i] != '\0') {
-			data_len = i + 1;
-			break;
-		}
+	/*
+	 * Layout when patched: [length:4 BE][config_bytes][zero padding].
+	 * Carrying the length explicitly avoids a trailing-null ambiguity —
+	 * the XOR-encoded config can legitimately end in 0x00.
+	 */
+	size_t data_len = ntohl(*(const uint32_t *)config_block_data);
+	if (data_len == 0 || data_len > CONFIG_BLOCK_MAX - 4) {
+		log_error("config block length %zu out of range", data_len);
+		return -1;
 	}
 
 	/* Feed the raw config bytes through the standard TLV packet reader */
@@ -335,7 +339,7 @@ static int parse_config_block(struct mettle *m)
 	if (q == NULL) {
 		return -1;
 	}
-	buffer_queue_add(q, config_block_data, data_len);
+	buffer_queue_add(q, config_block_data + sizeof(const uint32_t), data_len);
 	struct tlv_packet *config = tlv_packet_read_buffer_queue(NULL, q);
 	buffer_queue_free(q);
 	if (config == NULL) {
