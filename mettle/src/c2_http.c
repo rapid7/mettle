@@ -38,14 +38,16 @@ static int add_header(struct http_ctx *ctx, const char *header);
 static void http_ctx_free(struct http_ctx *ctx);
 
 /*
- * Base64URL encode: uses -_ instead of +/, no padding
+ * Base64URL encode: uses -_ instead of +/, no padding. Output is
+ * ASCII text but returned as an unsigned-byte buffer for uniformity
+ * with the other encode/decode helpers; the buffer is null-terminated.
  */
-static char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
+static unsigned char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
 {
-	char *b64 = malloc(B64_ENCODED_LEN(src_len));
+	unsigned char *b64 = malloc(B64_ENCODED_LEN(src_len));
 	if (!b64) return NULL;
 
-	int len = base64encode(b64, src, src_len);
+	int len = base64encode((char *)b64, src, src_len);
 	/* Convert to URL-safe and strip padding */
 	for (int i = 0; i < len; i++) {
 		if (b64[i] == '+') b64[i] = '-';
@@ -57,19 +59,19 @@ static char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
 	return b64;
 }
 
-static void *c2_encode(const void *data, size_t len, int enc, size_t *out_len)
+static unsigned char *c2_encode(const void *data, size_t len, int enc, size_t *out_len)
 {
 	if (enc == C2_ENCODING_B64) {
-		char *out = malloc(B64_ENCODED_LEN(len));
+		unsigned char *out = malloc(B64_ENCODED_LEN(len));
 		if (!out) return NULL;
-		int olen = base64encode(out, data, len);
+		int olen = base64encode((char *)out, data, len);
 		out[olen] = '\0';
 		*out_len = olen;
 		return out;
 	} else if (enc == C2_ENCODING_B64URL) {
 		return b64url_encode(data, len, out_len);
 	}
-	void *out = malloc(len);
+	unsigned char *out = malloc(len);
 	if (out) {
 		memcpy(out, data, len);
 		*out_len = len;
@@ -77,11 +79,11 @@ static void *c2_encode(const void *data, size_t len, int enc, size_t *out_len)
 	return out;
 }
 
-static void *c2_decode(const void *data, size_t len, int enc, size_t *out_len)
+static unsigned char *c2_decode(const void *data, size_t len, int enc, size_t *out_len)
 {
 	if (enc == C2_ENCODING_B64 || enc == C2_ENCODING_B64URL) {
 		/* base64decode handles both standard and URL-safe variants */
-		char *out = malloc(B64_DECODED_LEN(len));
+		unsigned char *out = malloc(B64_DECODED_LEN(len));
 		if (!out) return NULL;
 		/* Need null-terminated string for base64decode */
 		char *tmp = malloc(len + 1);
@@ -93,13 +95,13 @@ static void *c2_decode(const void *data, size_t len, int enc, size_t *out_len)
 			else if (tmp[i] == '_') tmp[i] = '/';
 		}
 		tmp[len] = '\0';
-		int olen = base64decode(out, tmp, len);
+		int olen = base64decode((char *)out, tmp, len);
 		free(tmp);
 		if (olen < 0) { free(out); return NULL; }
 		*out_len = olen;
 		return out;
 	}
-	void *out = malloc(len);
+	unsigned char *out = malloc(len);
 	if (out) {
 		memcpy(out, data, len);
 		*out_len = len;
@@ -159,7 +161,7 @@ static char *render_uuid(struct c2_verb_config *vc, const char *uuid)
 
 	size_t uuid_len = strlen(uuid);
 	size_t encoded_len = 0;
-	void *encoded = c2_encode(uuid, uuid_len, vc->enc_uuid, &encoded_len);
+	unsigned char *encoded = c2_encode(uuid, uuid_len, vc->enc_uuid, &encoded_len);
 	if (!encoded) return NULL;
 
 	size_t prefix_len = vc->uuid_prefix ? strlen(vc->uuid_prefix) : 0;
@@ -325,7 +327,7 @@ static void *decode_response_with_profile(struct buffer_queue *response_q,
 	size_t stripped_len = end - start;
 
 	size_t decoded_len = 0;
-	void *decoded = c2_decode((char *)raw + start, stripped_len, vc->enc_inbound, &decoded_len);
+	unsigned char *decoded = c2_decode((char *)raw + start, stripped_len, vc->enc_inbound, &decoded_len);
 	free(raw);
 	if (!decoded || decoded_len == 0) {
 		free(decoded);
@@ -367,7 +369,7 @@ static void *encode_egress_with_profile(void *data, size_t data_len,
 	}
 
 	size_t encoded_len = 0;
-	void *encoded = c2_encode(data, data_len, vc->enc_outbound, &encoded_len);
+	unsigned char *encoded = c2_encode(data, data_len, vc->enc_outbound, &encoded_len);
 	free(data);
 	if (!encoded) return NULL;
 
