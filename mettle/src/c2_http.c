@@ -26,6 +26,13 @@ struct http_ctx {
 	char *uri;
 	struct ev_timer poll_timer;
 	char ** headers;
+	/*
+	 * Number of headers present once http_transport_init finishes — i.e.
+	 * the persistent set (Connection: close, profile custom headers,
+	 * --header args). Anything beyond this index is profile-driven
+	 * per-request state (UUID-in-Host etc.) and gets reset every poll.
+	 */
+	int base_num_headers;
 	struct http_request_data data;
 	struct http_request_opts opts;
 	struct buffer_queue *egress;
@@ -35,6 +42,7 @@ struct http_ctx {
 };
 
 static int add_header(struct http_ctx *ctx, const char *header);
+static void reset_profile_headers(struct http_ctx *ctx);
 static void http_ctx_free(struct http_ctx *ctx);
 
 /*
@@ -459,6 +467,14 @@ static void http_poll_cb(struct http_conn *conn, void *arg)
 
 static void add_profile_headers(struct http_ctx *ctx, struct c2_verb_config *vc)
 {
+	/*
+	 * Drop any profile headers carried over from the previous poll so we
+	 * don't accumulate a fresh Host/UUID line every cycle. Always reset,
+	 * even when vc is NULL, so switching profiles or losing one doesn't
+	 * leak the prior values either.
+	 */
+	reset_profile_headers(ctx);
+
 	if (!vc) return;
 
 	char *uuid = get_transport_uuid(ctx);
@@ -557,12 +573,30 @@ static int add_header(struct http_ctx *ctx, const char *header)
 	ctx->headers = reallocarray(ctx->headers, ctx->data.num_headers + 1,
 			sizeof(char *));
 	if (ctx->headers) {
+		/*
+		 * reallocarray may move the buffer; resync the pointer curl
+		 * reads from so it never derefs a freed array.
+		 */
+		ctx->data.headers = ctx->headers;
 		if ((ctx->headers[ctx->data.num_headers] = strdup(header))) {
 			ctx->data.num_headers++;
 			return 0;
 		}
 	}
 	return -1;
+}
+
+/*
+ * Drop headers added since http_transport_init finished — i.e. any
+ * per-request profile state (UUID-in-Host etc.). The persistent set
+ * captured by base_num_headers is left intact.
+ */
+static void reset_profile_headers(struct http_ctx *ctx)
+{
+	for (int i = ctx->base_num_headers; i < ctx->data.num_headers; i++) {
+		free(ctx->headers[i]);
+	}
+	ctx->data.num_headers = ctx->base_num_headers;
 }
 
 /*
@@ -690,6 +724,7 @@ int http_transport_init(struct c2_transport *t)
 	}
 
 	ctx->data.headers = ctx->headers;
+	ctx->base_num_headers = ctx->data.num_headers;
 	ctx->first_packet = 1;
 	ctx->online = false;
 	ev_init(&ctx->poll_timer, http_poll_timer_cb);
