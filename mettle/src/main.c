@@ -386,6 +386,7 @@ static int parse_config_block(struct mettle *m)
 	};
 	size_t group_len = 0;
 	void *group_data;
+	int transports_added = 0;
 	while ((group_data = tlv_packet_iterate(&i, &group_len)) != NULL) {
 		struct tlv_packet *group = tlv_packet_from_raw(TLV_TYPE_C2, group_data, group_len);
 		if (group == NULL) {
@@ -437,7 +438,18 @@ static int parse_config_block(struct mettle *m)
 		tc->c2_post = parse_c2_verb_group(group, TLV_TYPE_C2_POST);
 
 		c2_add_transport_uri_config(c2, url, tc);
+		transports_added++;
 		tlv_packet_free(group);
+	}
+
+	/*
+	 * Staged payloads ship a config block with session TLVs but no C2
+	 * groups — they inherit the stager's socket via argv "m <fd>". Tell
+	 * the caller "no transports here" so the fd-fallback branch runs.
+	 */
+	if (transports_added == 0) {
+		tlv_packet_free(config);
+		return -1;
 	}
 
 	/* Hot-load extensions baked into the config block (EXTENSIONS=) so
