@@ -13,7 +13,8 @@
  * C2 Profile configuration for GET/POST verbs
  */
 struct c2_verb_config {
-	char *uri;
+	char **uris;        /* candidate request URIs; one chosen at random per request */
+	int uri_count;
 	int enc_inbound;
 	int enc_outbound;
 	int enc_uuid;

@@ -273,8 +273,25 @@ static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uin
 	}
 
 	const char *s;
-	s = tlv_packet_get_str(vp, TLV_TYPE_C2_URI);
-	if (s) vc->uri = strdup(s);
+	/*
+	 * A profile's `set uri` may list several candidate URIs, emitted as
+	 * repeated TLV_TYPE_C2_URI values. Collect them all; the request builder
+	 * picks one at random per request (Cobalt Strike semantics).
+	 */
+	struct tlv_iterator uri_it = {
+		.packet = vp,
+		.offset = 0,
+		.value_type = TLV_TYPE_C2_URI,
+	};
+	char *uri_s;
+	while ((uri_s = tlv_packet_iterate_str(&uri_it)) != NULL) {
+		char **tmp = realloc(vc->uris, sizeof(char *) * (vc->uri_count + 1));
+		if (tmp == NULL) break;
+		vc->uris = tmp;
+		vc->uris[vc->uri_count] = strdup(uri_s);
+		if (vc->uris[vc->uri_count] == NULL) break;
+		vc->uri_count++;
+	}
 
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_INBOUND, (uint32_t *)&vc->enc_inbound);
 	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_OUTBOUND, (uint32_t *)&vc->enc_outbound);
