@@ -209,7 +209,7 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 	 * this, the client keeps polling the original stageless init URL
 	 * and the handler reissues a fresh redirect every time.
 	 */
-	if (!vc || !vc->uri) {
+	if (!vc || vc->uri_count == 0) {
 		if (!uuid || !*uuid) return strdup(base_uri);
 		size_t url_len = base_len + 1 + strlen(uuid) + 1;
 		char *url = malloc(url_len + 1);
@@ -218,7 +218,8 @@ static char *build_profile_url(const char *base_uri, struct c2_verb_config *vc, 
 		return url;
 	}
 
-	const char *profile_uri = vc->uri;
+	/* Pick one of the profile's candidate URIs at random per request. */
+	const char *profile_uri = vc->uris[rand() % vc->uri_count];
 	int needs_slash = (profile_uri[0] != '/');
 
 	char *rendered = render_uuid(vc, uuid);

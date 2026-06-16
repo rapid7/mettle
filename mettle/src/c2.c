@@ -163,7 +163,10 @@ err:
 void c2_verb_config_free(struct c2_verb_config *vc)
 {
 	if (vc) {
-		free(vc->uri);
+		for (int j = 0; j < vc->uri_count; j++) {
+			free(vc->uris[j]);
+		}
+		free(vc->uris);
 		free(vc->prefix);
 		free(vc->suffix);
 		free(vc->uuid_prefix);
