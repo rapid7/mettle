@@ -560,7 +560,7 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_ENOMEM);
 	}
 
-	// take into account null byte at the end of path and the one we add in sprintf
+	// take into account null byte at the end of path and the one we add in snprintf
 	size_t base_max_len = strlen(path_dup) + 2;
 	base_dir = malloc(base_max_len);
 	
