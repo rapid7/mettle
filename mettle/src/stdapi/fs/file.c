@@ -561,7 +561,8 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	}
 
 	// take into account null byte at the end of path and the one we add in sprintf
-	base_dir = malloc(strlen(path_dup)+2);
+	unsigned int base_max_len = strlen(path_dup)+2;
+	base_dir = malloc(base_max_len);
 	
 	if(base_dir == NULL)
 	{
@@ -569,7 +570,7 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 		return tlv_packet_response_result(ctx, TLV_RESULT_ENOMEM);
 	}
 
-	tmp = malloc(strlen(path_dup)+2);
+	tmp = malloc(base_max_len);
 	
 	if(tmp == NULL)
 	{
@@ -583,11 +584,11 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	//address absolute paths — check original path since strtok modifies path_dup
 	if (path[0] == '/')
 	{
-		sprintf(base_dir, "/%s/", dir);
+		snprintf(base_dir, base_max_len, "/%s/", dir);
 	}
 	else
 	{	
-		sprintf(base_dir, "%s/", dir);
+		snprintf(base_dir, base_max_len, "%s/", dir);
 	}
 
 	while(dir != NULL)
@@ -614,7 +615,7 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 		dir = strtok(NULL, "/");
 		if(dir != NULL)
 		{
-			sprintf(tmp, "%s%s/", base_dir, dir);
+			snprintf(tmp, base_max_len, "%s%s/", base_dir, dir);
 			strcpy(base_dir, tmp);
 		}
 	}
