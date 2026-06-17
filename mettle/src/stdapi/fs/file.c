@@ -561,7 +561,7 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	}
 
 	// take into account null byte at the end of path and the one we add in sprintf
-	unsigned int base_max_len = strlen(path_dup)+2;
+	size_t base_max_len = strlen(path_dup) + 2;
 	base_dir = malloc(base_max_len);
 	
 	if(base_dir == NULL)
