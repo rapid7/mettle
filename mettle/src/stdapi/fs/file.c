@@ -580,6 +580,12 @@ fs_mkdir(struct tlv_handler_ctx *ctx)
 	}
 
 	dir = strtok(path_dup, "/");
+
+	if(dir == NULL) {
+		free(path_dup);
+		free(base_dir);
+		return tlv_packet_response_result(ctx, TLV_RESULT_EINVAL);
+	}
 	
 	//address absolute paths — check original path since strtok modifies path_dup
 	if (path[0] == '/')
