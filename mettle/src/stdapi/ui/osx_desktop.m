@@ -9,7 +9,18 @@ struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx)
   uint32_t quality = 0;
   tlv_packet_get_u32(ctx->req, TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY, &quality);
   @autoreleasepool {
-    CGImageRef image = CGDisplayCreateImage(kCGDirectMainDisplay);
+  #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000
+    if ( WX_IS_MACOS_AVAILABLE(14, 4) ) // errors on lower versions of macOS 14
+    {
+        // TODO add ScreenKit implementation
+    }
+    else
+#endif // macOS 10.14+
+    {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 150000
+        CGImageRef image = CGDisplayCreateImage(kCGDirectMainDisplay);
+#endif
+    }
     CFMutableDataRef newImageData = CFDataCreateMutable(NULL, 0);
     CGImageDestinationRef destination = CGImageDestinationCreateWithData(newImageData, kUTTypeJPEG, 1, NULL);
     float compression = quality / 100;
