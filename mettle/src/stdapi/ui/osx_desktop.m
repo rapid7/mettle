@@ -8,20 +8,17 @@ struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx)
   struct tlv_packet *p;
   uint32_t quality = 0;
   tlv_packet_get_u32(ctx->req, TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY, &quality);
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000
+  if (@available(macOS 14.4, *)) {
+    // ScreenCaptureKit is required on macOS 14.4+ but is not yet implemented.
+    return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+  }
+#endif
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 150000
   @autoreleasepool {
-    CGImageRef image;
-  #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000
-    if ( @available(macOS 14.4, *) )// errors on lower versions of macOS 14
-    {
-        // TODO add ScreenKit implementation
-    }
-    else
-  #endif // macOS 10.14+
-    {
-  #if __MAC_OS_X_VERSION_MAX_ALLOWED < 150000
-        image = CGDisplayCreateImage(kCGDirectMainDisplay);
-  #endif
-    }
+    CGImageRef image = CGDisplayCreateImage(kCGDirectMainDisplay);
     CFMutableDataRef newImageData = CFDataCreateMutable(NULL, 0);
     CGImageDestinationRef destination = CGImageDestinationCreateWithData(newImageData, kUTTypeJPEG, 1, NULL);
     float compression = quality / 100;
@@ -38,4 +35,7 @@ struct tlv_packet *desktop_screenshot(struct tlv_handler_ctx *ctx)
     }
   }
   return p;
+#else
+  return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+#endif
 }
