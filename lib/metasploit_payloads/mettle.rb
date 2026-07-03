@@ -16,6 +16,8 @@ module MetasploitPayloads
 
     CMDLINE_MAX = 2000
     CMDLINE_SIG = 'DEFAULT_OPTS'.freeze
+    CONFIG_BLOCK_MAX = 8192
+    CONFIG_BLOCK_SIG = 'CONFIG_BLOCK'.freeze
     #
     # Config is a hash. Valid keys are:
     #  :uri to connect to
@@ -36,6 +38,9 @@ module MetasploitPayloads
     def to_binary(format=:process_image)
       bin = self.class.read(@platform, format)
       unless @config.empty?
+        if @config[:config_block]
+          bin = add_config_block(bin, @config[:config_block])
+        end
         params = generate_argv
         bin = add_args(bin, params)
       end
@@ -47,6 +52,10 @@ module MetasploitPayloads
     def generate_argv
       cmd_line = 'mettle '
       @config.each do |opt, val|
+        # :config_block is embedded into the binary via add_config_block (a
+        # TLV blob parsed natively); it is not a command-line option.
+        next if opt == :config_block
+
         cmd_line << "-#{short_opt(opt)} \"#{val}\" "
       end
       if cmd_line.length > CMDLINE_MAX
@@ -75,6 +84,20 @@ module MetasploitPayloads
       else
         raise Mettle::Error, "unknown mettle option #{opt}", caller
       end
+    end
+
+    # Layout in the binary: [length:4 BE][config_bytes][zero padding] within
+    # the CONFIG_BLOCK_MAX-byte slot. Carrying the length explicitly avoids
+    # a trailing-null ambiguity — the XOR-encoded config can legitimately
+    # end in 0x00, which would otherwise be eaten by a backward scan.
+    def add_config_block(bin, config_bytes)
+      usable = CONFIG_BLOCK_MAX - 4
+      if config_bytes.length > usable
+        raise Mettle::Error, 'mettle config block too large', caller
+      end
+      payload = [config_bytes.length].pack('N') + config_bytes
+      padded = payload + "\x00" * (CONFIG_BLOCK_MAX - payload.length)
+      bin.sub(CONFIG_BLOCK_SIG + "\x00" * (CONFIG_BLOCK_MAX - CONFIG_BLOCK_SIG.length), padded)
     end
 
     def add_args(bin, params)

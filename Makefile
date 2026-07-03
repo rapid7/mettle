@@ -5,6 +5,17 @@ include make/Makefile.tools
 include make/Makefile.common
 include make/Makefile.mettle
 
+DOCKER_CONTAINER=rapid7/build:mettle
+DOCKER_TARGET ?= x86_64-linux-musl
+
+# Build mettle inside the official build container (no local toolchain or
+# autotools required). Override the arch with DOCKER_TARGET=<triple>. Only the
+# mettle checkout is mounted; build artifacts are chowned back to the invoking
+# user. Output lands in build/$(DOCKER_TARGET)/bin/{mettle,mettle.bin}.
+docker:
+	docker run --rm -v "$(CURDIR)":/mettle -w /mettle $(DOCKER_CONTAINER) \
+		bash -c "make TARGET=$(DOCKER_TARGET); rc=$$?; chown -R $(shell id -u):$(shell id -g) /mettle; exit $$rc"
+
 distclean:
 	@rm -fr $(BUILD)
 

