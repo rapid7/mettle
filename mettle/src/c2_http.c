@@ -329,7 +329,7 @@ static void *decode_response_with_profile(struct buffer_queue *response_q,
 
 	int start = vc->prefix_skip;
 	int end = raw_len - vc->suffix_skip;
-	if (start >= end || start < 0 || end > (int)raw_len) {
+	if (start > end || start < 0 || end > (int)raw_len) {
 		start = 0;
 		end = raw_len;
 	}
