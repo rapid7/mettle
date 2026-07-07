@@ -90,6 +90,46 @@
 #define TLV_TYPE_ENC_SYM_KEY           (TLV_META_TYPE_RAW     | 553)
 
 /*
+ * C2/Transport configuration
+ */
+#define TLV_TYPE_SESSION_EXPIRY        (TLV_META_TYPE_UINT    | 700)
+#define TLV_TYPE_EXITFUNC              (TLV_META_TYPE_UINT    | 701)
+#define TLV_TYPE_DEBUG_LOG             (TLV_META_TYPE_STRING  | 702)
+#define TLV_TYPE_EXTENSION             (TLV_META_TYPE_GROUP   | 703)
+#define TLV_TYPE_C2                    (TLV_META_TYPE_GROUP   | 704)
+#define TLV_TYPE_C2_COMM_TIMEOUT       (TLV_META_TYPE_UINT    | 705)
+#define TLV_TYPE_C2_RETRY_TOTAL        (TLV_META_TYPE_UINT    | 706)
+#define TLV_TYPE_C2_RETRY_WAIT         (TLV_META_TYPE_UINT    | 707)
+#define TLV_TYPE_C2_URL                (TLV_META_TYPE_STRING  | 708)
+#define TLV_TYPE_C2_URI                (TLV_META_TYPE_STRING  | 709)
+#define TLV_TYPE_C2_PROXY_URL          (TLV_META_TYPE_STRING  | 710)
+#define TLV_TYPE_C2_PROXY_USER         (TLV_META_TYPE_STRING  | 711)
+#define TLV_TYPE_C2_PROXY_PASS         (TLV_META_TYPE_STRING  | 712)
+#define TLV_TYPE_C2_GET                (TLV_META_TYPE_GROUP   | 713)
+#define TLV_TYPE_C2_POST               (TLV_META_TYPE_GROUP   | 714)
+#define TLV_TYPE_C2_HEADERS            (TLV_META_TYPE_STRING  | 715)
+#define TLV_TYPE_C2_UA                 (TLV_META_TYPE_STRING  | 716)
+#define TLV_TYPE_C2_CERT_HASH          (TLV_META_TYPE_RAW     | 717)
+#define TLV_TYPE_C2_PREFIX             (TLV_META_TYPE_RAW     | 718)
+#define TLV_TYPE_C2_SUFFIX             (TLV_META_TYPE_RAW     | 719)
+#define TLV_TYPE_C2_ENC_INBOUND        (TLV_META_TYPE_UINT    | 720)
+#define TLV_TYPE_SESSION_FLAGS         (TLV_META_TYPE_UINT    | 727)
+#define TLV_TYPE_C2_ENC_OUTBOUND       (TLV_META_TYPE_UINT    | 728)
+#define TLV_TYPE_C2_ENC_UUID           (TLV_META_TYPE_UINT    | 729)
+#define TLV_TYPE_C2_UUID_PREFIX        (TLV_META_TYPE_STRING  | 730)
+#define TLV_TYPE_C2_UUID_SUFFIX        (TLV_META_TYPE_STRING  | 731)
+#define TLV_TYPE_C2_PREFIX_SKIP        (TLV_META_TYPE_UINT    | 721)
+#define TLV_TYPE_C2_SUFFIX_SKIP        (TLV_META_TYPE_UINT    | 722)
+#define TLV_TYPE_C2_UUID_COOKIE        (TLV_META_TYPE_STRING  | 723)
+#define TLV_TYPE_C2_UUID_GET           (TLV_META_TYPE_STRING  | 724)
+#define TLV_TYPE_C2_UUID_HEADER        (TLV_META_TYPE_STRING  | 725)
+#define TLV_TYPE_C2_UUID               (TLV_META_TYPE_STRING  | 726)
+
+#define C2_ENCODING_NONE    0
+#define C2_ENCODING_B64     1
+#define C2_ENCODING_B64URL  2
+
+/*
  * General
  */
 #define TLV_TYPE_HANDLE                (TLV_META_TYPE_QWORD   | 600)

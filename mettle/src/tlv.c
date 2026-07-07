@@ -63,6 +63,17 @@ struct tlv_packet *tlv_packet_new(uint32_t type, int initial_len)
 	return p;
 }
 
+struct tlv_packet *tlv_packet_from_raw(uint32_t type, const void *data, size_t len)
+{
+	struct tlv_packet *p = malloc(sizeof(struct tlv_packet) + len);
+	if (p) {
+		p->h.type = htonl(type);
+		p->h.len = htonl(len + TLV_MIN_LEN);
+		memcpy(p->buf, data, len);
+	}
+	return p;
+}
+
 void tlv_packet_free(struct tlv_packet *p)
 {
 	free(p);

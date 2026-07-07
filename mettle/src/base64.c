@@ -87,7 +87,7 @@ int base64encode(char *dest, const char *src, int l)
 	bits = 0;
 
 	for (rpos = 0; rpos < l; rpos++) {
-		c = src[rpos];
+		c = (unsigned char)src[rpos];
 
 		bits += c;
 		char_count++;
