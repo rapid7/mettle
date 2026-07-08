@@ -97,12 +97,12 @@ module MetasploitPayloads
       end
       payload = [config_bytes.length].pack('N') + config_bytes
       padded = payload + "\x00" * (CONFIG_BLOCK_MAX - payload.length)
-      bin.sub(CONFIG_BLOCK_SIG + "\x00" * (CONFIG_BLOCK_MAX - CONFIG_BLOCK_SIG.length), padded)
+      bin.sub(CONFIG_BLOCK_SIG + "\x00" * (CONFIG_BLOCK_MAX - CONFIG_BLOCK_SIG.length)) { padded }
     end
 
     def add_args(bin, params)
       if params[8] != "\x00"
-        bin.sub(CMDLINE_SIG +  ' ' * (CMDLINE_MAX - CMDLINE_SIG.length), params)
+        bin.sub(CMDLINE_SIG +  ' ' * (CMDLINE_MAX - CMDLINE_SIG.length)) { params }
       else
         bin
       end
