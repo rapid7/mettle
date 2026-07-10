@@ -21,6 +21,7 @@ int c2_close(struct c2 *c2);
 
 void c2_free(struct c2 *c2);
 
+
 #define C2_REACHABLE 0x01
 
 typedef void (*c2_data_cb)(struct c2 *c2, void *arg);
@@ -53,12 +54,18 @@ struct c2_transport_cbs {
 	void (*free)(struct c2_transport *t);
 };
 
+
+
 int c2_register_transport_type(struct c2 *c2, const char *proto,
 	struct c2_transport_cbs *cbs);
 
 struct c2_transport* c2_get_current_transport(struct c2 *c2);
+struct c2_transport* c2_get_next_transport(struct c2_transport *t);
 
 const char * c2_transport_uri(struct c2_transport *t);
+void c2_transport_set_uri(struct c2_transport *t, const char *uri);
+const char * c2_transport_ua(struct c2_transport *t);
+const char * c2_transport_args(struct c2_transport *t);
 const char * c2_transport_dest(struct c2_transport *t);
 struct ev_loop * c2_transport_loop(struct c2_transport *loop);
 
@@ -71,4 +78,10 @@ void c2_transport_unreachable(struct c2_transport *t);
 void c2_transport_ingress_buf(struct c2_transport *t, void *buf, size_t buflen);
 void c2_transport_ingress_queue(struct c2_transport *t, struct buffer_queue *src);
 
+int c2_transport_get_socket_fd(struct c2_transport *t);
+
+int c2_transport_egress_pending(struct c2 *c2);
+
+struct c2_transport_type * c2_get_transport_type(struct c2_transport *t);
+char * c2_get_proto(struct c2_transport *t);
 #endif

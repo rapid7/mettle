@@ -57,6 +57,12 @@ struct c2 {
 	void *cb_arg;
 };
 
+int c2_get_fd(struct c2 *c2)
+{
+	struct tcp_ctx *ctx = (struct tcp_ctx*)(c2_transport_get_ctx(c2->curr_transport));
+	return 1;
+}
+
 int
 c2_register_transport_type(struct c2 *c2, const char *proto,
 		struct c2_transport_cbs *cbs)
@@ -113,6 +119,10 @@ c2_remove_transports(struct c2 *c2)
 		free(t);
 	}
 	return 0;
+}
+
+struct c2_transport* c2_get_next_transport(struct c2_transport *t){
+	return t->next;
 }
 
 int c2_add_transport_uri(struct c2 *c2, const char *uri)
@@ -175,6 +185,17 @@ static void transport_tx(struct c2 *c2)
 	if (t->type->cbs.egress) {
 		t->type->cbs.egress(t, t->c2->egress);
 	}
+}
+
+int c2_transport_egress_pending(struct c2 *c2)
+{
+	struct c2_transport *t = c2->curr_transport;
+
+	if (strcmp(c2_get_proto(t), "tcp") == 0 || strcmp(c2_get_proto(t), "fd") == 0) {
+		return 0;
+	}
+
+	return http_transport_egress_pending(t);
 }
 
 ssize_t c2_read(struct c2 *c2, void *buf, size_t buflen)
@@ -295,6 +316,16 @@ const char * c2_transport_uri(struct c2_transport *t)
 	return t->uri;
 }
 
+void c2_transport_set_uri(struct c2_transport *t, const char *uri)
+{
+	free(t->uri);
+	t->uri = strdup(uri);
+	t->dest = strstr(t->uri, "://");
+	if (t->dest) {
+		t->dest += 3;
+	}
+}
+
 const char * c2_transport_dest(struct c2_transport *t)
 {
 	return t->dest;
@@ -308,6 +339,15 @@ struct ev_loop * c2_transport_loop(struct c2_transport *t)
 void * c2_transport_get_ctx(struct c2_transport *t)
 {
 	return t->ctx;
+}
+
+struct c2_transport_type * c2_get_transport_type(struct c2_transport *t)
+{
+	return t->type;
+}
+
+char * c2_get_proto(struct c2_transport *t){
+	return t->type->proto;
 }
 
 void c2_transport_set_ctx(struct c2_transport *t, void *ctx)

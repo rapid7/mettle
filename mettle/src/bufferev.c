@@ -57,6 +57,15 @@ void bufferev_set_cbs(struct bufferev *be,
 	be->cb_arg = cb_arg;
 }
 
+int bufferev_get_socket_fd(struct bufferev *be)
+{
+	if (be == NULL) {
+		return -1;
+	}
+	return be->sock;
+}
+
+
 struct buffer_queue * bufferev_rx_queue(struct bufferev *be)
 {
 	return be->rx_queue;
