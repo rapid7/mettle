@@ -12,3 +12,4 @@ mips-linux-muslsf
 mipsel-linux-muslsf
 mips64-linux-muslsf
 s390x-linux-musl
+riscv64-linux-musl

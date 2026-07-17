@@ -88,7 +88,20 @@ AC_CONFIG_FILES([
 AC_ARG_ENABLE([staticpie],
 	AS_HELP_STRING([--enable-staticpie], [Building Static PIE]))
 AS_IF([test "x$enable_staticpie" = "xyes"], [
-		AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])
+		AS_CASE([$host_cpu],
+			dnl -static --static -pie relies on crt1.o rather than the
+			dnl relocatable rcrt1.o, needed for a real static-pie link.
+			dnl -static-pie alone isn't enough on this toolchain: its gcc
+			dnl driver only conditions -dynamic-linker on literal "-static"
+			dnl (not "-static-pie"), so without an explicit override the
+			dnl linker still emits a dynamically-linked PIE with a real
+			dnl PT_INTERP. Passing -static and -pie straight to the linker,
+			dnl plus suppressing the interpreter explicitly, produces a
+			dnl correct static-pie binary (verified via readelf: DYN type,
+			dnl no PT_INTERP, no NEEDED entries, zero JUMP_SLOT relocs).
+			[riscv64], [AC_SUBST([PLATFORM_LDADD], ['-static-pie -Wl,-static -Wl,-pie -Wl,--no-dynamic-linker'])],
+			[AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])]
+		)
 		AM_CONDITIONAL([MAKEBIN],  [true])
         ], [
 		AM_CONDITIONAL([MAKEBIN],  [false])

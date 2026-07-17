@@ -92,6 +92,7 @@ The available platform triples for Linux targets are:
 * `mipsel-linux-muslsf`
 * `mips64-linux-muslsf`
 * `s390x-linux-musl`
+* `riscv64-linux-musl`
 
 For Mingw32-64 Windows targets, the following triples are added. On up-to-date
 Debian / Ubuntu systems, the `mingw-w64` package will install both toolchains.

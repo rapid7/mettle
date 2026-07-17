@@ -4,7 +4,8 @@ $(BUILD)/libsigar/configure:
 	@cd $(BUILD); \
 		rm -fr libsigar; \
 		$(TAR) zxf $(ROOT)/deps/libsigar-1.6.7.tar.gz; \
-		mv libsigar-1.6.7 libsigar
+		mv libsigar-1.6.7 libsigar; \
+		sed -i 's/case 192: return "num";/case 192: return "num"; case 243: return "riscv64";/' libsigar/src/sigar_elf.c
 
 $(BUILD)/libsigar/Makefile: $(TOOLS) $(BUILD)/libsigar/configure
 	@echo "Configuring libsigar for $(TARGET)"
