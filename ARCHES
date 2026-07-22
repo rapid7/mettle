@@ -13,3 +13,4 @@ mipsel-linux-muslsf
 mips64-linux-muslsf
 s390x-linux-musl
 riscv64-linux-musl
+loongarch64-unknown-linux-musl

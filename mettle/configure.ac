@@ -100,6 +100,14 @@ AS_IF([test "x$enable_staticpie" = "xyes"], [
 			dnl correct static-pie binary (verified via readelf: DYN type,
 			dnl no PT_INTERP, no NEEDED entries, zero JUMP_SLOT relocs).
 			[riscv64], [AC_SUBST([PLATFORM_LDADD], ['-static-pie -Wl,-static -Wl,-pie -Wl,--no-dynamic-linker'])],
+			dnl -static --static -pie silently links a plain static EXEC
+			dnl (no PIE at all) on this toolchain instead of erroring, so
+			dnl the omission wouldn't be caught by a build failure. Plain
+			dnl -static-pie alone already produces a correct static-pie
+			dnl binary here (verified via readelf: DYN type, no PT_INTERP,
+			dnl no NEEDED entries, only R_LARCH_RELATIVE relocs), so no
+			dnl further linker overrides are needed like riscv64 required.
+			[loongarch64], [AC_SUBST([PLATFORM_LDADD], ['-static-pie'])],
 			[AC_SUBST([PLATFORM_LDADD], ['-static --static -pie'])]
 		)
 		AM_CONDITIONAL([MAKEBIN],  [true])
