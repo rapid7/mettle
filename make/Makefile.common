@@ -26,7 +26,7 @@ ifeq (,$(findstring mingw,$(TARGET)))
 endif
 
 CPPFLAGS:=$(CPPFLAGS) -I$(BUILD)/include -DCURL_STATICLIB
-CONFIG_FIXUP=cp $(ROOT)/mettle/config.guess $(ROOT)/mettle/config.sub . ;
+CONFIG_FIXUP=cp $(ROOT)/mettle/config.guess $(ROOT)/mettle/config.sub . ; [ ! -d config ] || cp $(ROOT)/mettle/config.guess $(ROOT)/mettle/config.sub config/ ;
 CONFIGURE=configure --prefix=$(BUILD) --disable-shared ac_cv_path_PKGCONFIG=$(CWD)/pkg-config
 CONFIGURE_STATIC=configure --prefix=$(BUILD) --static
 ifneq "$(TARGET)" "native"
@@ -39,6 +39,18 @@ endif
 # if Debug is enabled, build with debug symbols
 ifeq "$(D)" "1"
     CFLAGS:=$(CFLAGS) -g
+endif
+
+# loongarch64's toolchain is much newer (GCC 14) than the others here and
+# flags -Werror=calloc-transposed-args (added in GCC 14) against several
+# third-party deps (json-c, etc) that pass calloc()'s count/size arguments
+# in the other order. Harmless either way since both arguments are
+# multiplied together, so silence it for this target rather than patching
+# every affected dep. Must land before ENV is captured below, since libs
+# built with -Werror do so via their own build systems (eg. json-c's
+# configure.ac appends -Wall -Werror itself), not by inheriting it from us.
+ifneq (,$(findstring loongarch64,$(TARGET)))
+    CFLAGS:=$(CFLAGS) -Wno-error=calloc-transposed-args
 endif
 
 # Libraries cannot be compiled with -Werror due to the multiple compilation warnings.

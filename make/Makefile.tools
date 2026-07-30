@@ -86,6 +86,18 @@ ifneq (,$(findstring musl,$(TARGET)))
     TOOLS_DEPS:=$(TOOLS_DEPS) $(TOOLS)/musl-cross/.unpacked elf2bin
 endif
 
+# riscv64's toolchain is fetched and wired up separately; see the
+# .riscv64-unpacked rule below for why.
+ifneq (,$(findstring riscv64,$(TARGET)))
+    TOOLS_DEPS:=$(TOOLS_DEPS) $(TOOLS)/musl-cross/.riscv64-unpacked
+endif
+
+# loongarch64's toolchain is fetched and wired up separately; see the
+# .loongarch64-unpacked rule below for why.
+ifneq (,$(findstring loongarch64,$(TARGET)))
+    TOOLS_DEPS:=$(TOOLS_DEPS) $(TOOLS)/musl-cross/.loongarch64-unpacked
+endif
+
 ifeq "$(shell uname -s)" "Darwin"
     BUILD_HOST=osx
     TOOLS_DEPS:=$(TOOLS_DEPS) coreutils
@@ -243,5 +255,95 @@ $(TOOLS)/musl-cross/.unpacked: musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar
 	@mkdir -p $(TOOLS)/musl-cross
 	@cd $(TOOLS) && tar xfm $(ROOT)/musl-cross-$(BUILD_HOST)-$(TOOLCHAIN_VERSION).tar.xz
 	@touch $(TOOLS)/musl-cross/.unpacked
+
+# riscv64 isn't in the shared musl-cross bundle (it predates musl's riscv64
+# port). The musl.cc riscv64-linux-musl-cross toolchain (gcc 11.2.1) is
+# available, but its binutils has a genuine bug linking -static-pie for
+# riscv64: it leaves R_RISCV_JUMP_SLOT relocations against PLT stubs that
+# never get resolved (no dynamic linker in a static binary), segfaulting
+# at the first such call. Confirmed arch-specific, not a general
+# "newer toolchain" issue: the exact same gcc/binutils vintage links a
+# clean, correct static-pie binary for aarch64. A newer toolchain (gcc
+# 13.2.0 / binutils 2.42, from Bootlin) fixes it for riscv64 too, so that's
+# what's used here instead.
+#
+# Its tool prefix (riscv64-buildroot-linux-musl-*) differs from the
+# riscv64-linux-musl-* convention every other rule in this file assumes
+# (CC=$(TOOLS)/musl-cross/bin/$(TARGET)-*), so thin exec wrapper scripts
+# are generated under that expected name. Plain symlinks don't work here:
+# Buildroot's gcc/g++ are themselves wrapper scripts that derive the real
+# (*.br_real) binary's name from their own invoked name, which breaks
+# under a symlink with a different basename; exec'ing from a real script
+# gives the real binary its own correct argv0.
+RISCV64_TOOLCHAIN=riscv64-lp64d--musl--bleeding-edge-2024.02-1
+RISCV64_TOOLCHAIN_PREFIX=riscv64-buildroot-linux-musl
+
+$(RISCV64_TOOLCHAIN).tar.bz2:
+	@echo "Downloading riscv64 toolchain"
+	curl -f -O https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs/$(RISCV64_TOOLCHAIN).tar.bz2
+
+$(TOOLS)/musl-cross/.riscv64-unpacked: $(TOOLS)/musl-cross/.unpacked $(RISCV64_TOOLCHAIN).tar.bz2
+	@echo "Unpacking riscv64 toolchain"
+	@if [ "$(shell uname -s)" != "Linux" ] || [ "$(shell uname -m)" != "x86_64" ]; then \
+		echo "$(RISCV64_TOOLCHAIN).tar.bz2 only ships Linux x86_64 host binaries; can't build riscv64 targets on $(shell uname -s) $(shell uname -m)" >&2; \
+		exit 1; \
+	fi
+	@rm -fr $(TOOLS)/riscv64-buildroot
+	@mkdir -p $(TOOLS)/riscv64-buildroot
+	@cd $(TOOLS)/riscv64-buildroot && tar xfj $(ROOT)/$(RISCV64_TOOLCHAIN).tar.bz2 --strip-components=1
+	@$(TOOLS)/riscv64-buildroot/relocate-sdk.sh
+	@mkdir -p $(TOOLS)/musl-cross/bin
+	@for t in $(TOOLS)/riscv64-buildroot/bin/$(RISCV64_TOOLCHAIN_PREFIX)-*; do \
+		base=$$(basename $$t); \
+		case $$base in *.br_real) continue ;; esac; \
+		name=$${base#$(RISCV64_TOOLCHAIN_PREFIX)-}; \
+		case $$name in cc|c++) continue ;; esac; \
+		wrapper=$(TOOLS)/musl-cross/bin/riscv64-linux-musl-$$name; \
+		printf '#!/bin/sh\nexec "%s" "$$@"\n' "$$t" > $$wrapper; \
+		chmod +x $$wrapper; \
+	done
+	@touch $(TOOLS)/musl-cross/.riscv64-unpacked
+
+# loongarch64 predates musl's port too (musl added support in 1.2.4/1.2.5),
+# and doesn't appear in the shared musl-cross bundle or in Bootlin's
+# toolchain catalog. The loong64/cross-tools project publishes a musl-libc
+# loongarch64-unknown-linux-musl toolchain (crosstool-NG, gcc 14.3.0) built
+# for an x86_64 Linux host; pinned to a specific dated release here for
+# reproducibility, since "latest"/"stable" tags in that repo move.
+#
+# Its tool prefix (loongarch64-unknown-linux-musl-*) already matches the
+# ARCHES/TARGET convention this file assumes (CC=$(TOOLS)/musl-cross/bin/
+# $(TARGET)-*), so no renaming wrapper is needed here. And unlike
+# Buildroot's gcc/g++ (see the riscv64 rule above), these are plain,
+# non-argv0-dependent ELF binaries with no baked-in RPATH, so plain
+# symlinks into musl-cross/bin work fine -- verified gcc resolves its own
+# real install path through the symlink and finds its libexec/lib/sysroot.
+#
+# Default -static --static -pie silently produces a plain static EXEC (no
+# PIE) on this toolchain rather than failing, so mettle/configure.ac special
+# -cases loongarch64 to just -static-pie, which links a correct static-pie
+# binary here on its own (verified via readelf: DYN type, no PT_INTERP, no
+# NEEDED entries, only R_LARCH_RELATIVE relocs).
+LOONGARCH64_TOOLCHAIN_RELEASE=20260612
+LOONGARCH64_TOOLCHAIN=x86_64-cross-tools-loongarch64-unknown-linux-musl-stable
+
+$(LOONGARCH64_TOOLCHAIN).tar.xz:
+	@echo "Downloading loongarch64 toolchain"
+	curl -fL -o $(LOONGARCH64_TOOLCHAIN).tar.xz https://github.com/loong64/cross-tools/releases/download/$(LOONGARCH64_TOOLCHAIN_RELEASE)/$(LOONGARCH64_TOOLCHAIN).tar.xz
+
+$(TOOLS)/musl-cross/.loongarch64-unpacked: $(TOOLS)/musl-cross/.unpacked $(LOONGARCH64_TOOLCHAIN).tar.xz
+	@echo "Unpacking loongarch64 toolchain"
+	@if [ "$(shell uname -s)" != "Linux" ] || [ "$(shell uname -m)" != "x86_64" ]; then \
+		echo "$(LOONGARCH64_TOOLCHAIN).tar.xz only ships Linux x86_64 host binaries; can't build loongarch64 targets on $(shell uname -s) $(shell uname -m)" >&2; \
+		exit 1; \
+	fi
+	@rm -fr $(TOOLS)/loongarch64-cross
+	@mkdir -p $(TOOLS)/loongarch64-cross
+	@cd $(TOOLS)/loongarch64-cross && tar xf $(ROOT)/$(LOONGARCH64_TOOLCHAIN).tar.xz --strip-components=1
+	@mkdir -p $(TOOLS)/musl-cross/bin
+	@for t in $(TOOLS)/loongarch64-cross/bin/loongarch64-unknown-linux-musl-*; do \
+		ln -sf $$t $(TOOLS)/musl-cross/bin/$$(basename $$t); \
+	done
+	@touch $(TOOLS)/musl-cross/.loongarch64-unpacked
 
 $(TOOLS): $(TOOLS_DEPS)
