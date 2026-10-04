@@ -55,7 +55,6 @@ eio_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 	if (eio_poll() == -1) {
 		ev_idle_start(loop, &eio_idle_watcher);
 	}
-	ev_async_start(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
 }
 
 static void
@@ -67,7 +66,7 @@ eio_want_poll(void)
 static void
 eio_done_poll(void)
 {
-	ev_async_stop(ev_default_loop(EV_LOOP_FLAGS), &eio_async_watcher);
+	/* Keep the watcher active: restarting it can discard worker notifications. */
 }
 
 static void
