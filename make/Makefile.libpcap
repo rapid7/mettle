@@ -30,10 +30,23 @@ $(BUILD)/libpcap/Makefile: $(TOOLS) $(BUILD)/libpcap/configure $(LIBPCAP_DEPS)
 		$(CONFIG_FIXUP) \
 		$(ENV) ./$(CONFIGURE) $(LIBPCAP_CONFIG_FLAGS) $(LOGBUILD)
 
+# libpcap's AC_LBL_C_INIT macro has a pre-existing bug (unrelated to
+# riscv64) where its "if test $GCC = yes" check doesn't see the
+# already-detected GNU compiler at that point in the generated configure
+# script, falling into the non-GCC branch that appends -I/usr/local/include
+# to INCLS. That's always been silently harmless before, since the old
+# musl-cross toolchains don't care about host-path leakage; the riscv64
+# Buildroot toolchain's wrapper actively rejects it as unsafe cross-compile
+# input. INCLS is a plain (non-recursive) Makefile variable, so it can be
+# overridden straight on the make command line.
+ifneq (,$(findstring riscv64,$(TARGET)))
+    LIBPCAP_BUILD_FLAGS = INCLS=-I.
+endif
+
 $(BUILD)/lib/libpcap.a: $(BUILD)/libpcap/Makefile
 	@echo "Building libpcap for $(TARGET)"
 	@cd $(BUILD)/libpcap; \
-		$(ENV) $(MAKE) $(LOGBUILD) ; \
-	       	$(MAKE_INSTALL) $(LOGBUILD)
+		$(ENV) $(MAKE) $(LIBPCAP_BUILD_FLAGS) $(LOGBUILD) ; \
+	       	$(MAKE_INSTALL) $(LIBPCAP_BUILD_FLAGS) $(LOGBUILD)
 
 libpcap: $(BUILD)/lib/libpcap.a
